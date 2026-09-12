@@ -115,6 +115,17 @@ Observed executions and exact test results are recorded in [docs/verification.md
 
 ## Deployment and current limits
 
+The public deployment is [folia-ennearock.vercel.app](https://folia-ennearock.vercel.app), hosted in the `ennearock/folia-ennearock` Vercel project. It currently runs the local/demo experience; Supabase and Stripe are not connected. `NEXT_PUBLIC_APP_URL` is configured as this exact production origin.
+
+To deploy this checkout again using the authorized Vercel account:
+
+```bash
+npx vercel@59.16.0 link --yes --project folia-ennearock --scope ennearock
+npx vercel@59.16.0 deploy --prod --yes --scope ennearock --logs
+```
+
+The first deployment used the CLI because Vercel could not obtain write/admin access to the configured GitHub repository. Automatic deployments on Git pushes are not connected. `.vercelignore` excludes local environment files, generated builds, test artifacts, and local scratch files from deployment uploads; Vercel project linkage stays outside Git.
+
 Deploy to a Node-capable Next.js platform with Supabase PostgreSQL and HTTPS. Apply migrations before enabling the app, set server secrets and public build-time variables, configure email redirects and the Stripe webhook endpoint, and rebuild. This server-backed application cannot be deployed as a static-only site.
 
 - Hosted Supabase sign-up/verification/reset, browser-to-browser authenticated sync, and real Stripe test Checkout/webhook delivery still require external credentials and end-to-end verification. Local PostgreSQL and mocked server tests do not establish those provider integrations as verified.

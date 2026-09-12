@@ -3960,6 +3960,13 @@ td:first-child {
   .full-planner .planner-grid {
     min-width: 560px;
   }
+  .full-planner .planner-toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .full-planner .planner-toolbar strong {
+    min-width: 125px;
+  }
   .task-list {
     padding: 0 17px;
   }
