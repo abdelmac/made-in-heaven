@@ -6,6 +6,8 @@ export const en = {
     planner: 'Planner',
     subjects: 'Subjects',
     tasks: 'Tasks',
+    notes: 'Notes',
+    flashcards: 'Flashcards',
     history: 'History',
     analytics: 'Analytics',
     settings: 'Settings',

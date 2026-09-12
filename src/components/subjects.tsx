@@ -38,6 +38,8 @@ import {
   startWeek,
 } from '@/lib/display';
 import { TaskRow } from './tasks';
+import { SubjectNotes, SubjectCompletion } from './note-sheets';
+import { learning } from '@/lib/i18n/learning';
 export function SubjectsPage() {
   const { store, openSubject, canEdit } = useApp();
   const [search, setSearch] = useState('');
@@ -45,7 +47,12 @@ export function SubjectsPage() {
   const subjects = store.data.subjects
     .filter(
       (s) =>
-        (status === 'all' || (status === 'archived' ? s.archived : !s.archived)) &&
+        (status === 'all' ||
+          (status === 'archived'
+            ? s.archived
+            : status === 'completed'
+              ? !!s.completedAt
+              : !s.archived && !s.completedAt)) &&
         `${s.name} ${s.description}`.toLowerCase().includes(search.toLowerCase()),
     )
     .sort((a, b) => a.order - b.order);
@@ -68,6 +75,7 @@ export function SubjectsPage() {
         >
           <option value="active">{ui.subjects.activeSubjects}</option>
           <option value="archived">{ui.subjects.archivedSubjects}</option>
+          <option value="completed">{learning.completedSubjects}</option>
           <option value="all">{ui.subjects.allSubjects}</option>
         </select>
         <Button disabled={!canEdit} onClick={() => openSubject()}>
@@ -113,6 +121,7 @@ export function SubjectCard({ subject, compact = false }: { subject: Subject; co
           {subject.icon || <Leaf size={22} />}
         </span>
         {subject.archived && <span className="badge">{ui.subjects.archived}</span>}
+        {subject.completedAt && <span className="badge">{learning.completedAt}</span>}
         <button
           className="icon-button"
           aria-label={`Open ${subject.name}`}
@@ -198,7 +207,7 @@ export function SubjectsWidget() {
     >
       <div className="subject-widget-grid">
         {store.data.subjects
-          .filter((s) => !s.archived)
+          .filter((s) => !s.archived && !s.completedAt)
           .sort((a, b) => a.order - b.order)
           .slice(0, 3)
           .map((s) => (
@@ -256,6 +265,7 @@ export function SubjectEditor({ subjectId, onClose }: { subjectId?: string; onCl
       icon: String(form.get('icon')) || '✦',
       color,
       archived: subject?.archived || false,
+      completedAt: subject?.completedAt,
       targetDate: String(form.get('target')) || undefined,
       weeklyGoal: Number(form.get('goal')),
       defaultPresetId: String(form.get('preset')) || undefined,
@@ -374,8 +384,9 @@ export function SubjectEditor({ subjectId, onClose }: { subjectId?: string; onCl
                 </IconButton>
               )}
             </div>
+            <SubjectCompletion subjectId={subject.id} />
             <div className="detail-tabs">
-              {['overview', 'tasks', 'history'].map((value) => (
+              {['overview', 'tasks', 'notes', 'history'].map((value) => (
                 <button
                   key={value}
                   onClick={() => setTab(value)}
@@ -385,10 +396,13 @@ export function SubjectEditor({ subjectId, onClose }: { subjectId?: string; onCl
                     ? ui.subjects.overview
                     : value === 'tasks'
                       ? ui.subjects.tasksProjects
-                      : ui.subjects.subjectHistory}
+                      : value === 'notes'
+                        ? learning.notesTab
+                        : ui.subjects.subjectHistory}
                 </button>
               ))}
             </div>
+            {tab === 'notes' && <SubjectNotes subjectId={subject.id} />}
             {tab === 'overview' && (
               <>
                 <div className="mini-metrics">

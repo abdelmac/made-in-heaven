@@ -63,6 +63,18 @@ export const ui = {
     localNoAccountNeeded: 'Local · no account needed',
     letSReconcileYourChanges: 'Let’s reconcile your changes.',
     yourChangesNeedAttention: 'Your changes need attention.',
+    aPlaceForYourThinking: 'A place for your thinking.',
+    captureIdeasKeepSubjectNotesAndReflectOnWhat:
+      'Capture ideas, keep subject notes, and reflect on what you finished.',
+    makeWhatYouLearnStick: 'Make what you learn stick.',
+    buildADeckTurnACardAndComeBack:
+      'Build a deck, turn a card, and come back a little more confident.',
+    focusCompleteKeepWhatYouLearned: 'Focus complete. Keep what you learned.',
+    yourFocusSession: 'Your focus session',
+    addANoteWhileItIsFresh: '· Add a note while it is fresh.',
+    addSessionNote: 'Add session note',
+    dismissSessionNotePrompt: 'Dismiss session note prompt',
+    copy3: ':',
   },
   settings: {
     timerPreferencesSavedActiveSessionsKeepTheirOriginalDuration:
@@ -172,6 +184,9 @@ export const ui = {
     signingOut: 'Signing out…',
     discardUnsyncedChangesAndSignOut: 'Discard unsynced changes and sign out',
     deleting: 'Deleting…',
+    noteSheets: 'note sheets ·',
+    flashcardDecks: 'flashcard decks ·',
+    cards: 'cards',
   },
   tasks: {
     copy: '·',
@@ -452,5 +467,47 @@ export const ui = {
     switchToYourPersonalWorkspaceForPro: 'Switch to your personal workspace for Pro.',
     noSubscription: 'No subscription',
     invoice: 'Invoice',
+  },
+  appearance: {
+    classicColors: 'Classic colors',
+    includedForEveryone: 'Included for everyone',
+    aFamiliarPaletteFromGardenGreenToBlurplePick:
+      'A familiar palette, from garden green to blurple. Pick your own accent for free.',
+    classicColorPalette: 'Classic color palette',
+    yourAccentColor: 'Your accent color',
+    yourAccentColorIsSaved: 'Your accent color is saved.',
+    saveAccentColor: 'Save accent color',
+    yourAccentIsAdjustedForReadableTextInLight:
+      'Your accent is adjusted for readable text in light and dark mode.',
+    makeTheBackgroundYours: 'Make the background yours',
+    aLittleAtmosphereForYourFocusSpace: 'A little atmosphere for your focus space.',
+    pro: 'Pro',
+    gradientScenesAndYourOwnPhotosWithAReadable:
+      'Gradient scenes and your own photos, with a readable workspace on top.',
+    proPreviewInYourLocalWorkspaceConnectedAccountsRequire:
+      'Pro preview in your local workspace. Connected accounts require Pro or Team.',
+    backgroundScenes: 'Background scenes',
+    classic: 'Classic',
+    yourOriginalWorkspace: 'Your original workspace',
+    yourOwnBackground: 'Your own background',
+    chooseAJpgPngOrWebpUpTo8:
+      'Choose a JPG, PNG, or WebP up to 8 MB. Folia optimizes it before saving.',
+    preparingImage: 'Preparing image…',
+    uploadBackground: 'Upload background',
+    uploadBackgroundImage: 'Upload background image',
+    theImageCouldNotBePrepared: 'The image could not be prepared.',
+    useYourImage: 'Use your image',
+    removeImage: 'Remove image',
+    aBrighterBackgroundCanMakePageHeadingsHarderTo:
+      'A brighter background can make page headings harder to read. Keep dimming at 70% or more for a calmer view.',
+    endBackgroundPreview: 'End background preview',
+    previewBackground: 'Preview background',
+    classicBackgroundRestored: 'Classic background restored.',
+    restoreClassicBackground: 'Restore classic background',
+    yourBackgroundIsSaved: 'Your background is saved.',
+    saveBackground: 'Save background',
+    findASceneYouLoveThenUpgradeToSave:
+      'Find a scene you love, then upgrade to save it across your connected devices.',
+    explorePro: 'Explore Pro',
   },
 } as const;

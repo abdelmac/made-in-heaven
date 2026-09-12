@@ -101,6 +101,38 @@ export function validateDocumentChange(
   for (const note of previous?.journal || [])
     if (note.userId !== actorId && !next.journal.some((item) => item.id === note.id))
       throw new HttpError(403, "You cannot delete another member's journal entries.");
+  for (const collection of ['noteSheets', 'flashcardDecks', 'flashcards'] as const) {
+    for (const item of next[collection]) {
+      const prior = previous?.[collection].find((saved) => saved.id === item.id);
+      if (prior && (prior.userId !== item.userId || prior.createdAt !== item.createdAt))
+        throw new HttpError(
+          403,
+          'Learning records retain their original author and creation timestamp.',
+        );
+      if (!same(prior, item) && item.userId !== actorId)
+        throw new HttpError(403, 'You can only create or edit your own notes and flashcards.');
+    }
+    for (const prior of previous?.[collection] || [])
+      if (prior.userId !== actorId && !next[collection].some((item) => item.id === prior.id))
+        throw new HttpError(403, "You cannot delete another member's notes or flashcards.");
+  }
+  for (const note of next.noteSheets) {
+    const prior = previous?.noteSheets.find((saved) => saved.id === note.id);
+    if (prior && (prior.content !== note.content || prior.title !== note.title)) {
+      const last = note.revisions.at(-1);
+      if (
+        note.revisions.length !== prior.revisions.length + 1 ||
+        !same(note.revisions.slice(0, -1), prior.revisions) ||
+        last?.title !== prior.title ||
+        last?.content !== prior.content
+      )
+        throw new HttpError(400, 'Keep the previous note title and content in revision history.');
+    } else if (prior && !same(prior.revisions, note.revisions))
+      throw new HttpError(400, 'Note revisions cannot be rewritten.');
+  }
+  for (const card of next.flashcards)
+    if (next.flashcardDecks.find((deck) => deck.id === card.deckId)?.userId !== card.userId)
+      throw new HttpError(403, 'A flashcard and its deck must have the same author.');
   const timer = next.timer;
   if (timer.context && timer.context.userId !== actorId)
     throw new HttpError(403, 'An active timer must belong to you.');

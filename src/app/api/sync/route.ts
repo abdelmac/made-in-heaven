@@ -17,11 +17,17 @@ import {
   readJson,
 } from '@/lib/server/http';
 import { validateDocumentChange } from '@/lib/server/document';
+import {
+  documentRpcPayload,
+  preserveLegacyDocumentFields,
+  serializeDocument,
+  supportsLearningDocument,
+} from '@/lib/server/legacy-fields';
 
 const idSchema = z.string().uuid();
 const bodySchema = z
   .object({
-    data: workspaceDataSchema,
+    data: z.unknown(),
     expectedVersion: z.number().int().min(0),
     operationId: idSchema,
   })
@@ -62,14 +68,19 @@ async function readDocument(workspaceId: string, userId: string) {
   data.preferences = preferences;
   data.timer = timer.data?.payload || prefs.data?.timer_state || emptyTimer(data.preferences);
   data.revision = document.data.version;
-  return { data, version: document.data.version as number };
+  return { data: workspaceDataSchema.parse(data), version: document.data.version as number };
+}
+
+async function clientDocument(request: Request, workspaceId: string, userId: string) {
+  const snapshot = await readDocument(workspaceId, userId);
+  return { ...snapshot, data: serializeDocument(snapshot.data, supportsLearningDocument(request)) };
 }
 
 export async function GET(request: Request) {
   try {
     const workspaceId = idSchema.parse(new URL(request.url).searchParams.get('workspaceId'));
     const { user } = await requireWorkspace(workspaceId);
-    return NextResponse.json(await readDocument(workspaceId, user.id), {
+    return NextResponse.json(await clientDocument(request, workspaceId, user.id), {
       headers: { 'Cache-Control': 'private, no-store' },
     });
   } catch (error) {
@@ -83,10 +94,18 @@ export async function PUT(request: Request) {
     const workspaceId = idSchema.parse(new URL(request.url).searchParams.get('workspaceId'));
     const { user } = await requireWorkspace(workspaceId, { roles: ['owner', 'admin', 'member'] });
     await durableRateLimit(user.id, 'sync', 180, 60);
-    const body = bodySchema.parse(await readJson(request));
+    const submitted = bodySchema.parse(await readJson(request));
+    const current = await readDocument(workspaceId, user.id);
+    const body = {
+      ...submitted,
+      data: workspaceDataSchema.parse(
+        current.version === submitted.expectedVersion
+          ? preserveLegacyDocumentFields(submitted.data, current.data)
+          : submitted.data,
+      ),
+    };
     if (body.data.workspaceId !== workspaceId)
       throw new HttpError(400, 'The document belongs to a different workspace.');
-    const current = await readDocument(workspaceId, user.id);
     const db = getAdminSupabase()!;
     const { data: members, error: memberError } = await db
       .from('workspace_memberships')
@@ -104,7 +123,7 @@ export async function PUT(request: Request) {
     const { data, error } = await db.rpc('folia_commit_document', {
       p_actor: user.id,
       p_workspace: workspaceId,
-      p_data: body.data,
+      p_data: documentRpcPayload(body.data, submitted.data),
       p_expected_version: body.expectedVersion,
       p_operation: body.operationId,
     });
@@ -113,7 +132,7 @@ export async function PUT(request: Request) {
       return NextResponse.json(
         {
           error: 'Another device saved changes. Review the cloud version before continuing.',
-          ...(await readDocument(workspaceId, user.id)),
+          ...(await clientDocument(request, workspaceId, user.id)),
         },
         { status: 409 },
       );
@@ -131,7 +150,7 @@ export async function PUT(request: Request) {
     // The fresh document may include a later device's write. Acknowledgments must
     // rebase pending edits only on this operation's own committed version.
     return NextResponse.json({
-      ...(await readDocument(workspaceId, user.id)),
+      ...(await clientDocument(request, workspaceId, user.id)),
       committedVersion,
     });
   } catch (error) {

@@ -7,6 +7,7 @@ import { approvedAppOrigin, configuredPrices, tierForWorkspace } from '@/lib/bil
 import { assertConfiguredPrice, billingConfigured, getStripe } from '@/lib/billing/stripe';
 import { billingDatabase, persistSubscription, withBillingLock } from '@/lib/billing/server';
 import { hasBlockingSubscription } from '@/lib/billing/entitlements';
+import { getPortalConfiguration } from '@/lib/billing/portal';
 import { objectId, type SubscriptionRecord } from '@/lib/billing/reconcile';
 
 export const runtime = 'nodejs';
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
     const stripe = getStripe()!;
     const price = await stripe.prices.retrieve(choice.priceId);
     assertConfiguredPrice(price, choice);
+    await getPortalConfiguration(body.tier);
     const origin = approvedAppOrigin();
     const url = await withBillingLock(workspace.id, async (token) => {
       const db = billingDatabase();

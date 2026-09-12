@@ -21,6 +21,7 @@ import {
 import { useApp } from './app-context';
 import { Button, IconButton, Panel, Field, Dialog } from './ui';
 import { en } from '@/lib/i18n/en';
+import { billingCopy } from '@/lib/i18n/billing';
 import {
   DEFAULT_BILLING_POLICY,
   type BillingTier,
@@ -585,6 +586,7 @@ type Price = {
   currency: string;
   unitAmount: number;
   formattedAmount: string;
+  checkoutAvailable: boolean;
 };
 type Invoice = {
   id: string;
@@ -603,6 +605,7 @@ type BillingState = {
   mode: string;
   prices: Price[];
   canManage?: boolean;
+  portalAvailable?: boolean;
   entitlements?: Entitlements;
   subscription?: {
     tier: BillingTier;
@@ -615,7 +618,7 @@ type BillingState = {
   invoices?: Invoice[];
 };
 export function BillingPage() {
-  const { store, notify, navigate } = useApp();
+  const { store, notify, navigate, openAccount } = useApp();
   const [interval, setInterval] = useState<BillingInterval>('month');
   const [loadedBilling, setBilling] = useState<{ value: BillingState; scope: string } | null>(null);
   const billingScope = `${store.user?.id || 'public'}:${store.workspaceId}`;
@@ -638,6 +641,7 @@ export function BillingPage() {
       setError('');
       return true;
     } catch (e) {
+      if (version !== loadVersion.current) return false;
       setError(e instanceof Error ? e.message : String(e));
     }
   }, [store.user, store.workspaceId, billingScope]);
@@ -648,6 +652,7 @@ export function BillingPage() {
     }, 0);
     return () => {
       clearTimeout(timeout);
+      loadVersion.current += 1;
     };
   }, [load]);
   async function openBilling(kind: 'checkout' | 'portal', tier?: 'pro' | 'team') {
@@ -677,29 +682,16 @@ export function BillingPage() {
     }
   }
   const active = billing?.entitlements?.tier || 'free';
-  const features: Record<string, string[]> = {
-    free: [
-      'Core Pomodoro timer & weekly planner',
-      `${DEFAULT_BILLING_POLICY.plans.free.subjects} subjects, ${DEFAULT_BILLING_POLICY.plans.free.tasks} tasks & ${DEFAULT_BILLING_POLICY.plans.free.projects} projects`,
-      'Basic history & analytics',
-      'Light, dark & standard color palettes',
-      'Portable data export',
-    ],
-    pro: [
-      'Higher personal limits, configured by your workspace provider',
-      'Advanced analytics',
-      'Custom color themes',
-      'Named dashboard layouts',
-      'Advanced task templates',
-    ],
-    team: [
-      'A shared organization workspace',
-      'Invitations & role management',
-      'Shared projects & task assignments',
-      'Permitted team analytics',
-      'Pro features inside this workspace',
-    ],
-  };
+  const hasSubscription = !!(
+    billing?.subscription &&
+    !['none', 'canceled', 'incomplete_expired'].includes(billing.subscription.status)
+  );
+  async function refreshBilling() {
+    if (await load()) {
+      if (store.user) await store.refreshAccount();
+      notify(ui.workspaces.billingStatusRefreshed);
+    }
+  }
   return (
     <>
       <div className="billing-top">
@@ -712,6 +704,7 @@ export function BillingPage() {
             <button
               key={value}
               className={interval === value ? 'active' : ''}
+              aria-pressed={interval === value}
               onClick={() => setInterval(value)}
             >
               {en.billing[value]}
@@ -721,31 +714,30 @@ export function BillingPage() {
       </div>
       {checkout && (
         <p className="notice" role="status">
-          {checkout === 'success' ? en.billing.returned : en.billing.canceled}
-          <Button
-            variant="ghost"
-            onClick={async () => {
-              if (await load()) {
-                await store.refreshAccount();
-                notify(ui.workspaces.billingStatusRefreshed);
-              }
-            }}
-          >
+          {checkout === 'success'
+            ? active !== 'free'
+              ? billingCopy.activated
+              : billingCopy.processing
+            : en.billing.canceled}
+          <Button variant="ghost" onClick={() => void refreshBilling()}>
             <RefreshCw size={15} />
-            {ui.workspaces.refreshStatus}
+            {billingCopy.refresh}
           </Button>
         </p>
       )}
       {!billing && !error ? (
         <p className="helper">{ui.workspaces.loadingPlanAvailability}</p>
       ) : (
-        billing &&
-        !billing.configured && <p className="notice">{billing.message || en.billing.unavailable}</p>
+        billing && !billing.configured && <p className="notice">{billingCopy.billingUnavailable}</p>
       )}
       {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
+        <div className="error" role="alert">
+          <p>{error}</p>
+          <Button variant="secondary" disabled={busy} onClick={() => void load()}>
+            <RefreshCw size={15} />
+            {billingCopy.retry}
+          </Button>
+        </div>
       )}
       <div className="pricing-grid">
         {(['free', 'pro', 'team'] as const).map((tier) => {
@@ -754,6 +746,43 @@ export function BillingPage() {
             tier === 'pro'
               ? store.currentWorkspace?.kind === 'personal'
               : store.currentWorkspace?.kind === 'organization';
+          const targetWorkspace = store.workspaces.find(
+            (workspace) => workspace.kind === (tier === 'team' ? 'organization' : 'personal'),
+          );
+          const readyToCheckout = !!(billing?.configured && price?.checkoutAvailable);
+          const actionLabel =
+            tier === 'free'
+              ? billingCopy.customizeFree
+              : !store.user
+                ? billingCopy.signIn
+                : !correctScope
+                  ? tier === 'team'
+                    ? billingCopy.switchOrganization
+                    : billingCopy.switchPersonal
+                  : hasSubscription
+                    ? en.billing.portal
+                    : !readyToCheckout
+                      ? billingCopy.unavailableAction
+                      : tier === 'pro'
+                        ? billingCopy.choosePro
+                        : billingCopy.chooseTeam;
+          const actionDisabled =
+            busy ||
+            (tier !== 'free' &&
+              !!store.user &&
+              correctScope &&
+              (!billing?.canManage ||
+                (hasSubscription ? !billing.portalAvailable : !readyToCheckout)));
+          async function choosePlan() {
+            if (tier === 'free') return navigate('settings');
+            if (!store.user) return openAccount();
+            if (!correctScope) {
+              if (targetWorkspace) await store.selectWorkspace(targetWorkspace.id);
+              else navigate(tier === 'team' ? 'organization' : 'settings');
+              return;
+            }
+            await openBilling(hasSubscription ? 'portal' : 'checkout', tier);
+          }
           return (
             <section className={`pricing-card ${tier === 'pro' ? 'featured' : ''}`} key={tier}>
               <span className="plan-icon">
@@ -766,12 +795,13 @@ export function BillingPage() {
                 )}
               </span>
               <h2>{en.billing[tier]}</h2>
+              {tier === active && <span className="badge">{en.billing.current}</span>}
               <p>
                 {tier === 'free'
-                  ? ui.workspaces.makeALittleSpaceForFocus
+                  ? billingCopy.freeDescription
                   : tier === 'pro'
-                    ? ui.workspaces.makeYourSpaceYourOwn
-                    : ui.workspaces.makeProgressTogether}
+                    ? billingCopy.proDescription
+                    : billingCopy.teamDescription}
               </p>
               <div className="plan-price">
                 {tier === 'free' ? (
@@ -779,10 +809,7 @@ export function BillingPage() {
                 ) : price ? (
                   <>
                     <strong>{price.formattedAmount}</strong>
-                    <span>
-                      {ui.workspaces.copy2}{' '}
-                      {interval === 'month' ? ui.workspaces.month : ui.workspaces.year}
-                    </span>
+                    <span>{interval === 'month' ? billingCopy.perMonth : billingCopy.perYear}</span>
                   </>
                 ) : (
                   <span className="price-unavailable">{ui.workspaces.priceNotConfigured}</span>
@@ -790,34 +817,27 @@ export function BillingPage() {
               </div>
               <Button
                 variant={tier === 'pro' ? 'primary' : 'secondary'}
-                disabled={
-                  tier === 'free' ||
-                  !billing?.configured ||
-                  !price ||
-                  busy ||
-                  !store.user ||
-                  !billing.canManage ||
-                  !correctScope ||
-                  tier === active ||
-                  !!(
-                    billing.subscription &&
-                    !['none', 'canceled', 'incomplete_expired'].includes(
-                      billing.subscription.status,
-                    )
-                  )
-                }
-                onClick={() => tier !== 'free' && openBilling('checkout', tier)}
+                disabled={actionDisabled}
+                onClick={() => void choosePlan()}
               >
-                {tier === active ? en.billing.current : en.billing.upgrade}
+                {actionLabel}
               </Button>
               <ul>
-                {features[tier].map((feature) => (
+                {billingCopy.features[tier].map((feature) => (
                   <li key={feature}>
                     <Check size={15} />
                     {feature}
                   </li>
                 ))}
               </ul>
+              {tier !== 'free' && price && (
+                <small>
+                  {interval === 'year' ? billingCopy.billedAnnually : billingCopy.billedMonthly}
+                </small>
+              )}
+              {tier !== 'free' && store.user && correctScope && !billing?.canManage && (
+                <small>{billingCopy.ownerOnly}</small>
+              )}
               {tier !== 'free' && store.user && !correctScope && (
                 <small>
                   {tier === 'team'
@@ -829,7 +849,11 @@ export function BillingPage() {
           );
         })}
       </div>
-      <p className="helper centered">{en.billing.scope}</p>
+      <p className="helper centered">
+        {billingCopy.usageDefaults(DEFAULT_BILLING_POLICY.plans.free)}
+      </p>
+      <p className="helper centered">{billingCopy.scope}</p>
+      {billing?.configured && <p className="helper centered">{billingCopy.testHint}</p>}
       {store.user ? (
         <Panel title={ui.workspaces.workspaceBilling} subtitle={store.currentWorkspace?.name}>
           <div className="mini-metrics">
@@ -870,12 +894,16 @@ export function BillingPage() {
           )}
           <Button
             variant="secondary"
-            disabled={!billing?.configured || !billing.canManage || !billing.subscription || busy}
+            disabled={!billing?.portalAvailable || busy}
             onClick={() => openBilling('portal')}
           >
             {en.billing.portal}
             <ArrowUpRight size={15} />
           </Button>
+          {billing?.canManage && hasSubscription && !billing.portalAvailable && (
+            <p className="helper">{billingCopy.portalUnavailable}</p>
+          )}
+          {billing?.portalAvailable && <p className="helper">{billingCopy.cancelHint}</p>}
           {!billing?.canManage && (
             <p className="helper">{ui.workspaces.onlyTheWorkspaceOwnerCanManageBilling}</p>
           )}
@@ -910,8 +938,8 @@ export function BillingPage() {
         </Panel>
       ) : (
         <div className="billing-account">
-          <p>{ui.workspaces.signInToManagePlansForYourPersonalOr}</p>
-          <Button variant="secondary" onClick={() => navigate('settings')}>
+          <p>{billingCopy.signInHint}</p>
+          <Button variant="secondary" onClick={openAccount}>
             {en.account.signIn}
           </Button>
         </div>

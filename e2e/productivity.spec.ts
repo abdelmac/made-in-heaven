@@ -134,6 +134,17 @@ test('a complete personal journey preserves planning, development and actual foc
   expect(completed.plannedSessions[0].completed).toBe(true);
   expect(completed.tasks[0].status).toBe('todo');
   expect(completed.journal).toHaveLength(1);
+  await page.getByRole('button', { name: 'Add session note', exact: true }).click();
+  dialog = page.getByRole('dialog', { name: 'New note', exact: true });
+  await dialog
+    .getByLabel('Note content (Markdown supported)', { exact: true })
+    .fill('The timer controls are clearer after this focus session.');
+  await dialog.getByRole('button', { name: 'Save note', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  const reflection = (await readData(page)).noteSheets[0];
+  expect(reflection.sessionId).toBe(completed.focusSessions[0].id);
+  expect(reflection.subjectId).toBe(completed.focusSessions[0].context.subjectId);
+  expect(reflection.kind).toBe('session_reflection');
   await openView(page, 'history');
   await expect(
     page.locator('.history-panel').getByText('focus completed', { exact: true }),

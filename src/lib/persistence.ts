@@ -109,6 +109,9 @@ export type ImportPreview = {
   plannedSessions: number;
   focusSessions: number;
   journalEntries: number;
+  noteSheets: number;
+  flashcardDecks: number;
+  flashcards: number;
   warning: string;
 };
 export function previewImport(raw: string): ImportPreview {
@@ -123,6 +126,9 @@ export function previewImport(raw: string): ImportPreview {
     plannedSessions: data.plannedSessions.length,
     focusSessions: data.focusSessions.length,
     journalEntries: data.journal.length,
+    noteSheets: data.noteSheets.length,
+    flashcardDecks: data.flashcardDecks.length,
+    flashcards: data.flashcards.length,
     warning:
       'This adds the imported productivity records to this workspace. Roles, memberships and billing are never imported. Active timers are not resumed.',
   };
@@ -141,6 +147,9 @@ export function prepareImport(
     source.plannedSessions,
     source.focusSessions,
     source.journal,
+    source.noteSheets,
+    source.flashcardDecks,
+    source.flashcards,
     source.events,
   ])
     for (const record of list) replacements.set(record.id, id());
@@ -203,6 +212,22 @@ export function prepareImport(
     projectId: remap(record.projectId),
     taskId: remap(record.taskId),
   }));
+  const noteSheets = source.noteSheets.map((record) => ({
+    ...rebind(record),
+    userId,
+    subjectId: remap(record.subjectId),
+    sessionId: remap(record.sessionId),
+  }));
+  const flashcardDecks = source.flashcardDecks.map((record) => ({
+    ...rebind(record),
+    userId,
+    subjectId: remap(record.subjectId),
+  }));
+  const flashcards = source.flashcards.map((record) => ({
+    ...rebind(record),
+    userId,
+    deckId: remap(record.deckId)!,
+  }));
   return workspaceDataSchema.parse({
     ...current,
     subjects: [...current.subjects, ...subjects],
@@ -211,6 +236,9 @@ export function prepareImport(
     plannedSessions: [...current.plannedSessions, ...plannedSessions],
     focusSessions: [...current.focusSessions, ...focusSessions],
     journal: [...current.journal, ...journal],
+    noteSheets: [...current.noteSheets, ...noteSheets],
+    flashcardDecks: [...current.flashcardDecks, ...flashcardDecks],
+    flashcards: [...current.flashcards, ...flashcards],
     events: [...current.events, ...events],
   });
 }
@@ -335,6 +363,12 @@ export function addMutationHistory(
   for (const subject of after.subjects) {
     const old = before.subjects.find((item) => item.id === subject.id);
     if (!old) event('subject_created', `Created ${subject.name}.`, subject.id);
+    else if (old.completedAt !== subject.completedAt)
+      event(
+        subject.completedAt ? 'subject_completed' : 'subject_reopened',
+        `${subject.completedAt ? 'Completed' : 'Reopened'} ${subject.name}.`,
+        subject.id,
+      );
     else if (old.archived !== subject.archived)
       event(
         subject.archived ? 'subject_archived' : 'subject_restored',
@@ -412,6 +446,56 @@ export function addMutationHistory(
         plan.projectId,
       );
   }
+  for (const note of after.noteSheets) {
+    const old = before.noteSheets.find((item) => item.id === note.id);
+    if (!old || JSON.stringify(old) !== JSON.stringify(note)) {
+      event(
+        old ? 'note_updated' : 'note_created',
+        `${old ? 'Updated' : 'Created'} note: ${note.title}.`,
+        note.subjectId,
+      );
+      if (
+        old &&
+        (old.title !== note.title || old.content !== note.content) &&
+        note.revisions.length <= old.revisions.length
+      )
+        note.revisions = [
+          ...old.revisions,
+          { title: old.title, content: old.content, editedAt: now },
+        ];
+    }
+  }
+  for (const note of before.noteSheets)
+    if (!after.noteSheets.some((item) => item.id === note.id))
+      event('note_deleted', `Deleted note: ${note.title}.`, note.subjectId);
+  for (const deck of after.flashcardDecks) {
+    const old = before.flashcardDecks.find((item) => item.id === deck.id);
+    if (!old || JSON.stringify(old) !== JSON.stringify(deck))
+      event(
+        old ? 'flashcard_deck_updated' : 'flashcard_deck_created',
+        `${old ? 'Updated' : 'Created'} flashcard deck: ${deck.title}.`,
+        deck.subjectId,
+      );
+  }
+  for (const deck of before.flashcardDecks)
+    if (!after.flashcardDecks.some((item) => item.id === deck.id))
+      event('flashcard_deck_deleted', `Deleted flashcard deck: ${deck.title}.`, deck.subjectId);
+  for (const card of after.flashcards) {
+    const old = before.flashcards.find((item) => item.id === card.id);
+    if (!old || JSON.stringify(old) !== JSON.stringify(card))
+      event(
+        old ? 'flashcard_updated' : 'flashcard_created',
+        `${old ? 'Updated' : 'Created'} a flashcard.`,
+        after.flashcardDecks.find((deck) => deck.id === card.deckId)?.subjectId,
+      );
+  }
+  for (const card of before.flashcards)
+    if (!after.flashcards.some((item) => item.id === card.id))
+      event(
+        'flashcard_deleted',
+        'Deleted a flashcard.',
+        before.flashcardDecks.find((deck) => deck.id === card.deckId)?.subjectId,
+      );
   for (const plan of before.plannedSessions)
     if (!after.plannedSessions.some((item) => item.id === plan.id))
       event('plan_deleted', `Removed ${plan.title} from the planner.`, plan.subjectId, plan.taskId);
@@ -427,6 +511,9 @@ export function resetWorkspace(data: WorkspaceData): WorkspaceData {
     plannedSessions: [],
     focusSessions: [],
     journal: [],
+    noteSheets: [],
+    flashcardDecks: [],
+    flashcards: [],
     events: [],
   };
 }

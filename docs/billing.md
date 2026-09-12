@@ -2,12 +2,37 @@
 
 Folia uses Stripe-hosted Checkout and the Customer Portal. This version deliberately rejects live secret keys and live events in every environment. No card details enter Folia. Without credentials, pricing shows an unavailable state and the separate local/demo application remains usable. Opening a successful checkout return URL never grants access.
 
+## Activate the hosted checkout
+
+The hosted application origin is `https://folia-ennearock.vercel.app`. In the Vercel project **folia-ennearock**, open Settings → Environment Variables and set the following in **Production**, then redeploy. Use the actual account/project values; do not commit secrets or paste them into a chat. These steps enable **test checkout**, including on the hosted application.
+
+| Variable                                                  | Required value                                                           |
+| --------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `NEXT_PUBLIC_APP_URL`                                     | `https://folia-ennearock.vercel.app`                                     |
+| `NEXT_PUBLIC_SUPABASE_URL`                                | The connected Supabase project URL                                       |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`                    | That project's publishable key (or use `NEXT_PUBLIC_SUPABASE_ANON_KEY`)  |
+| `SUPABASE_SERVICE_ROLE_KEY`                               | Server-only key for the same migrated project                            |
+| `STRIPE_SECRET_KEY`                                       | A secret key from the selected Stripe sandbox/test account               |
+| `STRIPE_WEBHOOK_SECRET`                                   | The signing secret for the hosted endpoint below, from that same sandbox |
+| `STRIPE_PRO_MONTH_PRICE_ID`, `STRIPE_PRO_YEAR_PRICE_ID`   | Actual Pro recurring Price IDs for the intervals you offer               |
+| `STRIPE_TEAM_MONTH_PRICE_ID`, `STRIPE_TEAM_YEAR_PRICE_ID` | Actual Team recurring Price IDs for the intervals you offer              |
+| `STRIPE_PRO_PORTAL_CONFIGURATION_ID`                      | Safe Pro customer portal configuration, `bpc_…`                          |
+| `STRIPE_TEAM_PORTAL_CONFIGURATION_ID`                     | Safe Team customer portal configuration, `bpc_…`                         |
+
+Register the Stripe webhook at **`https://folia-ennearock.vercel.app/api/billing/webhook`**. Set the events listed under Setup. The Stripe CLI's local signing secret will not verify deliveries from this hosted endpoint. API keys and webhook signing secrets are separate credentials. No Stripe publishable key is needed for this hosted redirect integration. [Stripe API keys](https://docs.stripe.com/keys)
+
+At least one real configured recurring Price is needed; you may launch Pro without configuring Team. Choose amounts and currency in Stripe before activation. Folia does not invent a subscription price, annual discount, or paid checkout URL. Missing Supabase credentials, the webhook secret, or all Prices leave checkout unavailable. A missing portal disables checkout for its tier; a portal that fails the server's checks is rejected before creating a customer or Checkout session.
+
+After redeployment, visit `https://folia-ennearock.vercel.app/api/billing/prices`. Expect `configured: true`, `mode: "test"`, the exact Stripe amounts, and `checkoutAvailable: true` for each offered tier. This checks configuration and Price retrieval; it does **not** prove delivery of a signed webhook. Complete the owner journey below to verify payment, provisioning and cancellation. The billing page directs local users to sign in, lets owners select the matching workspace, and keeps Free colors and notes available while checkout is unconfigured.
+
+Real payments require an activated Stripe account and a deliberately enabled, reviewed live-mode deployment. This build currently rejects live mode, so replacing `sk_test_…` with `sk_live_…` is insufficient. A future live-mode change must validate the mode of keys, Prices, portals, subscriptions, invoices and webhook events, and isolate existing test billing records from live entitlements. It also needs live products/Prices, live portal configurations, a live endpoint signing secret and the production origin. [Stripe go-live checklist](https://docs.stripe.com/get-started/checklist/go-live)
+
 ## Setup
 
 1. Apply every migration in `supabase/migrations` in filename order. Migration `0002_billing.sql` creates billing tables, server-only writes, entitlement policy, fenced workspace locks, and atomic webhook receipts. The Supabase service-role key must be available only to the Next.js server.
 2. In a Stripe sandbox/test account, create separate Pro and Team products, each with an active monthly and yearly recurring Price. Use licensed, flat, per-unit billing, quantity one, and a single currency per Price. Fill the four `STRIPE_*_PRICE_ID` variables in `.env.local`. Unset intervals are unavailable; there are no fallback prices or discount claims. Price amounts, currency, and intervals are retrieved from Stripe using its official SDK.
 3. Set `STRIPE_SECRET_KEY` to a test secret, and `NEXT_PUBLIC_APP_URL` to your canonical origin. Only HTTPS origins or HTTP localhost are accepted. All checkout/portal returns use the fixed billing destination under that origin; client URLs, customer IDs, amounts, and raw Price IDs are rejected.
-4. Create two **test Customer Portal configurations**. Enable invoice history, payment-method updates, and cancellation at the end of the current billing period. Allow price changes only between the Pro monthly/yearly Prices in the Pro configuration and the Team Prices in the Team configuration. Do not allow quantity changes. Set `STRIPE_PRO_PORTAL_CONFIGURATION_ID` and `STRIPE_TEAM_PORTAL_CONFIGURATION_ID`. The server checks these restrictions when opening the portal. Plan changes use Stripe's configured prorations and payment behavior; review these settings before testing. No seats are billed separately.
+4. Create two **test Customer Portal configurations** (or only the configuration for the tier you offer). Enable invoice history, payment-method updates, and cancellation at the end of the current billing period. Allow price changes only between the Pro monthly/yearly Prices in the Pro configuration and the Team Prices in the Team configuration. Do not allow quantity changes. Set `STRIPE_PRO_PORTAL_CONFIGURATION_ID` and `STRIPE_TEAM_PORTAL_CONFIGURATION_ID`. The server checks these restrictions **before checkout and when opening the portal**. Plan changes use Stripe's configured prorations and payment behavior; review these settings before testing. No seats are billed separately. [Stripe portal settings](https://docs.stripe.com/customer-management/configure-portal)
 5. Run Next.js, then run the Stripe CLI:
 
    ```sh
@@ -33,11 +58,11 @@ The server creates a dedicated Stripe customer and persists its unique workspace
 
 The canonical deployed limits and grace/trial policy are the singleton `public.billing_policy.config` row. Update it with a reviewed database migration using the service role; clients have no write permission. `src/lib/billing/config.ts` contains equivalent defaults for the disconnected preview only.
 
-| Effective plan |  Subjects |     Tasks |  Projects | Members | Extra features                                                                    |
-| -------------- | --------: | --------: | --------: | ------: | --------------------------------------------------------------------------------- |
-| Free           |        10 |       100 |         5 |       1 | Core timer, planner, standard themes, basic history and analytics                 |
-| Pro            | Unlimited | Unlimited | Unlimited |       1 | Custom themes, saved layouts, advanced templates and analytics                    |
-| Team           | Unlimited | Unlimited | Unlimited |      25 | Pro features in the organization, invitations, roles, assignments, team analytics |
+| Effective plan |  Subjects |     Tasks |  Projects | Members | Extra features                                                                                                                                                 |
+| -------------- | --------: | --------: | --------: | ------: | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Free           |        10 |       100 |         5 |       1 | Core timer/planner, eight classic palettes, personalized accent color, note sheets, basic history and analytics                                                |
+| Pro            | Unlimited | Unlimited | Unlimited |       1 | Free features plus four gradient backgrounds, image backgrounds with dim/blur, flashcards, full custom themes, saved layouts, advanced templates and analytics |
+| Team           | Unlimited | Unlimited | Unlimited |      25 | Pro features in the organization, invitations, roles, assignments, team analytics                                                                              |
 
 `null` means unlimited. Limits restrict creating additional records and paid-only operations; downgrades never delete data. Existing content remains readable/exportable within membership permissions, and a running focus session can still complete. A free organization may be created with its owner so it can be upgraded; invitations and additional members require Team.
 
@@ -73,6 +98,8 @@ Inspect `billing_events` pending/failed rows from a privileged operational sessi
 ## Validation and remaining external verification
 
 The automated suite covers invalid/tampered signatures, duplicates, retryable failures, receipt durability, out-of-order event handling, trusted customer scope, current resource reconciliation, cancellation and failed-payment paid coverage, grace, disabled trials, foreign-scope plans, duplicate subscription statuses, unavailable billing, forged requests, unauthorized checkout/portal calls, and client amount/paid-flag rejection. Tests run entirely against local code/mocks and do not claim Stripe network verification.
+
+`tests/billing-configuration.test.ts` also checks missing durable cloud configuration, test-mode key and Price enforcement, safe per-tier portal changes, required cancellation/payment recovery/invoices, malformed portal IDs and live/cross-scope/quantity change rejection. The checkout authorization test verifies that unsafe portal setup is refused before taking a billing lock or creating provider resources.
 
 With actual sandbox credentials, test the owner journey through Checkout, webhook provisioning, refresh on another signed-in device, portal interval changes, renewal, failed-payment recovery, cancellation, and expiration. Use Stripe test cards/test clocks; do not use real cards. Resend the same event and then an older event to verify database receipts and final entitlements. Test concurrent checkout clicks and API calls as non-owners. Verify a wrong signature yields 400 and no durable state mutation. This external flow remains unverified until credentials and a Supabase project are connected.
 

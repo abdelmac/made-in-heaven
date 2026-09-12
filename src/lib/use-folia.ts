@@ -45,6 +45,7 @@ import {
 } from './persistence';
 import { createBrowserSupabase } from './supabase/browser';
 import { findOverlap } from './calendar';
+import type { Entitlements } from './billing/entitlements';
 
 export type WorkspaceSummary = {
   icon?: string;
@@ -53,6 +54,7 @@ export type WorkspaceSummary = {
   kind: 'personal' | 'organization';
   role: 'owner' | 'admin' | 'member' | 'viewer';
   plan: 'free' | 'pro' | 'team';
+  entitlements?: Entitlements;
 };
 export type AccountUser = { id: string; email?: string };
 export type SaveStatus =
@@ -82,6 +84,12 @@ function errorMessage(error: unknown) {
 }
 function unionRecords<T extends { id: string }>(remote: T[], local: T[]) {
   return [...new Map([...remote, ...local].map((record) => [record.id, record])).values()];
+}
+
+function fetchFoliaApi(input: string, init: RequestInit = {}) {
+  const headers = new Headers(init.headers);
+  headers.set('X-Folia-Document-Version', '2');
+  return fetch(input, { ...init, headers });
 }
 
 export function useFolia() {
@@ -138,7 +146,7 @@ export function useFolia() {
         return;
       }
       setSaveStatus('saving');
-      const response = await fetch(
+      const response = await fetchFoliaApi(
         `/api/${operation.kind === 'preferences' ? 'preferences' : 'sync'}?workspaceId=${encodeURIComponent(currentWorkspace)}`,
         {
           method: 'PUT',
@@ -157,7 +165,7 @@ export function useFolia() {
       if (response.status === 409) {
         let remote = body;
         if (!('version' in body) || !('data' in body)) {
-          const latest = await fetch(
+          const latest = await fetchFoliaApi(
             `/api/sync?workspaceId=${encodeURIComponent(currentWorkspace)}`,
             { cache: 'no-store' },
           );
@@ -263,9 +271,12 @@ export function useFolia() {
           setSaveStatus('offline');
           return;
         }
-        const response = await fetch(`/api/sync?workspaceId=${encodeURIComponent(nextWorkspace)}`, {
-          cache: 'no-store',
-        });
+        const response = await fetchFoliaApi(
+          `/api/sync?workspaceId=${encodeURIComponent(nextWorkspace)}`,
+          {
+            cache: 'no-store',
+          },
+        );
         const body = await response.json();
         if (token !== generation.current) return;
         if (!response.ok) throw new Error(body.error || 'Unable to load this workspace.');
@@ -353,7 +364,7 @@ export function useFolia() {
         await switchRef.current(selected.id, sessionAccount);
         return;
       }
-      const response = await fetch('/api/workspaces', { cache: 'no-store' });
+      const response = await fetchFoliaApi('/api/workspaces', { cache: 'no-store' });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Unable to load your account.');
       const account: AccountUser = body.user || {
@@ -657,9 +668,12 @@ export function useFolia() {
           await syncRef.current();
           return;
         }
-        const response = await fetch(`/api/sync?workspaceId=${encodeURIComponent(workspace)}`, {
-          cache: 'no-store',
-        });
+        const response = await fetchFoliaApi(
+          `/api/sync?workspaceId=${encodeURIComponent(workspace)}`,
+          {
+            cache: 'no-store',
+          },
+        );
         const body = await response.json();
         if (token !== generation.current || !response.ok || readPending(account.id, workspace))
           return;
@@ -749,6 +763,9 @@ export function useFolia() {
             plannedSessions: unionRecords(current.data.plannedSessions, local.plannedSessions),
             focusSessions: unionRecords(local.focusSessions, current.data.focusSessions),
             journal: unionRecords(current.data.journal, local.journal),
+            noteSheets: unionRecords(current.data.noteSheets, local.noteSheets),
+            flashcardDecks: unionRecords(current.data.flashcardDecks, local.flashcardDecks),
+            flashcards: unionRecords(current.data.flashcards, local.flashcards),
             events: unionRecords(current.data.events, local.events),
           });
           if (preferencesOnly)
@@ -852,6 +869,17 @@ export function useFolia() {
     async (candidate?: ImportPreview) => {
       const accepted = candidate || importCandidate;
       if (!accepted) return false;
+      const workspace = workspacesRef.current.find((item) => item.id === workspaceRef.current);
+      if (
+        accountRef.current &&
+        (accepted.flashcardDecks > 0 || accepted.flashcards > 0) &&
+        !workspace?.entitlements?.features.flashcards
+      ) {
+        setError(
+          'This backup contains Pro flashcards. Upgrade this workspace before importing it, or keep the backup in a local workspace. Your current data has not changed.',
+        );
+        return false;
+      }
       const result = await update(
         (draft) => prepareImport(accepted, draft, accountRef.current?.id || LOCAL_USER_ID),
         false,
@@ -924,6 +952,7 @@ export function useFolia() {
     workspaces,
     workspaceId,
     currentWorkspace: workspaces.find((workspace) => workspace.id === workspaceId),
+    entitlements: workspaces.find((workspace) => workspace.id === workspaceId)?.entitlements,
     isDemo: !user && workspaceId === DEMO_WORKSPACE_ID,
     isCloud: Boolean(user),
     selectWorkspace,

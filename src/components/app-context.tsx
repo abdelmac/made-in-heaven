@@ -11,6 +11,7 @@ export interface AppContextValue {
   openTask: (id?: string) => void;
   openSubject: (id?: string) => void;
   openPlan: (id?: string, date?: string, hour?: number) => void;
+  openAccount: () => void;
   canEdit: boolean;
 }
 export const AppContext = createContext<AppContextValue | null>(null);

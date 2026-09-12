@@ -4,6 +4,11 @@ import { preferencesSchema } from '@/lib/model';
 import { getAdminSupabase } from '@/lib/supabase/server';
 import { durableRateLimit, requireWorkspace } from '@/lib/server/auth';
 import { assertSameOrigin, databaseError, handleApiError, readJson } from '@/lib/server/http';
+import {
+  preferenceRpcPayload,
+  serializePreferences,
+  supportsLearningDocument,
+} from '@/lib/server/legacy-fields';
 
 const uuid = z.string().uuid();
 const inputSchema = z
@@ -20,11 +25,15 @@ export async function PUT(request: Request) {
     const workspaceId = uuid.parse(new URL(request.url).searchParams.get('workspaceId'));
     const { user } = await requireWorkspace(workspaceId);
     await durableRateLimit(user.id, 'preferences', 90, 60);
-    const body = inputSchema.parse(await readJson(request, 100_000));
+    const submitted = await readJson(request, 500_000);
+    const body = inputSchema.parse(submitted);
     const { data, error } = await getAdminSupabase()!.rpc('folia_save_preferences', {
       p_actor: user.id,
       p_workspace: workspaceId,
-      p_preferences: body.preferences,
+      p_preferences: preferenceRpcPayload(
+        body.preferences,
+        (submitted as { preferences: unknown }).preferences,
+      ),
       p_expected_version: body.expectedVersion,
       p_operation: body.operationId,
     });
@@ -38,7 +47,13 @@ export async function PUT(request: Request) {
         },
         { status: 409 },
       );
-    return NextResponse.json({ ...data, preferences: body.preferences });
+    return NextResponse.json({
+      ...data,
+      preferences: serializePreferences(
+        preferencesSchema.parse(data.preferences || body.preferences),
+        supportsLearningDocument(request),
+      ),
+    });
   } catch (error) {
     return handleApiError(error);
   }

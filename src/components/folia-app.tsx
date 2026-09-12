@@ -30,6 +30,8 @@ import {
   WifiOff,
   Sparkles,
   ArrowRight,
+  NotebookPen,
+  Layers,
 } from 'lucide-react';
 import { useFolia } from '@/lib/use-folia';
 import { en, type View } from '@/lib/i18n/en';
@@ -43,12 +45,16 @@ import { SubjectsPage, SubjectsWidget, SubjectEditor } from './subjects';
 import { SummaryCards, ActivityHeatmap, HistoryPage, AnalyticsPage } from './activity';
 import { SettingsPage, AccountPanel } from './settings';
 import { OrganizationPage, BillingPage } from './workspaces';
+import { NotesPage, FlashcardsPage, NoteSheetEditor } from './learning';
+import { applyThemeColors, applyBackground } from '@/lib/appearance';
 
 const navigation = [
   { id: 'overview', Icon: LayoutDashboard },
   { id: 'planner', Icon: CalendarDays },
   { id: 'subjects', Icon: BookOpen },
   { id: 'tasks', Icon: CheckSquare },
+  { id: 'notes', Icon: NotebookPen },
+  { id: 'flashcards', Icon: Layers },
   { id: 'history', Icon: History },
   { id: 'analytics', Icon: ChartNoAxesCombined },
 ] as const;
@@ -62,6 +68,14 @@ const pageCopy: Record<View, { title: string; subtitle: string }> = {
   planner: en.planner,
   subjects: en.subjects,
   tasks: en.tasks,
+  notes: {
+    title: ui.foliaApp.aPlaceForYourThinking,
+    subtitle: ui.foliaApp.captureIdeasKeepSubjectNotesAndReflectOnWhat,
+  },
+  flashcards: {
+    title: ui.foliaApp.makeWhatYouLearnStick,
+    subtitle: ui.foliaApp.buildADeckTurnACardAndComeBack,
+  },
   history: en.history,
   analytics: en.analytics,
   settings: en.settings,
@@ -76,6 +90,10 @@ export function FoliaApp() {
   const [help, setHelp] = useState(false);
   const [account, setAccount] = useState(false);
   const [timerSheet, setTimerSheet] = useState(false);
+  const [reflectionSessionId, setReflectionSessionId] = useState<string | null>(null);
+  const [noteEditor, setNoteEditor] = useState<{ sessionId: string; subjectId?: string } | null>(
+    null,
+  );
   const [toast, setToast] = useState('');
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -90,6 +108,10 @@ export function FoliaApp() {
   const [inviteError, setInviteError] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef<string | null>(null);
+  const completionWorkspace = useRef<string | null>(null);
+  const reflectionSession = store.data.focusSessions.find(
+    (session) => session.id === reflectionSessionId && session.userId === store.userId,
+  );
   const canEdit = store.currentWorkspace?.role !== 'viewer';
   const showTimerDock = view !== 'overview' && store.timer.status !== 'idle';
   const notify = useCallback((message: string) => {
@@ -133,14 +155,8 @@ export function FoliaApp() {
       root.dataset.font = p.fontSize;
       root.dataset.radius = p.radius;
       root.dataset.motion = p.motion;
-      for (const key of ['accent', 'background', 'surface', 'border', 'text']) {
-        if (p.customTheme) root.style.setProperty(`--${key}`, p.customTheme[key as 'accent']);
-        else root.style.removeProperty(`--${key}`);
-      }
-      for (let i = 0; i < 5; i++) {
-        if (p.customTheme) root.style.setProperty(`--heat-${i}`, p.customTheme.heatmap[i]);
-        else root.style.removeProperty(`--heat-${i}`);
-      }
+      applyThemeColors(p);
+      applyBackground(p.background);
     };
     apply();
     media.addEventListener('change', apply);
@@ -150,6 +166,10 @@ export function FoliaApp() {
         JSON.stringify({
           mode: p.appearance,
           accent: p.accent,
+          accentColor: p.accentColor,
+          resolvedAccent: root.style.getPropertyValue('--accent'),
+          resolvedAccentHover: root.style.getPropertyValue('--accent-hover'),
+          resolvedTheme: root.dataset.theme,
           customTheme: p.customTheme,
           density: p.density,
           fontSize: p.fontSize,
@@ -173,23 +193,24 @@ export function FoliaApp() {
   useEffect(() => {
     if (!store.ready) return;
     const latest = store.data.focusSessions
-      .filter((s) => s.phase === 'focus' && s.status === 'completed')
+      .filter((s) => s.phase === 'focus' && s.status === 'completed' && s.userId === store.userId)
       .at(-1);
-    if (completedRef.current === null) {
+    if (completedRef.current === null || completionWorkspace.current !== store.workspaceId) {
+      completionWorkspace.current = store.workspaceId;
       completedRef.current = latest?.id || '';
       return;
     }
     if (!latest) return;
     if (latest.id !== completedRef.current) {
-      const timer = setTimeout(
-        () => notify(ui.foliaApp.focusCompleteTakeABreathThenCaptureAReflection),
-        0,
-      );
+      const timer = setTimeout(() => {
+        notify(ui.foliaApp.focusCompleteTakeABreathThenCaptureAReflection);
+        setReflectionSessionId(latest.id);
+      }, 0);
       completedRef.current = latest.id;
       return () => clearTimeout(timer);
     }
     completedRef.current = latest.id;
-  }, [store.ready, store.data.focusSessions, notify]);
+  }, [store.ready, store.data.focusSessions, store.userId, store.workspaceId, notify]);
   const openTask = (id?: string) => {
     setSubjectEditor(null);
     setTaskEditor({ id });
@@ -202,7 +223,16 @@ export function FoliaApp() {
     setSubjectEditor(null);
     setPlanEditor({ id, date, hour });
   };
-  const context = { store, notify, navigate, canEdit, openTask, openSubject, openPlan };
+  const context = {
+    store,
+    notify,
+    navigate,
+    canEdit,
+    openTask,
+    openSubject,
+    openPlan,
+    openAccount: () => setAccount(true),
+  };
   const saveLabel =
     store.saveStatus === 'saved'
       ? store.isCloud
@@ -542,6 +572,38 @@ export function FoliaApp() {
             )}
             {view === 'overview' && (
               <>
+                {reflectionSession && canEdit && (
+                  <div className="completion-note-prompt">
+                    <div>
+                      <strong>{ui.foliaApp.focusCompleteKeepWhatYouLearned}</strong>
+                      <p>
+                        {reflectionSession.context.subjectName ||
+                          reflectionSession.context.taskTitle ||
+                          ui.foliaApp.yourFocusSession}{' '}
+                        {ui.foliaApp.addANoteWhileItIsFresh}
+                      </p>
+                    </div>
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        setNoteEditor({
+                          sessionId: reflectionSession.id,
+                          subjectId: reflectionSession.context.subjectId,
+                        });
+                        setReflectionSessionId(null);
+                      }}
+                    >
+                      <NotebookPen size={16} />
+                      {ui.foliaApp.addSessionNote}
+                    </Button>
+                    <IconButton
+                      label={ui.foliaApp.dismissSessionNotePrompt}
+                      onClick={() => setReflectionSessionId(null)}
+                    >
+                      <X size={16} />
+                    </IconButton>
+                  </div>
+                )}
                 <SummaryCards />
                 {store.isDemo && (
                   <div className="demo-notice">
@@ -591,9 +653,11 @@ export function FoliaApp() {
             {view === 'planner' && <Planner full />}
             {view === 'subjects' && <SubjectsPage />}
             {view === 'tasks' && <TasksPage />}
+            {view === 'notes' && <NotesPage />}
+            {view === 'flashcards' && <FlashcardsPage />}
             {view === 'history' && <HistoryPage />}
             {view === 'analytics' && <AnalyticsPage />}
-            {view === 'settings' && <SettingsPage />}
+            {view === 'settings' && <SettingsPage key={`${store.userId}:${store.workspaceId}`} />}
             {view === 'organization' && <OrganizationPage />}
             {view === 'billing' && <BillingPage />}
             <footer className="page-footer">
@@ -766,7 +830,8 @@ export function FoliaApp() {
             <small>{store.timer.status === 'paused' ? en.timer.paused : en.timer.running}</small>
           </span>
           <b>
-            {String(Math.floor(Math.ceil(store.remainingMs / 1000) / 60)).padStart(2, '0')}:
+            {String(Math.floor(Math.ceil(store.remainingMs / 1000) / 60)).padStart(2, '0')}
+            {ui.foliaApp.copy3}
             {String(Math.ceil(store.remainingMs / 1000) % 60).padStart(2, '0')}
           </b>
           <ArrowUpRight size={16} />
@@ -777,6 +842,7 @@ export function FoliaApp() {
           <TimerCard />
         </Dialog>
       )}
+      {noteEditor && <NoteSheetEditor {...noteEditor} onClose={() => setNoteEditor(null)} />}
       {toast && (
         <div className="toast" role="status">
           <span className="toast-icon">

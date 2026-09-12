@@ -34,6 +34,19 @@ The repository includes its dependency lockfile. Next.js and React use the compa
 6. Inspect the subject's history, global history, analytics, or a day in the 52-week activity grid. Planning and completed work remain separate.
 7. Use **Settings** for appearance, timer presets, calendar rules, widget ordering, named layouts, and portable JSON backups. Advanced features can be explored locally; server operations enforce the connected workspace's paid entitlements.
 
+## Colors, backgrounds, notes, and flashcards
+
+- **Free:** eight classic palettes, including blurple and charcoal, plus your own accent color. Light, dark, and system modes remain separate. Custom accents are adjusted for readable text. Find these controls in **Settings → Appearance**.
+- **Pro / Team:** four gradient backgrounds or an uploaded JPG, PNG, or WebP, with dimming, blur, and a preview that does not save automatically. Images up to 8 MB are resized/compressed in the browser to at most 350,000 data-URL characters before storage. The background remains a private per-user preference; organization content never exposes another member's background image.
+- **Free note sheets:** open **Notes** for subject-linked Markdown pages, edit history, search, and deletion. Subjects have a **Notes** tab and **Complete subject** action with an optional summary. Completing a subject does not invent focus time or finish its tasks. After a Pomodoro, **Add session note** links a reflection to that completed focus session.
+- **Pro / Team flashcards:** create subject-linked decks, add question/answer cards, flip them with the keyboard, and choose **Again** or **Know it**. Practice results belong to the current study session and never count as Pomodoros. Cards remain readable/exportable after downgrade; creation, editing, and study require access. Connected study starts are authorized through `/api/flashcards/study`.
+
+The disconnected local workspace clearly labels paid features as previews. Connected accounts use server-owned entitlements. Note sheets are free in personal workspaces; new shared organization content follows the Team policy. Authors control edits to their own shared notes and decks.
+
+Migration `0008_learning_and_backgrounds.sql` adds the learning records, security policies, feature gates, and compatibility handling. Existing workspaces load new fields with safe defaults. Imports remap note/deck/card references and authors; Free cloud imports containing Pro flashcards are rejected before changing local work. Refresh older open Folia tabs after this release before editing on the same device.
+
+Stripe checkout verifies the configured Customer Portal supports cancellation, invoice history, and payment-method recovery before starting a paid session. See [billing activation instructions](docs/billing.md) for the deployed site's exact configuration. Music is a proposed next feature; [the Pro audio guide](docs/music-pro.md) explains private audio storage, server access checks, and a persistent accessible player.
+
 ## Connect Supabase
 
 1. Create a Supabase project, enable email/password authentication, and review provider rate limits and email confirmation requirements.

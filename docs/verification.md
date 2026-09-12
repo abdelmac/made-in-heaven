@@ -1,6 +1,37 @@
 # Verification record
 
-Final verification completed on September 11, 2026. The finished production application passed all executed checks below. Hosted provider integrations remain explicitly unverified without credentials.
+Latest release verification completed on September 12, 2026. Hosted provider integrations remain explicitly unverified without credentials. The initial release record is retained below.
+
+## September 12: personalization, learning, and billing
+
+- Production build, TypeScript checking, ESLint, and repository formatting checks passed.
+- **139 unit/server tests passed in 15 files** (10.30 seconds), including preference validation, entitlement enforcement, billing configuration, legacy sync compatibility, notes, flashcards, and appearance contrast.
+- **164 PostgreSQL assertions passed** against all eight migrations in an isolated PostgreSQL 17.11 database: 109 existing assertions and 55 learning/background security assertions. The temporary test container and volume were removed afterwards.
+- **All 24 production browser scenarios were verified across a full run and a targeted retry.** The full run passed 23 scenarios; the export test encountered Windows `EPERM` when reading Edge's temporary download file. The test now verifies the exact JSON Blob supplied to the real browser download, the download filename, and successful completion without accessing that temporary file. Its targeted retry passed. This was a test harness change, with no subsequent application changes.
+- Browser coverage includes the original productivity, responsive, accessibility, and offline scenarios plus three billing, four learning, and two personalization scenarios. The productivity journey also verifies the note prompt after a completed focus session.
+- Personalization checks cover free custom accents, unsaved previews, saved backgrounds, reload persistence, mobile layout, image upload, and rejection of SVG without losing the saved background. Desktop and mobile screenshots were inspected.
+- The model from the previously deployed commit was used to verify that legacy sync responses remain readable by older clients, including when modern notes, flashcards, backgrounds, completion fields, and accents are present.
+
+The full production browser run used:
+
+```powershell
+$env:PLAYWRIGHT_BASE_URL='http://127.0.0.1:3000'
+$env:PLAYWRIGHT_CHANNEL='msedge'
+$env:PLAYWRIGHT_PWA='1'
+npm run test:browser -- --workers=1 --output=.local/premium-production-results
+```
+
+The corrected export check was then verified with:
+
+```powershell
+npm run test:browser -- e2e/learning.spec.ts --grep 'local flashcards' --workers=1 --output=.local/premium-export-results
+```
+
+Production has an application origin configured, but no Supabase or Stripe credentials. Hosted authentication, cloud synchronization, and actual provider Checkout/Portal/webhook delivery therefore remain unverified and unavailable until configured. Billing remains test-only. Local previews of premium features do not confer a cloud subscription. Music playback is a documented next step, not an implemented player; see [music-pro.md](music-pro.md).
+
+## September 11: initial release
+
+The initial production application passed the executed checks below.
 
 ## Environment
 

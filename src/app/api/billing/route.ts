@@ -4,6 +4,8 @@ import { requireWorkspace, durableRateLimit } from '@/lib/server/auth';
 import { handleApiError } from '@/lib/server/http';
 import { billingConfigured, getStripe, listConfiguredPrices } from '@/lib/billing/stripe';
 import { billingDatabase, getWorkspaceEntitlements } from '@/lib/billing/server';
+import { tierForWorkspace } from '@/lib/billing/config';
+import { portalConfigurationId } from '@/lib/billing/portal';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const workspaceId = z.uuid().parse(new URL(request.url).searchParams.get('workspaceId'));
-    const { role, user } = await requireWorkspace(workspaceId);
+    const { role, user, workspace } = await requireWorkspace(workspaceId);
     await durableRateLimit(user.id, 'billing:read', 60);
     const configured = billingConfigured();
     const db = billingDatabase();
@@ -46,6 +48,11 @@ export async function GET(request: Request) {
         configured,
         mode: 'test',
         canManage: role === 'owner',
+        portalAvailable:
+          configured &&
+          role === 'owner' &&
+          !!subscription?.stripe_customer_id &&
+          !!portalConfigurationId(tierForWorkspace(workspace.kind)),
         message: configured
           ? null
           : 'Billing is not configured. Checkout is unavailable; your existing work stays accessible.',
@@ -60,7 +67,10 @@ export async function GET(request: Request) {
             }
           : null,
         entitlements,
-        prices,
+        prices: prices.map((price) => ({
+          ...price,
+          checkoutAvailable: !!portalConfigurationId(price.tier),
+        })),
         invoices,
       },
       { headers: { 'Cache-Control': 'private, no-store' } },

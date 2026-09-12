@@ -126,11 +126,15 @@ export async function GET(request: Request) {
       .order('created_at');
     if (workspaceError) throw databaseError(workspaceError);
     const result = await Promise.all(
-      workspaces.map(async (workspace) => ({
-        ...workspace,
-        role: memberships.find((membership) => membership.workspace_id === workspace.id)!.role,
-        plan: (await getWorkspaceEntitlements(workspace.id)).tier,
-      })),
+      workspaces.map(async (workspace) => {
+        const entitlements = await getWorkspaceEntitlements(workspace.id);
+        return {
+          ...workspace,
+          role: memberships.find((membership) => membership.workspace_id === workspace.id)!.role,
+          plan: entitlements.tier,
+          entitlements,
+        };
+      }),
     );
     return NextResponse.json(
       { workspaces: result, user: { id: user.id, email: user.email } },

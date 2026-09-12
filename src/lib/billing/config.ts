@@ -47,6 +47,8 @@ export const PLAN_FEATURES = {
     savedLayouts: false,
     advancedTemplates: false,
     teamWorkspaces: false,
+    backgrounds: false,
+    flashcards: false,
   },
   pro: {
     advancedAnalytics: true,
@@ -54,6 +56,8 @@ export const PLAN_FEATURES = {
     savedLayouts: true,
     advancedTemplates: true,
     teamWorkspaces: false,
+    backgrounds: true,
+    flashcards: true,
   },
   team: {
     advancedAnalytics: true,
@@ -61,6 +65,8 @@ export const PLAN_FEATURES = {
     savedLayouts: true,
     advancedTemplates: true,
     teamWorkspaces: true,
+    backgrounds: true,
+    flashcards: true,
   },
 } as const;
 

@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
   billingDatabase: vi.fn(),
   getStripe: vi.fn(),
   billingConfigured: vi.fn(),
+  getPortalConfiguration: vi.fn(),
+  withBillingLock: vi.fn(),
 }));
 vi.mock('@/lib/server/auth', () => ({
   requireWorkspace: mocks.requireWorkspace,
@@ -15,8 +17,9 @@ vi.mock('@/lib/server/auth', () => ({
 vi.mock('@/lib/billing/server', () => ({
   billingDatabase: mocks.billingDatabase,
   persistSubscription: vi.fn(),
-  withBillingLock: vi.fn(),
+  withBillingLock: mocks.withBillingLock,
 }));
+vi.mock('@/lib/billing/portal', () => ({ getPortalConfiguration: mocks.getPortalConfiguration }));
 vi.mock('@/lib/billing/stripe', () => ({
   getStripe: mocks.getStripe,
   billingConfigured: mocks.billingConfigured,
@@ -106,5 +109,23 @@ describe('billing owner and request authorization', () => {
       error: 'Billing is not configured. Checkout is unavailable.',
     });
     expect(mocks.getStripe).not.toHaveBeenCalled();
+  });
+  it('requires a safe management portal before creating a customer or checkout session', async () => {
+    vi.stubEnv('STRIPE_PRO_MONTH_PRICE_ID', 'price_proMonth');
+    mocks.requireWorkspace.mockResolvedValue({
+      user: { id: 'owner' },
+      workspace: { id: workspaceId, kind: 'personal', name: 'Personal' },
+      role: 'owner',
+    });
+    mocks.billingConfigured.mockReturnValue(true);
+    mocks.getStripe.mockReturnValue({ prices: { retrieve: vi.fn().mockResolvedValue({}) } });
+    mocks.getPortalConfiguration.mockRejectedValue(new HttpError(503, 'Portal needs review.'));
+    const response = await checkout(
+      request('checkout', { workspaceId, tier: 'pro', interval: 'month' }),
+    );
+    expect(response.status).toBe(503);
+    expect(mocks.getPortalConfiguration).toHaveBeenCalledWith('pro');
+    expect(mocks.withBillingLock).not.toHaveBeenCalled();
+    expect(mocks.billingDatabase).not.toHaveBeenCalled();
   });
 });

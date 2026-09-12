@@ -33,6 +33,7 @@ export const subjectSchema = z
     icon: z.string().max(20),
     color,
     archived: z.boolean(),
+    completedAt: timestamp.optional(),
     targetDate: date.optional(),
     weeklyGoal: z.number().int().min(0).max(1000),
     defaultPresetId: optionalId,
@@ -139,6 +140,17 @@ export const activityEventSchema = z
       'subject_updated',
       'subject_archived',
       'subject_restored',
+      'subject_completed',
+      'subject_reopened',
+      'note_created',
+      'note_updated',
+      'note_deleted',
+      'flashcard_deck_created',
+      'flashcard_deck_updated',
+      'flashcard_deck_deleted',
+      'flashcard_created',
+      'flashcard_updated',
+      'flashcard_deleted',
       'journal_added',
       'journal_edited',
       'focus_completed',
@@ -154,6 +166,47 @@ export const activityEventSchema = z
     taskTitle: z.string().max(300).optional(),
     projectId: optionalId,
     details: z.string().max(2000),
+  })
+  .strict();
+export const noteSheetSchema = z
+  .object({
+    ...recordFields,
+    userId: uuid,
+    title: z.string().trim().min(1).max(200),
+    content: z.string().trim().min(1).max(20000),
+    subjectId: optionalId,
+    sessionId: optionalId,
+    kind: z.enum(['note', 'session_reflection', 'subject_completion']),
+    revisions: z
+      .array(
+        z
+          .object({
+            title: z.string().trim().min(1).max(200),
+            content: z.string().trim().min(1).max(20000),
+            editedAt: timestamp,
+          })
+          .strict(),
+      )
+      .max(1000)
+      .default([]),
+  })
+  .strict();
+export const flashcardDeckSchema = z
+  .object({
+    ...recordFields,
+    userId: uuid,
+    title: z.string().trim().min(1).max(120),
+    description: text,
+    subjectId: optionalId,
+  })
+  .strict();
+export const flashcardSchema = z
+  .object({
+    ...recordFields,
+    userId: uuid,
+    deckId: uuid,
+    front: z.string().trim().min(1).max(4000),
+    back: z.string().trim().min(1).max(10000),
   })
   .strict();
 export const presetSchema = z
@@ -181,6 +234,20 @@ export const customThemeSchema = z
     heatmap: z.array(color).length(5),
   })
   .strict();
+export const backgroundSchema = z
+  .object({
+    kind: z.enum(['none', 'preset', 'image']),
+    preset: z.enum(['aurora', 'dusk', 'ocean', 'forest']),
+    image: z
+      .string()
+      .max(350000)
+      .regex(/^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/)
+      .nullable(),
+    overlay: z.number().int().min(40).max(95),
+    blur: z.number().int().min(0).max(16),
+  })
+  .strict()
+  .refine((value) => value.kind !== 'image' || value.image !== null, 'Choose a background image.');
 export const preferencesSchema = z
   .object({
     timeZone: z
@@ -198,7 +265,15 @@ export const preferencesSchema = z
     timeFormat: z.enum(['12h', '24h']),
     dateFormat: z.enum(['MMM d, yyyy', 'dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd']),
     appearance: z.enum(['light', 'dark', 'system']),
-    accent: z.enum(['green', 'blue', 'plum', 'amber', 'neutral']),
+    accent: z.enum(['green', 'blue', 'plum', 'amber', 'neutral', 'blurple', 'rose', 'cyan']),
+    accentColor: color.nullable().default(null),
+    background: backgroundSchema.default({
+      kind: 'none',
+      preset: 'aurora',
+      image: null,
+      overlay: 70,
+      blur: 0,
+    }),
     customTheme: customThemeSchema.nullable(),
     density: z.enum(['comfortable', 'compact']),
     fontSize: z.enum(['small', 'medium', 'large']),
@@ -276,6 +351,9 @@ const baseWorkspaceDataSchema = z
     plannedSessions: z.array(plannedSessionSchema).max(100000),
     focusSessions: z.array(focusSessionSchema).max(500000),
     journal: z.array(journalEntrySchema).max(100000),
+    noteSheets: z.array(noteSheetSchema).max(100000).default([]),
+    flashcardDecks: z.array(flashcardDeckSchema).max(10000).default([]),
+    flashcards: z.array(flashcardSchema).max(100000).default([]),
     events: z.array(activityEventSchema).max(500000),
     preferences: preferencesSchema,
     timer: timerStateSchema,
@@ -289,6 +367,9 @@ export const workspaceDataSchema = baseWorkspaceDataSchema.superRefine((data, ct
     data.plannedSessions,
     data.focusSessions,
     data.journal,
+    data.noteSheets,
+    data.flashcardDecks,
+    data.flashcards,
     data.events,
   ];
   for (const collection of collections) {
@@ -300,6 +381,47 @@ export const workspaceDataSchema = baseWorkspaceDataSchema.superRefine((data, ct
   const subjects = new Map(data.subjects.map((item) => [item.id, item]));
   const projects = new Map(data.projects.map((item) => [item.id, item]));
   const tasks = new Map(data.tasks.map((item) => [item.id, item]));
+  const decks = new Map(data.flashcardDecks.map((item) => [item.id, item]));
+  for (const record of [...data.noteSheets, ...data.flashcardDecks])
+    if (record.subjectId && !subjects.has(record.subjectId))
+      ctx.addIssue({
+        code: 'custom',
+        message: 'A note or flashcard deck must link to a subject in this workspace.',
+      });
+  for (const card of data.flashcards)
+    if (!decks.has(card.deckId))
+      ctx.addIssue({ code: 'custom', message: 'A flashcard needs a deck in this workspace.' });
+    else if (decks.get(card.deckId)!.userId !== card.userId)
+      ctx.addIssue({
+        code: 'custom',
+        message: 'A flashcard and its deck must have the same author.',
+      });
+  for (const note of data.noteSheets) {
+    if (note.kind === 'subject_completion' && !note.subjectId)
+      ctx.addIssue({
+        code: 'custom',
+        message: 'A subject completion note needs a linked subject.',
+      });
+    if (note.kind === 'session_reflection' && !note.sessionId)
+      ctx.addIssue({
+        code: 'custom',
+        message: 'A session reflection needs a completed focus session.',
+      });
+    if (note.sessionId) {
+      const session = data.focusSessions.find((item) => item.id === note.sessionId);
+      if (
+        !session ||
+        session.phase !== 'focus' ||
+        session.status !== 'completed' ||
+        session.userId !== note.userId ||
+        (note.subjectId && session.context.subjectId !== note.subjectId)
+      )
+        ctx.addIssue({
+          code: 'custom',
+          message: 'A note must link to its author’s completed focus session and matching subject.',
+        });
+    }
+  }
   const checklistIds = data.tasks.flatMap((task) => task.checklist.map((item) => item.id));
   if (new Set(checklistIds).size !== checklistIds.length)
     ctx.addIssue({
@@ -391,6 +513,9 @@ export type PlannedSession = z.infer<typeof plannedSessionSchema>;
 export type SessionContext = z.infer<typeof sessionContextSchema>;
 export type FocusSession = z.infer<typeof focusSessionSchema>;
 export type JournalEntry = z.infer<typeof journalEntrySchema>;
+export type NoteSheet = z.infer<typeof noteSheetSchema>;
+export type FlashcardDeck = z.infer<typeof flashcardDeckSchema>;
+export type Flashcard = z.infer<typeof flashcardSchema>;
 export type ActivityEvent = z.infer<typeof activityEventSchema>;
 export type Preferences = z.infer<typeof preferencesSchema>;
 export type TimerState = z.infer<typeof timerStateSchema>;
@@ -405,6 +530,8 @@ export const DEFAULT_PREFERENCES: Preferences = {
   dateFormat: 'MMM d, yyyy',
   appearance: 'system',
   accent: 'green',
+  accentColor: null,
+  background: { kind: 'none', preset: 'aurora', image: null, overlay: 70, blur: 0 },
   customTheme: null,
   density: 'comfortable',
   fontSize: 'medium',
@@ -467,6 +594,9 @@ export function createEmptyData(workspaceId = DEMO_WORKSPACE_ID, now = new Date(
     plannedSessions: [],
     focusSessions: [],
     journal: [],
+    noteSheets: [],
+    flashcardDecks: [],
+    flashcards: [],
     events: [],
     preferences,
     timer: emptyTimer(preferences),

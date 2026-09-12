@@ -30,6 +30,8 @@ import { id, widgetNames, type Preferences } from '@/lib/model';
 import { contrastRatio } from '@/lib/calendar';
 import { createBrowserSupabase } from '@/lib/supabase/browser';
 import { clearAccountCache, STORAGE_PREFIX } from '@/lib/persistence';
+import { ClassicColors, BackgroundPanel } from './appearance';
+import { applyThemeColors } from '@/lib/appearance';
 
 const settingsTabs = [
   { id: 'appearance', label: en.settings.appearance, Icon: Palette },
@@ -39,13 +41,6 @@ const settingsTabs = [
   { id: 'data', label: en.settings.data, Icon: Database },
   { id: 'account', label: en.settings.account, Icon: UserRound },
 ];
-const accentColors = {
-  green: '#2f6547',
-  blue: '#3a6695',
-  plum: '#856082',
-  amber: '#997020',
-  neutral: '#65696b',
-};
 const baseCustom = {
   accent: '#2f6547',
   background: '#f7f8f4',
@@ -54,17 +49,6 @@ const baseCustom = {
   text: '#283b30',
   heatmap: ['#ebedf0', '#9be9a8', '#40c463', '#30a14e', '#216e39'],
 };
-function applyPreview(value: Preferences['customTheme']) {
-  const root = document.documentElement;
-  for (const key of ['accent', 'background', 'surface', 'border', 'text'] as const) {
-    if (value) root.style.setProperty(`--${key}`, value[key]);
-    else root.style.removeProperty(`--${key}`);
-  }
-  for (let index = 0; index < 5; index++) {
-    if (value) root.style.setProperty(`--heat-${index}`, value.heatmap[index]);
-    else root.style.removeProperty(`--heat-${index}`);
-  }
-}
 export function SettingsPage() {
   const { store, notify, canEdit } = useApp();
   const [tab, setTab] = useState('appearance');
@@ -76,11 +60,14 @@ export function SettingsPage() {
   const input = useRef<HTMLInputElement>(null);
   const [fresh, setFresh] = useState(false);
   const paid = !store.isCloud || ['pro', 'team'].includes(store.currentWorkspace?.plan || 'free');
-  const savedTheme = useRef(p.customTheme);
+  const savedTheme = useRef(p);
   useEffect(() => {
-    savedTheme.current = p.customTheme;
-  }, [p.customTheme]);
-  useEffect(() => () => applyPreview(savedTheme.current), []);
+    savedTheme.current = p;
+  }, [p]);
+  useEffect(() => () => applyThemeColors(savedTheme.current), []);
+  function applyPreview(value: Preferences['customTheme']) {
+    applyThemeColors(p, value);
+  }
   async function set<K extends keyof Preferences>(key: K, value: Preferences[K]) {
     return store.update((d) => {
       d.preferences[key] = value;
@@ -174,28 +161,7 @@ export function SettingsPage() {
                   </button>
                 ))}
               </div>
-              <h3>{en.settings.accent}</h3>
-              <div className="accent-options">
-                {Object.entries(accentColors).map(([accent, color]) => (
-                  <button
-                    key={accent}
-                    className={p.accent === accent ? 'selected' : ''}
-                    onClick={() =>
-                      store.update((d) => {
-                        d.preferences.accent = accent as Preferences['accent'];
-                        d.preferences.customTheme = null;
-                      })
-                    }
-                  >
-                    <span style={{ backgroundColor: color }}>
-                      {p.accent === accent && <Check size={15} />}
-                    </span>
-                    {accent === 'green'
-                      ? ui.settings.gardenGreen
-                      : accent.charAt(0).toUpperCase() + accent.slice(1)}
-                  </button>
-                ))}
-              </div>
+              <ClassicColors key={store.workspaceId} />
               <div className="form-grid customization-options">
                 <Field label={ui.settings.density}>
                   <select
@@ -237,6 +203,7 @@ export function SettingsPage() {
                 </Field>
               </div>
             </Panel>
+            <BackgroundPanel key={store.workspaceId} />
             <Panel title={en.settings.custom} subtitle={en.settings.customHint}>
               <div className="form-grid">
                 {(['accent', 'background', 'surface', 'border', 'text'] as const).map((key) => (
@@ -723,6 +690,11 @@ export function SettingsPage() {
           <p>
             {store.importPreview.plannedSessions} {ui.settings.plannedSessions}{' '}
             {store.importPreview.journalEntries} {ui.settings.journalEntries}
+          </p>
+          <p>
+            {store.importPreview.noteSheets} {ui.settings.noteSheets}{' '}
+            {store.importPreview.flashcardDecks} {ui.settings.flashcardDecks}{' '}
+            {store.importPreview.flashcards} {ui.settings.cards}
           </p>
           <p className="helper">{ui.settings.recordsWillBeAddedWithNewIdsPermissionsAnd}</p>
           <div className="form-actions">

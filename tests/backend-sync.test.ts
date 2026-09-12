@@ -42,7 +42,7 @@ vi.mock('@/lib/supabase/server', () => ({
   }),
 }));
 
-import { PUT } from '@/app/api/sync/route';
+import { PUT, GET } from '@/app/api/sync/route';
 
 describe('sync acknowledgment race', () => {
   afterEach(() => vi.unstubAllEnvs());
@@ -71,5 +71,19 @@ describe('sync acknowledgment race', () => {
     const response = await PUT(request());
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({ version: 9, committedVersion: 2 });
+  });
+  it('returns a legacy document to older tabs and full collections to capable clients', async () => {
+    const legacy = await GET(new Request(`http://localhost/api/sync?workspaceId=${workspace}`));
+    const body = await legacy.json();
+    expect(body.data).not.toHaveProperty('noteSheets');
+    expect(body.data.preferences).not.toHaveProperty('background');
+    const modern = await GET(
+      new Request(`http://localhost/api/sync?workspaceId=${workspace}`, {
+        headers: { 'x-folia-document-version': '2' },
+      }),
+    );
+    const current = await modern.json();
+    expect(current.data.noteSheets).toEqual([]);
+    expect(current.data.preferences.background.kind).toBe('none');
   });
 });
