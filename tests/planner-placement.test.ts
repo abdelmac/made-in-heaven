@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDemoData, id, LOCAL_USER_ID, workspaceDataSchema } from '../src/lib/model';
 import { isPlannableTask, preparePlannerPlacement } from '../src/lib/planner-placement';
+import { plannerCopy } from '../src/lib/i18n/planner';
 
 const now = '2026-09-14T08:00:00.000Z';
 function fixture() {
@@ -54,7 +55,7 @@ describe('planner placement', () => {
     data.plannedSessions.push(other);
     expect(() =>
       preparePlannerPlacement(data, source, '2026-09-15', 12, LOCAL_USER_ID, true),
-    ).toThrow(/overlap/);
+    ).toThrow(plannerCopy.overlap);
     expect(
       preparePlannerPlacement(data, source, '2026-09-15', 13, LOCAL_USER_ID, true).changed,
     ).toBe(true);
@@ -73,7 +74,7 @@ describe('planner placement', () => {
     );
     expect(() =>
       preparePlannerPlacement(data, source, '2026-03-29', 2, LOCAL_USER_ID, true),
-    ).toThrow(/clocks change/);
+    ).toThrow(/changement d'heure/);
     expect(
       preparePlannerPlacement(data, source, '2026-10-25', 2, LOCAL_USER_ID, true).record.startsAt,
     ).toBe('2026-10-25T00:00:00.000Z');
@@ -131,7 +132,7 @@ describe('planner placement', () => {
     const { data, source } = fixture();
     expect(() =>
       preparePlannerPlacement(data, source, '2026-09-15', 9, LOCAL_USER_ID, false),
-    ).toThrow(/read-only/);
+    ).toThrow(plannerCopy.readOnly);
     expect(() =>
       preparePlannerPlacement(
         data,
@@ -141,11 +142,11 @@ describe('planner placement', () => {
         LOCAL_USER_ID,
         true,
       ),
-    ).toThrow(/no longer available/);
+    ).toThrow(plannerCopy.stale);
     data.plannedSessions = [];
     expect(() =>
       preparePlannerPlacement(data, source, '2026-09-15', 9, LOCAL_USER_ID, true),
-    ).toThrow(/no longer available/);
+    ).toThrow(plannerCopy.stale);
   });
 
   it('does not schedule completed tasks or tasks in archived subjects/projects', () => {
@@ -156,7 +157,7 @@ describe('planner placement', () => {
     expect(isPlannableTask(data, task)).toBe(false);
     expect(() =>
       preparePlannerPlacement(data, source, '2026-09-15', 9, LOCAL_USER_ID, true),
-    ).toThrow(/unfinished/);
+    ).toThrow(plannerCopy.unavailableTask);
     task.status = 'todo';
     data.subjects.find((subject) => subject.id === task.subjectId)!.archived = true;
     expect(isPlannableTask(data, task)).toBe(false);

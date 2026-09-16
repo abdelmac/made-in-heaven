@@ -29,6 +29,7 @@ import {
   formatStripeAmount,
 } from '@/lib/billing/config';
 import type { Entitlements } from '@/lib/billing/entitlements';
+import type { InvitationEmailStatus } from '@/lib/server/invitation-mail';
 import {
   applyOrganizationDefaults,
   organizationDefaults,
@@ -51,6 +52,22 @@ type OrgDetails = {
   invitations: Invitation[];
   icon: WorkspaceIcon;
   defaults: OrganizationDefaults;
+  invitationEmailAvailable: boolean;
+};
+const roleLabels: Record<string, string> = {
+  owner: 'Propriétaire',
+  admin: 'Administrateur',
+  member: 'Membre',
+  viewer: 'Lecteur',
+};
+const invitationEmailLabels: Record<InvitationEmailStatus, string> = {
+  not_requested: 'Invitation créée. Copiez le lien pour le transmettre à votre collègue.',
+  not_configured: 'Invitation créée. L’envoi par e-mail est indisponible ; partagez le lien.',
+  accepted:
+    'Invitation créée et e-mail pris en charge par le service d’envoi. La réception n’est pas encore confirmée.',
+  failed: 'Invitation créée, mais le service a refusé l’e-mail. Vous pouvez partager le lien.',
+  unknown:
+    'Invitation créée. L’envoi de l’e-mail n’a pas pu être confirmé ; le lien reste utilisable.',
 };
 const workspaceIcons = {
   leaf: Leaf,
@@ -82,7 +99,18 @@ export function OrganizationPage() {
   const [loadedAt, setLoadedAt] = useState(0);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [inviteUrl, setInviteUrl] = useState('');
+  const [createdInvitation, setCreatedInvitation] = useState<{
+    url: string;
+    status: InvitationEmailStatus;
+    workspaceId: string;
+    accountId: string | undefined;
+  } | null>(null);
+  const visibleInvitation =
+    createdInvitation?.workspaceId === store.workspaceId &&
+    createdInvitation.accountId === store.user?.id
+      ? createdInvitation
+      : null;
+  const inviteUrl = visibleInvitation?.url || '';
   const [confirmation, setConfirmation] = useState<{
     action: string;
     memberId?: string;
@@ -131,12 +159,18 @@ export function OrganizationPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      if (data.inviteUrl) setInviteUrl(data.inviteUrl);
+      if (data.inviteUrl)
+        setCreatedInvitation({
+          url: data.inviteUrl,
+          status: data.emailStatus || 'not_requested',
+          workspaceId: store.workspaceId,
+          accountId: store.user?.id,
+        });
       await store.refreshAccount();
       if (data.workspaceId && ['create', 'acceptInvite'].includes(String(body.action)))
         await store.selectWorkspace(data.workspaceId);
       else await load();
-      notify(ui.workspaces.workspaceUpdated);
+      notify(data.inviteUrl ? 'Invitation créée.' : ui.workspaces.workspaceUpdated);
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -220,7 +254,7 @@ export function OrganizationPage() {
         <>
           <Panel
             title={ui.workspaces.workspaceSettings}
-            subtitle={`Shared organization · Your role: ${store.currentWorkspace?.role}`}
+            subtitle={`Organisation partagée · Votre rôle : ${roleLabels[store.currentWorkspace?.role || 'member']}`}
           >
             <p className="scope-notice">
               <OrganizationIcon size={20} />
@@ -345,14 +379,14 @@ export function OrganizationPage() {
                   <strong>
                     {member.user_id === store.userId ? ui.workspaces.you : member.display_name}
                   </strong>
-                  <small>{member.role}</small>
+                  <small>{roleLabels[member.role] || member.role}</small>
                 </div>
                 {canManage &&
                 member.role !== 'owner' &&
                 (store.currentWorkspace?.role === 'owner' || member.role !== 'admin') ? (
                   <>
                     <select
-                      aria-label={`Role for ${member.display_name}`}
+                      aria-label={`Rôle de ${member.display_name}`}
                       value={member.role}
                       disabled={busy}
                       onChange={(e) =>
@@ -369,12 +403,12 @@ export function OrganizationPage() {
                         : ['member', 'viewer']
                       ).map((role) => (
                         <option key={role} value={role}>
-                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                          {roleLabels[role]}
                         </option>
                       ))}
                     </select>
                     <IconButton
-                      label={`Remove ${member.display_name}`}
+                      label={`Retirer ${member.display_name}`}
                       onClick={() =>
                         setConfirmation({
                           action: 'removeMember',
@@ -399,7 +433,7 @@ export function OrganizationPage() {
                     )}
                   </>
                 ) : (
-                  <span className="badge">{member.role}</span>
+                  <span className="badge">{roleLabels[member.role] || member.role}</span>
                 )}
               </div>
             ))}
@@ -435,6 +469,7 @@ export function OrganizationPage() {
                     workspaceId: store.workspaceId,
                     email: String(f.get('email')),
                     role: String(f.get('role')),
+                    sendEmail: f.get('sendEmail') === 'on',
                   });
                 }}
               >
@@ -452,17 +487,35 @@ export function OrganizationPage() {
                     <option value="admin">{ui.workspaces.admin}</option>
                   )}
                 </select>
+                <label className="check-field">
+                  <input
+                    type="checkbox"
+                    name="sendEmail"
+                    disabled={busy || !details?.invitationEmailAvailable}
+                  />
+                  Envoyer aussi l’invitation par e-mail
+                </label>
                 <Button type="submit" disabled={busy || store.currentWorkspace?.plan !== 'team'}>
                   <Mail size={16} />
                   {en.organization.invite}
                 </Button>
               </form>
+              {!details?.invitationEmailAvailable && (
+                <p className="helper">
+                  L’envoi par e-mail est indisponible. Vous pouvez partager un lien d’invitation.
+                </p>
+              )}
               {store.currentWorkspace?.plan !== 'team' && (
                 <p className="notice">
                   {ui.workspaces.invitationsRequireAnActiveTeamSubscription}
                   <Button variant="ghost" onClick={() => navigate('billing')}>
                     {ui.workspaces.viewTeamPlan}
                   </Button>
+                </p>
+              )}
+              {visibleInvitation && (
+                <p className="notice" role="status">
+                  {invitationEmailLabels[visibleInvitation.status]}
                 </p>
               )}
               {inviteUrl && (
@@ -494,14 +547,14 @@ export function OrganizationPage() {
                   <div>
                     <strong>{invite.email}</strong>
                     <small>
-                      {invite.role} {ui.workspaces.copy}{' '}
+                      {roleLabels[invite.role] || invite.role} {ui.workspaces.copy}{' '}
                       {invite.accepted_at
                         ? ui.workspaces.accepted
                         : invite.revoked_at
                           ? ui.workspaces.revoked
                           : Date.parse(invite.expires_at) < loadedAt
                             ? ui.workspaces.expired
-                            : `Expires ${new Date(invite.expires_at).toLocaleDateString('en-US')}`}
+                            : `Expire le ${new Date(invite.expires_at).toLocaleDateString('fr-FR')}`}
                     </small>
                   </div>
                   {!invite.accepted_at && !invite.revoked_at && (
@@ -635,7 +688,8 @@ export function BillingPage() {
         : '/api/billing/prices';
       const response = await fetch(path, { cache: 'no-store' });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Billing availability could not be checked.');
+      if (!response.ok)
+        throw new Error(data.error || 'Impossible de vérifier la disponibilité des forfaits.');
       if (version !== loadVersion.current) return false;
       setBilling({ value: data, scope: billingScope });
       setError('');
@@ -674,7 +728,7 @@ export function BillingPage() {
         destination.protocol !== 'https:' ||
         !['checkout.stripe.com', 'billing.stripe.com'].includes(destination.hostname)
       )
-        throw new Error('Stripe did not provide an approved billing destination.');
+        throw new Error('Stripe n’a pas fourni de destination de paiement autorisée.');
       window.location.assign(body.url);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -871,7 +925,7 @@ export function BillingPage() {
           {billing?.subscription?.currentPeriodEnd && (
             <p>
               {ui.workspaces.currentPeriodEnds}{' '}
-              {new Date(billing.subscription.currentPeriodEnd).toLocaleDateString('en-US')}
+              {new Date(billing.subscription.currentPeriodEnd).toLocaleDateString('fr-FR')}
               {ui.workspaces.copy3}
             </p>
           )}
@@ -881,14 +935,14 @@ export function BillingPage() {
           {billing?.subscription?.paidThrough && (
             <p>
               {ui.workspaces.paidAccessThrough}{' '}
-              {new Date(billing.subscription.paidThrough).toLocaleDateString('en-US')}
+              {new Date(billing.subscription.paidThrough).toLocaleDateString('fr-FR')}
               {ui.workspaces.copy3}
             </p>
           )}
           {billing?.subscription?.cancelAt && (
             <p>
               {ui.workspaces.cancellationDate}{' '}
-              {new Date(billing.subscription.cancelAt).toLocaleDateString('en-US')}
+              {new Date(billing.subscription.cancelAt).toLocaleDateString('fr-FR')}
               {ui.workspaces.copy3}
             </p>
           )}
@@ -914,7 +968,7 @@ export function BillingPage() {
                 <div>
                   <strong>{invoice.number || ui.workspaces.invoice}</strong>
                   <span>
-                    {new Date(invoice.created).toLocaleDateString('en-US')} {ui.workspaces.copy}{' '}
+                    {new Date(invoice.created).toLocaleDateString('fr-FR')} {ui.workspaces.copy}{' '}
                     {invoice.status}
                   </span>
                 </div>

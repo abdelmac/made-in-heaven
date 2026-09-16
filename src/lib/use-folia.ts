@@ -46,6 +46,7 @@ import {
 import { createBrowserSupabase } from './supabase/browser';
 import { findOverlap } from './calendar';
 import type { Entitlements } from './billing/entitlements';
+import { fetchWorkspaceSnapshot, makeDocumentPatch } from './sync-transfer';
 
 export type WorkspaceSummary = {
   icon?: string;
@@ -70,7 +71,7 @@ type Conflict = {
 const LOCAL_POINTER = `${STORAGE_PREFIX}active-local`;
 const localWorkspace = (workspaceId: string): WorkspaceSummary => ({
   id: workspaceId,
-  name: workspaceId === DEMO_WORKSPACE_ID ? 'Demo workspace' : 'Personal workspace',
+  name: workspaceId === DEMO_WORKSPACE_ID ? 'Espace de démonstration' : 'Espace personnel',
   kind: 'personal',
   role: 'owner',
   plan: 'free',
@@ -89,6 +90,10 @@ function unionRecords<T extends { id: string }>(remote: T[], local: T[]) {
 function fetchFoliaApi(input: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
   headers.set('X-Folia-Document-Version', '2');
+  if (input.startsWith('/api/sync?') && (!init.method || init.method === 'GET')) {
+    const workspace = new URL(input, window.location.origin).searchParams.get('workspaceId');
+    if (workspace) return fetchWorkspaceSnapshot(workspace).then((snapshot) => Response.json(snapshot));
+  }
   return fetch(input, { ...init, headers });
 }
 
@@ -146,18 +151,40 @@ export function useFolia() {
         return;
       }
       setSaveStatus('saving');
+      let method = 'PUT';
+      let requestBody = JSON.stringify({
+        ...(operation.kind === 'preferences' ? { preferences: operation.data.preferences } : { data: operation.data }),
+        expectedVersion: operation.expectedVersion,
+        operationId: operation.id,
+      });
+      const transferKey = `${storageKey(currentWorkspace, account.id)}:patch`;
+      // Persist the exact compact request before sending, so a lost response can be
+      // replayed even after another device has saved a newer document.
+      if (operation.kind !== 'preferences' && new TextEncoder().encode(requestBody).length > 450_000) {
+        const cached = localStorage.getItem(transferKey);
+        const cachedBody = cached ? JSON.parse(cached) : null;
+        if (cachedBody?.operationId === operation.id && cachedBody?.expectedVersion === operation.expectedVersion) {
+          requestBody = cached!;
+        } else {
+          const remote = await fetchWorkspaceSnapshot(currentWorkspace);
+          if (token !== generation.current) return;
+          if (remote.version !== operation.expectedVersion) {
+            showConflict({ ...remote, scope: 'cloud', localData: dataRef.current, storageVersion: loadLocal(storageKey(currentWorkspace, account.id))?.version, kind: 'document' });
+            setSaveStatus('conflict');
+            setError('Un autre appareil a modifié cet espace. Choisissez comment résoudre le conflit.');
+            return;
+          }
+          requestBody = JSON.stringify({ patch: makeDocumentPatch(remote.data, operation.data), expectedVersion: operation.expectedVersion, operationId: operation.id });
+          localStorage.setItem(transferKey, requestBody);
+        }
+        method = 'PATCH';
+      }
       const response = await fetchFoliaApi(
         `/api/${operation.kind === 'preferences' ? 'preferences' : 'sync'}?workspaceId=${encodeURIComponent(currentWorkspace)}`,
         {
-          method: 'PUT',
+          method,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...(operation.kind === 'preferences'
-              ? { preferences: operation.data.preferences }
-              : { data: operation.data }),
-            expectedVersion: operation.expectedVersion,
-            operationId: operation.id,
-          }),
+          body: requestBody,
         },
       );
       const body = await response.json();
@@ -193,6 +220,7 @@ export function useFolia() {
         throw new Error(
           body.error || 'Cloud saving failed. Your edits remain queued on this device.',
         );
+      if (method === 'PATCH' && localStorage.getItem(transferKey) === requestBody) localStorage.removeItem(transferKey);
       const committedVersion = body.committedVersion ?? body.version;
       serverVersion.current = committedVersion;
       localStorage.setItem(
@@ -629,12 +657,12 @@ export function useFolia() {
                       ? await navigator.serviceWorker.getRegistration()
                       : undefined;
                   const options = {
-                    body: 'Take a breath. Your next session is ready when you are.',
+                    body: 'Prenez une pause. La prochaine séance commencera quand vous serez prêt.',
                     icon: '/icons/solace-192.png',
                   };
                   if (registration?.active)
-                    await registration.showNotification('Solace — Session complete', options);
-                  else new Notification('Solace — Session complete', options);
+                    await registration.showNotification('Solace — Séance terminée', options);
+                  else new Notification('Solace — Séance terminée', options);
                 } catch {
                   setError(
                     'Your session was saved. This browser could not show a background notification; keep Solace open for visual completion feedback.',
@@ -849,7 +877,7 @@ export function useFolia() {
     const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `folia-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `solace-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     return raw;

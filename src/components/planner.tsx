@@ -12,11 +12,15 @@ import {
   Play,
   Trash2,
   CalendarDays,
+  Download,
 } from 'lucide-react';
 import { useApp, addEvent } from './app-context';
 import { Button, IconButton, Panel, Field, FormActions, Dialog } from './ui';
 import { en } from '@/lib/i18n/en';
 import { id, LOCAL_USER_ID, type PlannedSession } from '@/lib/model';
+import { preparePlannedOccurrences, type RepeatOptions } from '@/lib/recurrence';
+import { exportCalendar } from '@/lib/calendar-export';
+import { RecurrenceFields } from './recurrence-fields';
 import {
   weekDays,
   allocateToHourBuckets,
@@ -198,7 +202,7 @@ export function Planner({ full = false }: { full?: boolean }) {
       setSaving(false);
     }
   }
-  const monthFormat = new Intl.DateTimeFormat('en-US', {
+  const monthFormat = new Intl.DateTimeFormat('fr-FR', {
     month: 'short',
     day: 'numeric',
     timeZone: 'UTC',
@@ -228,7 +232,55 @@ export function Planner({ full = false }: { full?: boolean }) {
         <Button variant="secondary" onClick={() => setOffset(0)}>
           {en.planner.today}
         </Button>
+        {full && (
+          <Button
+            variant="secondary"
+            title="Exporter mes séances de la semaine affichée, avec les filtres actuels"
+            onClick={() => {
+              try {
+                const calendar = exportCalendar(sessions, {
+                  workspaceId: data.workspaceId,
+                  userId: actorId,
+                  startDay: days[0],
+                  endDay: days[6],
+                  timeZone: data.preferences.timeZone,
+                });
+                if (!calendar.count) {
+                  notify('Aucune séance personnelle à exporter pour cette semaine et ces filtres.');
+                  return;
+                }
+                const url = URL.createObjectURL(
+                  new Blob([calendar.text], { type: 'text/calendar;charset=utf-8' }),
+                );
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `solace-planning-${days[0]}-${days[6]}.ics`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                notify(
+                  `${calendar.count} séance(s) exportée(s). Importez le fichier dans votre calendrier.`,
+                );
+              } catch (cause) {
+                notify(
+                  cause instanceof Error ? cause.message : "Impossible d'exporter le calendrier.",
+                );
+              }
+            }}
+          >
+            <Download size={15} />
+            Exporter ma semaine (.ics)
+          </Button>
+        )}
       </div>
+      {full && (
+        <p className="helper">
+          L'export inclut vos séances de la semaine affichée et respecte les filtres. Importez ce
+          fichier dans Google Calendar, Outlook ou Apple Calendrier ; les changements ultérieurs ne
+          sont pas synchronisés.
+        </p>
+      )}
       {full && (
         <div className="filters">
           <select
@@ -321,7 +373,7 @@ export function Planner({ full = false }: { full?: boolean }) {
                     >
                       <strong>{session.title}</strong>
                       <small>
-                        {new Intl.DateTimeFormat('en-US', {
+                        {new Intl.DateTimeFormat('fr-FR', {
                           weekday: 'short',
                           timeZone: data.preferences.timeZone,
                         }).format(new Date(session.startsAt))}{' '}
@@ -418,14 +470,14 @@ export function Planner({ full = false }: { full?: boolean }) {
         </p>
       )}
       <div className={`grid-scroller ${activeSource ? styles.choosing : ''}`} aria-busy={saving}>
-        <div className="planner-grid" role="group" aria-label={`Weekly planner ${range}`}>
+        <div className="planner-grid" role="group" aria-label={`Planning hebdomadaire ${range}`}>
           <div className="grid-corner">
             <CalendarDays size={14} />
           </div>
           {days.map((day) => (
             <div key={day} className={`day-heading ${day === today ? 'today' : ''}`}>
               <span>
-                {new Intl.DateTimeFormat('en-US', { weekday: 'short', timeZone: 'UTC' }).format(
+                {new Intl.DateTimeFormat('fr-FR', { weekday: 'short', timeZone: 'UTC' }).format(
                   new Date(day + 'T12:00Z'),
                 )}
               </span>
@@ -441,7 +493,7 @@ export function Planner({ full = false }: { full?: boolean }) {
               </span>
               {days.map((day) => {
                 const bucket = buckets.get(`${day}:${hour}`);
-                const description = `${day}, ${hour}:00, ${Math.round(bucket?.minutes || 0)} planned minutes${bucket?.completed ? ', all completed' : bucket?.partial ? ', partially completed' : ''}${bucket?.sessions.length ? `, ${bucket.sessions.map((s) => s.title).join(', ')}` : ''}`;
+                const description = `${day}, ${hour}:00, ${Math.round(bucket?.minutes || 0)} minutes planifiées${bucket?.completed ? ', toutes terminées' : bucket?.partial ? ', partiellement terminées' : ''}${bucket?.sessions.length ? `, ${bucket.sessions.map((s) => s.title).join(', ')}` : ''}`;
                 return (
                   <button
                     key={day}
@@ -583,6 +635,7 @@ export function PlanEditor({
   const [taskId, setTask] = useState(original?.taskId || '');
   const [projectId, setProject] = useState(original?.projectId || '');
   const [error, setError] = useState('');
+  const [repeat, setRepeat] = useState<RepeatOptions>({ frequency: 'none', count: 4 });
   const p = original ? zonedParts(original.startsAt, data.preferences.timeZone) : null;
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -608,17 +661,36 @@ export function PlanEditor({
         createdAt: original && !duplicating ? original.createdAt : now,
         updatedAt: now,
       };
+      let occurrenceCount = 1;
       const saved = await store.update((d) => {
+        const occurrences = preparePlannedOccurrences(
+          d,
+          record,
+          original && !duplicating ? { frequency: 'none', count: 1 } : repeat,
+        );
+        occurrenceCount = occurrences.length;
         d.plannedSessions = d.plannedSessions.filter((s) => s.id !== record.id);
-        d.plannedSessions.push(record);
-        addEvent(d, original && !duplicating ? 'plan_updated' : 'plan_created', record.title, {
-          subjectId: record.subjectId,
-          taskId: record.taskId,
-          userId: store.user?.id,
-        });
+        d.plannedSessions.push(...occurrences);
+        for (const occurrence of occurrences)
+          addEvent(
+            d,
+            original && !duplicating ? 'plan_updated' : 'plan_created',
+            occurrence.title,
+            {
+              subjectId: occurrence.subjectId,
+              taskId: occurrence.taskId,
+              userId: store.user?.id,
+            },
+          );
       });
       if (!saved) return;
-      notify(original && !duplicating ? ui.planner.planUpdated : ui.planner.aLittleFocusPlanned);
+      notify(
+        occurrenceCount > 1
+          ? `${occurrenceCount} séances récurrentes créées.`
+          : original && !duplicating
+            ? ui.planner.planUpdated
+            : ui.planner.aLittleFocusPlanned,
+      );
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -677,6 +749,7 @@ export function PlanEditor({
             defaultValue={original?.durationMinutes || 25}
           />
         </Field>
+        {(!original || duplicating) && <RecurrenceFields value={repeat} onChange={setRepeat} />}
         <Field label={en.tasks.subject}>
           <select
             value={subjectId}

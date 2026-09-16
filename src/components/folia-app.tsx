@@ -48,6 +48,8 @@ import { SettingsPage, AccountPanel } from './settings';
 import { OrganizationPage, BillingPage } from './workspaces';
 import { NotesPage, FlashcardsPage, NoteSheetEditor } from './learning';
 import { applyThemeColors, applyBackground, themeColors } from '@/lib/appearance';
+import { GettingStarted } from './getting-started';
+import { WorkSummary } from './work-summary';
 
 const navigation = [
   { id: 'overview', Icon: LayoutDashboard },
@@ -256,18 +258,18 @@ export function FoliaApp() {
   const saveLabel =
     store.saveStatus === 'saved'
       ? store.isCloud
-        ? 'All changes saved'
+        ? 'Toutes les modifications sont enregistrées'
         : en.common.local
       : (
           {
-            loading: 'Loading workspace',
-            saving: 'Saving changes…',
-            pending: 'Changes queued',
+            loading: 'Chargement de l’espace',
+            saving: 'Enregistrement…',
+            pending: 'Modifications en attente',
             offline: store.isCloud
-              ? 'Offline · changes stay on this device'
-              : 'Offline · saved on this device',
-            failed: 'Could not save changes',
-            conflict: 'Changes need your attention',
+              ? 'Hors ligne · modifications conservées sur cet appareil'
+              : 'Hors ligne · enregistré sur cet appareil',
+            failed: 'Échec de l’enregistrement',
+            conflict: 'Des modifications nécessitent votre attention',
           } as Record<string, string>
         )[store.saveStatus];
   const matches = search.trim()
@@ -449,7 +451,7 @@ export function FoliaApp() {
                           {m.type === 'task' ? <CheckSquare size={16} /> : <BookOpen size={16} />}
                           <span>
                             {m.title}
-                            <small>{m.type}</small>
+                            <small>{m.type === 'task' ? 'Tâche' : 'Matière'}</small>
                           </span>
                           <ArrowRight size={14} />
                         </button>
@@ -592,6 +594,7 @@ export function FoliaApp() {
             )}
             {view === 'overview' && (
               <>
+                <GettingStarted key={`${store.userId}:${store.workspaceId}`} />
                 {reflectionSession && canEdit && (
                   <div className="completion-note-prompt">
                     <div>
@@ -668,6 +671,7 @@ export function FoliaApp() {
                     onAction={() => navigate('settings')}
                   />
                 )}
+                <WorkSummary />
               </>
             )}
             {view === 'planner' && <Planner full />}

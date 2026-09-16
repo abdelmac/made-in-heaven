@@ -24,7 +24,8 @@ export function preparePlannerPlacement(
 ): { record: PlannedSession; changed: boolean } {
   if (!canEdit) throw new Error(plannerCopy.readOnly);
   if (source.workspaceId !== data.workspaceId) throw new Error(plannerCopy.stale);
-  if (!Number.isInteger(hour) || hour < 0 || hour > 23) throw new Error('Choose a valid hour.');
+  if (!Number.isInteger(hour) || hour < 0 || hour > 23)
+    throw new Error('Choisissez une heure valide.');
   const startsAt = zonedDateTime(
     day,
     `${String(hour).padStart(2, '0')}:00`,

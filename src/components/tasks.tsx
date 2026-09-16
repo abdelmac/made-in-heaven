@@ -31,6 +31,8 @@ import {
 } from './ui';
 import { en } from '@/lib/i18n/en';
 import { id, LOCAL_USER_ID, type Task, type JournalEntry } from '@/lib/model';
+import { createTaskOccurrences, type RepeatOptions } from '@/lib/recurrence';
+import { RecurrenceFields } from './recurrence-fields';
 import {
   completedSessions,
   focusMinutes,
@@ -58,7 +60,8 @@ function useAssignableMembers() {
     })
       .then(async (response) => {
         const body = await response.json();
-        if (!response.ok) throw new Error(body.error || 'Unable to load workspace members.');
+        if (!response.ok)
+          throw new Error(body.error || "Impossible de charger les membres de l'espace.");
         setResult({ workspaceId: store.workspaceId, members: body.members });
       })
       .catch((error) => {
@@ -67,7 +70,9 @@ function useAssignableMembers() {
             workspaceId: store.workspaceId,
             members: [],
             error:
-              error instanceof Error ? error.message : 'Workspace members are unavailable offline.',
+              error instanceof Error
+                ? error.message
+                : "Les membres de l'espace sont indisponibles hors ligne.",
           });
       });
     return () => controller.abort();
@@ -80,37 +85,44 @@ function useAssignableMembers() {
 }
 const templates: Record<string, { description: string; checklist: string[] }> = {
   'Study session': {
-    description: '## Learning goal\n\nWhat would you like to understand?\n\n## Key ideas\n\n',
+    description:
+      "## Objectif d'apprentissage\n\nQue souhaitez-vous comprendre ?\n\n## Idées clés\n\n",
     checklist: [
-      'Review previous notes',
-      'Study the main concept',
-      'Practice without notes',
-      'Summarize what I learned',
+      'Relire les notes précédentes',
+      'Étudier le concept principal',
+      "S'exercer sans les notes",
+      "Résumer ce que j'ai appris",
     ],
   },
   'Reading and notes': {
-    description: '## Reading\n\n## Notes\n\n## Questions to explore\n\n',
-    checklist: ['Read the material', 'Capture key ideas', 'Write a short summary'],
+    description: '## Lecture\n\n## Notes\n\n## Questions à explorer\n\n',
+    checklist: ['Lire le document', 'Noter les idées clés', 'Écrire un court résumé'],
   },
   Writing: {
-    description: '## Purpose\n\n## Outline\n\n## Draft\n\n',
+    description: '## Objectif\n\n## Plan\n\n## Brouillon\n\n',
     checklist: [
-      'Outline the main points',
-      'Write a first draft',
-      'Revise for clarity',
-      'Proofread',
+      'Définir les points principaux',
+      'Écrire un premier brouillon',
+      'Améliorer la clarté',
+      'Relire et corriger',
     ],
   },
   'Software development': {
-    description: '## Acceptance criteria\n\n- \n\n## Implementation notes\n\n## Repository\n\n',
+    description: "## Critères d'acceptation\n\n- \n\n## Notes de réalisation\n\n## Dépôt\n\n",
     checklist: [
-      'Clarify acceptance criteria',
-      'Implement the change',
-      'Add meaningful tests',
-      'Run checks',
-      'Review the result',
+      "Clarifier les critères d'acceptation",
+      'Réaliser la modification',
+      'Ajouter des tests pertinents',
+      'Exécuter les vérifications',
+      'Examiner le résultat',
     ],
   },
+};
+const templateLabels: Record<string, string> = {
+  'Study session': 'Séance de révision',
+  'Reading and notes': 'Lecture et notes',
+  Writing: 'Rédaction',
+  'Software development': 'Développement logiciel',
 };
 export function TaskRow({ task }: { task: Task }) {
   const { store, openTask, canEdit, notify } = useApp();
@@ -121,7 +133,7 @@ export function TaskRow({ task }: { task: Task }) {
     <div className={`task-row ${done ? 'is-done' : ''}`}>
       <button
         className="task-check"
-        aria-label={`${done ? 'Reopen' : 'Complete'} ${task.title}`}
+        aria-label={`${done ? 'Rouvrir' : 'Terminer'} ${task.title}`}
         aria-pressed={done}
         disabled={!canEdit}
         onClick={async () => {
@@ -366,7 +378,7 @@ export function TasksPage() {
                         </small>
                       </div>
                       <select
-                        aria-label={`Move ${task.title}`}
+                        aria-label={`Déplacer ${task.title}`}
                         disabled={!canEdit}
                         value={task.status}
                         onChange={(e) =>
@@ -425,6 +437,7 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
   const [deleting, setDeleting] = useState(false);
   const [noteEdit, setNoteEdit] = useState<JournalEntry | null>(null);
   const [resource, setResource] = useState(false);
+  const [repeat, setRepeat] = useState<RepeatOptions>({ frequency: 'none', count: 4 });
   const assignments = useAssignableMembers();
   const sessions = completedSessions(data).filter((s) => s.context.taskId === taskId);
   const notes = data.journal
@@ -491,6 +504,7 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
         createdAt: task?.createdAt || now,
         updatedAt: now,
       };
+      const occurrences = task ? [record] : createTaskOccurrences(record, repeat);
       const saved = await store.update((d) => {
         if (task) {
           d.tasks = d.tasks.map((t) => (t.id === task.id ? record : t));
@@ -499,13 +513,14 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
               ? { ...p, subjectId: record.subjectId, projectId: record.projectId }
               : p,
           );
-        } else d.tasks.unshift(record);
-        addEvent(
-          d,
-          task ? 'task_updated' : 'task_created',
-          task ? 'Task details updated.' : 'Task created.',
-          { taskId: record.id, subjectId: record.subjectId, userId: store.user?.id },
-        );
+        } else d.tasks.unshift(...occurrences);
+        for (const occurrence of occurrences)
+          addEvent(
+            d,
+            task ? 'task_updated' : 'task_created',
+            task ? 'Détails de la tâche mis à jour.' : 'Tâche créée.',
+            { taskId: occurrence.id, subjectId: occurrence.subjectId, userId: store.user?.id },
+          );
         if (task && task.status !== record.status)
           addEvent(
             d,
@@ -515,7 +530,13 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
           );
       });
       if (!saved) return;
-      notify(task ? ui.tasks.taskUpdated : ui.tasks.yourNextStepIsReady);
+      notify(
+        occurrences.length > 1
+          ? `${occurrences.length} tâches récurrentes créées.`
+          : task
+            ? ui.tasks.taskUpdated
+            : ui.tasks.yourNextStepIsReady,
+      );
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -615,7 +636,9 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
               >
                 <option value="">{ui.tasks.blankTask}</option>
                 {Object.keys(templates).map((t) => (
-                  <option key={t}>{t}</option>
+                  <option key={t} value={t}>
+                    {templateLabels[t]}
+                  </option>
                 ))}
               </select>
               {store.isCloud && <small className="helper">{paid.templatePlan}</small>}
@@ -695,7 +718,12 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
               </select>
             </Field>
             <Field label={en.tasks.due}>
-              <input type="date" name="due" defaultValue={task?.dueDate} />
+              <input
+                type="date"
+                name="due"
+                defaultValue={task?.dueDate}
+                required={!task && repeat.frequency !== 'none'}
+              />
             </Field>
             <Field label={en.tasks.estimate}>
               <input
@@ -708,6 +736,7 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
               />
             </Field>
           </div>
+          {!task && <RecurrenceFields value={repeat} onChange={setRepeat} task />}
           <Field label={en.tasks.tags}>
             <input name="tags" defaultValue={task?.tags.join(', ') || ''} />
           </Field>
@@ -1094,7 +1123,7 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
                   addEvent(
                     d,
                     'task_deleted',
-                    'Task deleted; historical session context preserved.',
+                    'Tâche supprimée ; contexte des séances passées conservé.',
                     { taskId: task.id, subjectId: task.subjectId, userId: store.user?.id },
                   );
                   d.tasks = d.tasks.filter((t) => t.id !== task.id);

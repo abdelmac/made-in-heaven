@@ -1,20 +1,10 @@
 export const activityRange = {
-  period: 'Activity period',
-  year: '52 weeks',
-  month: 'Month',
-  monthInput: 'Activity month',
-  previous: 'Previous month',
-  next: 'Next month',
-  current: 'This month',
-  monthSubtitle: 'A closer look at your completed focus, one day at a time.',
-  focused: 'focused',
-  monthTotal: (month: string) => `completed sessions in ${month}`,
-  calendarLabel: (month: string) => `${month} activity`,
+  period: 'Période d’activité', year: '52 semaines', month: 'Mois', monthInput: 'Mois d’activité',
+  previous: 'Mois précédent', next: 'Mois suivant', current: 'Ce mois-ci',
+  monthSubtitle: 'Vos séances terminées, un jour à la fois.', focused: 'de concentration',
+  monthTotal: (month: string) => `séances terminées en ${month}`,
+  calendarLabel: (month: string) => `Activité de ${month}`,
   scope: (from?: string, to?: string) =>
-    from && to
-      ? `Activity filtered from ${from} to ${to}.`
-      : from
-        ? `Activity filtered from ${from}.`
-        : `Activity filtered through ${to}.`,
-  weekdays: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    from && to ? `Activité du ${from} au ${to}.` : from ? `Activité à partir du ${from}.` : `Activité jusqu’au ${to}.`,
+  weekdays: ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'],
 };

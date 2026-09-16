@@ -49,6 +49,7 @@ export const PLAN_FEATURES = {
     teamWorkspaces: false,
     backgrounds: false,
     flashcards: false,
+    music: false,
   },
   pro: {
     advancedAnalytics: true,
@@ -58,6 +59,7 @@ export const PLAN_FEATURES = {
     teamWorkspaces: false,
     backgrounds: true,
     flashcards: true,
+    music: true,
   },
   team: {
     advancedAnalytics: true,
@@ -67,6 +69,7 @@ export const PLAN_FEATURES = {
     teamWorkspaces: true,
     backgrounds: true,
     flashcards: true,
+    music: true,
   },
 } as const;
 

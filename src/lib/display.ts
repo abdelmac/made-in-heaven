@@ -24,11 +24,11 @@ export function formatDay(
   const date = new Date(value);
   const format = preferences.dateFormat;
   if (options)
-    return new Intl.DateTimeFormat('en-US', { timeZone: preferences.timeZone, ...options }).format(
+    return new Intl.DateTimeFormat('fr-FR', { timeZone: preferences.timeZone, ...options }).format(
       date,
     );
   if (format === 'yyyy-MM-dd') return dateKey(date, preferences.timeZone);
-  return new Intl.DateTimeFormat(format === 'dd/MM/yyyy' ? 'en-GB' : 'en-US', {
+  return new Intl.DateTimeFormat(format === 'MM/dd/yyyy' ? 'en-US' : 'fr-FR', {
     timeZone: preferences.timeZone,
     year: 'numeric',
     month: format === 'MMM d, yyyy' ? 'short' : '2-digit',
@@ -36,7 +36,7 @@ export function formatDay(
   }).format(date);
 }
 export function formatTime(value: string | Date, preferences: Preferences) {
-  return new Intl.DateTimeFormat('en-US', {
+  return new Intl.DateTimeFormat('fr-FR', {
     timeZone: preferences.timeZone,
     hour: '2-digit',
     minute: '2-digit',

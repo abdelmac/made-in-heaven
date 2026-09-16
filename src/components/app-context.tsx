@@ -2,7 +2,7 @@
 import { createContext, useContext } from 'react';
 import { useFolia } from '@/lib/use-folia';
 import { id, LOCAL_USER_ID, type WorkspaceData, type ActivityEvent, type Task } from '@/lib/model';
-import type { View } from '@/lib/i18n/en';
+import { en, type View } from '@/lib/i18n/en';
 export type FoliaStore = ReturnType<typeof useFolia>;
 export interface AppContextValue {
   store: FoliaStore;
@@ -17,7 +17,7 @@ export interface AppContextValue {
 export const AppContext = createContext<AppContextValue | null>(null);
 export function useApp() {
   const value = useContext(AppContext);
-  if (!value) throw new Error('Folia context is missing.');
+  if (!value) throw new Error('Le contexte Solace est manquant.');
   return value;
 }
 export function addEvent(
@@ -56,7 +56,7 @@ export function changeTaskStatus(
   addEvent(
     data,
     status === 'done' ? 'task_completed' : 'status_changed',
-    `${previous.replaceAll('_', ' ')} → ${status.replaceAll('_', ' ')}`,
+    `${en.statuses[previous]} → ${en.statuses[status]}`,
     { taskId: task.id, subjectId: task.subjectId, userId },
   );
 }

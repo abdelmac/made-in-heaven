@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 export const metadata: Metadata = {
-  title: 'Solace — Make room for focused work',
-  description: 'A calm space for your timer, tasks, weekly plans, and little moments of growth.',
+  title: 'Solace — Faites place à la concentration',
+  description: 'Un espace serein pour vous concentrer, organiser vos tâches et progresser chaque jour.',
   applicationName: 'Solace',
   icons: {
     icon: [{ url: '/icons/solace.svg', type: 'image/svg+xml' }],
@@ -39,7 +39,7 @@ const themeScript = `try {
 }catch(e){}`;
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

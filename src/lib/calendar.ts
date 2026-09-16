@@ -44,10 +44,10 @@ export function addDays(day: string, amount: number) {
 }
 export function zonedDateTime(day: string, time: string, timeZone: string): string {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time))
-    throw new Error('Enter a valid date and time.');
+    throw new Error('Saisissez une date et une heure valides.');
   const wall = Date.parse(`${day}T${time}:00Z`);
   if (!Number.isFinite(wall) || new Date(wall).toISOString().slice(0, 10) !== day)
-    throw new Error('Enter a valid calendar date.');
+    throw new Error('Saisissez une date de calendrier valide.');
   const offsets = new Set<number>();
   for (const hours of [-36, -12, 0, 12, 36]) {
     const sample = wall + hours * 3600000;
@@ -66,7 +66,7 @@ export function zonedDateTime(day: string, time: string, timeZone: string): stri
     .sort((a, b) => a - b);
   if (!matches.length)
     throw new Error(
-      'This local time does not exist because the clocks change. Choose another time.',
+      "Cette heure locale n'existe pas en raison du changement d'heure. Choisissez une autre heure.",
     );
   return new Date(matches[0]).toISOString(); // The earlier occurrence is selected when clocks repeat an hour.
 }

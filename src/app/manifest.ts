@@ -3,15 +3,15 @@ import type { MetadataRoute } from 'next';
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: '/',
-    name: 'Solace — A little focus, every day',
+    name: 'Solace — Un peu de concentration, chaque jour',
     short_name: 'Solace',
-    description: 'Your calm space for focused work, thoughtful planning, and steady progress.',
+    description: 'Votre espace serein pour vous concentrer, vous organiser et avancer à votre rythme.',
     start_url: '/',
     scope: '/',
     display: 'standalone',
     background_color: '#17181e',
     theme_color: '#17181e',
-    lang: 'en',
+    lang: 'fr',
     categories: ['productivity', 'education'],
     icons: [
       { src: '/icons/solace-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

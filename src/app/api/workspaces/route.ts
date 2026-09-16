@@ -11,6 +11,7 @@ import {
   readJson,
 } from '@/lib/server/http';
 import { getWorkspaceEntitlements } from '@/lib/billing/server';
+import { invitationEmailConfigured, sendInvitationEmail } from '@/lib/server/invitation-mail';
 import {
   organizationDefaults,
   organizationDefaultsSchema,
@@ -37,6 +38,7 @@ const operationSchema = z.discriminatedUnion('action', [
       workspaceId: uuid,
       email: z.string().email().max(254),
       role: memberRole,
+      sendEmail: z.boolean().optional().default(false),
     })
     .strict(),
   z
@@ -104,6 +106,8 @@ export async function GET(request: Request) {
               'Workspace member',
           })),
           invitations: invitations.data,
+          invitationEmailAvailable:
+            ['owner', 'admin'].includes(role) && invitationEmailConfigured(),
         },
         { headers: { 'Cache-Control': 'private, no-store' } },
       );
@@ -164,7 +168,22 @@ export async function POST(request: Request) {
     }
     const input: Record<string, unknown> = { ...body };
     let token: string | undefined;
+    let invitationWorkspaceName = '';
     if (body.action === 'invite') {
+      const { workspace, role } = await requireWorkspace(body.workspaceId, {
+        roles: ['owner', 'admin'],
+      });
+      const entitlements = await getWorkspaceEntitlements(body.workspaceId);
+      if (workspace.kind !== 'organization' || !entitlements.features.teamWorkspaces)
+        throw new HttpError(
+          403,
+          'Les invitations nécessitent une organisation avec un forfait Team actif.',
+        );
+      if (role !== 'owner' && body.role === 'admin')
+        throw new HttpError(403, 'Seul le propriétaire peut inviter un administrateur.');
+      if (body.sendEmail) await durableRateLimit(user.id, 'workspace-invitation-email', 5, 60);
+      invitationWorkspaceName = workspace.name;
+      delete input.sendEmail;
       token = randomBytes(32).toString('hex');
       input.tokenHash = createHash('sha256').update(token).digest('hex');
     }
@@ -179,10 +198,21 @@ export async function POST(request: Request) {
       p_input: input,
     });
     if (error) throw databaseError(error);
-    if (token) {
+    if (token && body.action === 'invite') {
       const inviteUrl = new URL('/', process.env.NEXT_PUBLIC_APP_URL || request.url);
       inviteUrl.searchParams.set('invite', token);
-      return NextResponse.json({ ...data, inviteUrl: inviteUrl.toString() });
+      const emailStatus = body.sendEmail
+        ? await sendInvitationEmail({
+            invitationId: data.invitation.id,
+            email: data.invitation.email,
+            workspaceName: invitationWorkspaceName,
+            inviteUrl: inviteUrl.toString(),
+          })
+        : 'not_requested';
+      return NextResponse.json(
+        { ...data, inviteUrl: inviteUrl.toString(), emailStatus },
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
     }
     return NextResponse.json(data);
   } catch (error) {
