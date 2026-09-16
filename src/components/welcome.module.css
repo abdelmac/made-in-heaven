@@ -8,25 +8,92 @@
   border-radius: var(--radius, 16px);
   background: var(--surface);
 }
-.welcome > div { flex: 1; min-width: 0; }
-.welcome h2 { font-size: 19px; margin: 0 0 6px; }
-.welcome p, .next p { margin: 6px 0; }
-.summary { margin: 22px 0; }
-.period { display: flex; flex-wrap: wrap; gap: 4px; }
-.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 8px 0 18px; }
-.metrics div { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.metrics strong { font-size: 26px; font-weight: 600; }
-.metrics span { font-size: 13px; }
-.next { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-.next > div:first-child { flex: 1; min-width: 150px; overflow-wrap: anywhere; }
-.starterForm { display: grid; gap: 18px; }
-.schedule { border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.schedule legend { padding: 0 6px; }
+.welcome > div {
+  flex: 1;
+  min-width: 0;
+}
+.welcome h2 {
+  font-size: 19px;
+  margin: 0 0 6px;
+}
+.welcome p,
+.next p {
+  margin: 6px 0;
+}
+.summary {
+  margin: 22px 0;
+}
+.period {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 8px 0 18px;
+}
+.metrics div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+.metrics strong {
+  font-size: 26px;
+  font-weight: 600;
+}
+.metrics span {
+  font-size: 13px;
+}
+.next {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.next > div:first-child {
+  flex: 1;
+  min-width: 150px;
+  overflow-wrap: anywhere;
+}
+.starterForm {
+  display: grid;
+  gap: 18px;
+}
+.schedule {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.schedule legend {
+  padding: 0 6px;
+}
 @media (max-width: 600px) {
-  .welcome { flex-wrap: wrap; padding: 18px; }
-  .welcome > div { flex-basis: calc(100% - 48px); }
-  .welcome > button { width: 100%; }
-  .metrics { gap: 10px; }
-  .metrics strong { font-size: 22px; }
-  .schedule { grid-template-columns: 1fr; }
+  .welcome {
+    flex-wrap: wrap;
+    padding: 18px;
+  }
+  .welcome > div {
+    flex-basis: calc(100% - 48px);
+  }
+  .welcome > button {
+    width: 100%;
+  }
+  .metrics {
+    gap: 10px;
+  }
+  .metrics strong {
+    font-size: 22px;
+  }
+  .schedule {
+    grid-template-columns: 1fr;
+  }
 }

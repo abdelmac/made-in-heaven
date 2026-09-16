@@ -54,7 +54,7 @@ test('a complete personal journey preserves planning, development and actual foc
   await expect(dialog).not.toBeVisible();
   await expect(page.getByRole('button', { name: 'Interface research', exact: true })).toBeVisible();
 
-  await openView(page, "tâches");
+  await openView(page, "tasks");
   await page.getByRole('button', { name: "Nouvelle tâche", exact: true }).first().click();
   dialog = page.getByRole('dialog');
   await dialog.getByLabel("Titre de la tâche", { exact: true }).fill('Draft the interface');
@@ -77,7 +77,7 @@ test('a complete personal journey preserves planning, development and actual foc
   const checklistItem = dialog.getByRole('checkbox', { name: 'Capture the main flow' });
   await checklistItem.click();
   await expect(checklistItem).toBeChecked();
-  await expect(dialog.getByText('1 of 1 complete')).toBeVisible();
+  await expect(dialog.getByText('1 sur 1 terminés')).toBeVisible();
   await dialog.getByRole('button', { name: "Développement", exact: true }).click();
   await dialog
     .getByRole('textbox', { name: "Note de travail", exact: true })
@@ -121,7 +121,7 @@ test('a complete personal journey preserves planning, development and actual foc
     .poll(
       async () =>
         (await readData(page)).focusSessions.filter(
-          (session) => session.status === "réalisés" && session.phase === 'focus',
+          (session) => session.status === "completed" && session.phase === 'focus',
         ).length,
     )
     .toBe(1);
@@ -147,13 +147,13 @@ test('a complete personal journey preserves planning, development and actual foc
   expect(reflection.kind).toBe('session_reflection');
   await openView(page, 'history');
   await expect(
-    page.locator('.history-panel').getByText('focus completed', { exact: true }),
+    page.locator('.history-panel').getByText('Séance terminée', { exact: true }),
   ).toBeVisible();
   await openView(page, 'subjects');
   await page.getByRole('button', { name: 'Interface research', exact: true }).click();
   dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: "Historique de la matière", exact: true }).click();
-  await expect(dialog.getByText('focus completed', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Séance terminée', { exact: true })).toBeVisible();
 });
 
 test('overlap errors retain the editor and preserve the original plan', async ({ page }) => {
@@ -170,7 +170,7 @@ test('overlap errors retain the editor and preserve the original plan', async ({
     if (title === 'First block') await expect(dialog).not.toBeVisible();
     else {
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole('alert')).toContainText('overlap');
+      await expect(dialog.getByRole('alert')).toContainText('chevauche');
     }
   }
   expect((await readData(page)).plannedSessions.map((session) => session.title)).toEqual([
@@ -182,23 +182,23 @@ test('local development templates create a checklist without inventing analytics
   page,
 }) => {
   await startFresh(page);
-  await openView(page, "tâches");
+  await openView(page, "tasks");
   await page.getByRole('button', { name: "Nouvelle tâche", exact: true }).first().click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel("Titre de la tâche", { exact: true }).fill('Build the settings screen');
   await dialog.getByLabel("Utiliser un modèle").selectOption('Software development');
   await expect(
     dialog.getByRole('textbox', { name: "Description (Markdown accepté)", exact: true }),
-  ).toHaveValue(/Acceptance criteria/);
+  ).toHaveValue(/Critères d'acceptation/);
   await dialog.getByRole('button', { name: "Nouvelle tâche", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   const data = await readData(page);
   expect(data.tasks[0].checklist.map((item) => item.text)).toEqual([
-    'Clarify acceptance criteria',
-    'Implement the change',
-    'Add meaningful tests',
-    'Run checks',
-    'Review the result',
+    "Clarifier les critères d'acceptation",
+    'Réaliser la modification',
+    'Ajouter des tests pertinents',
+    'Exécuter les vérifications',
+    'Examiner le résultat',
   ]);
   expect(new Set(data.tasks[0].checklist.map((item) => item.id)).size).toBe(5);
   expect(data.focusSessions).toHaveLength(0);
@@ -240,7 +240,7 @@ test('appearance persists, invalid imports change no data, and dialogs restore f
   await expect(page.getByRole('dialog', { name: "Vérifiez votre import" })).not.toBeVisible();
   await expect(page.getByRole('alert').first()).toBeVisible();
   expect(await readData(page)).toEqual(before);
-  await openView(page, "tâches");
+  await openView(page, "tasks");
   const trigger = page.getByRole('button', { name: "Nouvelle tâche", exact: true }).first();
   await trigger.click();
   const dialog = page.getByRole('dialog');
@@ -299,14 +299,14 @@ test('reset and skip require confirmation and never count as completed Pomodoros
   await dialog.getByRole('button', { name: "Passer cette phase", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   const data = await readData(page);
-  expect(data.focusSessions.map((session) => session.status)).toEqual(["interrompu", "passé"]);
+  expect(data.focusSessions.map((session) => session.status)).toEqual(["interrupted", "skipped"]);
   expect(data.timer).toMatchObject({ phase: 'shortBreak', status: 'idle', cycleCount: 0 });
 });
 
 for (const width of [320, 390, 768, 1024, 1440]) {
   test(`layout keeps page content within the ${width}px viewport`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const view of ['overview', "tâches", 'planner', 'subjects', 'settings']) {
+    for (const view of ['overview', "tasks", 'planner', 'subjects', 'settings']) {
       await openView(page, view);
       const overflow = await page.evaluate(() => ({
         document: document.documentElement.scrollWidth,

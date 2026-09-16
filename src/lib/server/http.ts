@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+import { localizeError } from '@/lib/i18n/errors';
 
 export class HttpError extends Error {
   constructor(
@@ -54,17 +55,20 @@ export async function readJson(request: Request, maxBytes = 2_000_000): Promise<
 
 export function handleApiError(error: unknown) {
   if (error instanceof HttpError)
-    return NextResponse.json({ error: error.message }, { status: error.status });
+    return NextResponse.json({ error: localizeError(error.message) }, { status: error.status });
   if (error instanceof ZodError)
     return NextResponse.json(
       {
-        error: 'Please check the submitted values.',
-        issues: error.issues.map((issue) => ({ path: issue.path, message: issue.message })),
+        error: 'Vérifiez les informations saisies.',
+        issues: error.issues.map((issue) => ({
+          path: issue.path,
+          message: localizeError(issue.message),
+        })),
       },
       { status: 400 },
     );
   return NextResponse.json(
-    { error: 'Folia could not finish this request. Please try again.' },
+    { error: 'Solace n’a pas pu terminer cette opération. Réessayez.' },
     { status: 500 },
   );
 }

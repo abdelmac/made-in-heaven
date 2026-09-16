@@ -664,7 +664,8 @@ export function createDemoData(now = new Date()): WorkspaceData {
     ...task,
     id: id(),
     workspaceId: data.workspaceId,
-    description: 'Ceci est une tâche d’exemple. Adaptez-la ou créez un espace vide dans les réglages.',
+    description:
+      'Ceci est une tâche d’exemple. Adaptez-la ou créez un espace vide dans les réglages.',
     tags: [],
     checklist: [{ id: id(), text: 'Définir la prochaine petite étape', done: false }],
     resources: [],

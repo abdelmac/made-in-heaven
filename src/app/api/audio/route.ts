@@ -5,10 +5,12 @@ import { getWorkspaceEntitlements } from '@/lib/billing/server';
 import { getAdminSupabase } from '@/lib/supabase/server';
 import { databaseError, handleApiError, HttpError } from '@/lib/server/http';
 
-const querySchema = z.object({
-  workspaceId: z.string().uuid(),
-  trackId: z.string().uuid().optional(),
-}).strict();
+const querySchema = z
+  .object({
+    workspaceId: z.string().uuid(),
+    trackId: z.string().uuid().optional(),
+  })
+  .strict();
 const noStore = { 'Cache-Control': 'private, no-store' };
 
 export async function GET(request: Request) {
@@ -22,19 +24,28 @@ export async function GET(request: Request) {
     const db = getAdminSupabase();
     if (!db) throw new HttpError(503, 'Le catalogue audio est indisponible.');
     if (!query.trackId) {
-      const { data, error } = await db.from('audio_tracks')
+      const { data, error } = await db
+        .from('audio_tracks')
         .select('id,title,attribution,duration_seconds,category')
-        .eq('active', true).order('title').limit(100);
+        .eq('active', true)
+        .order('title')
+        .limit(100);
       if (error) throw databaseError(error);
       return NextResponse.json({ tracks: data }, { headers: noStore });
     }
-    const { data: track, error } = await db.from('audio_tracks')
-      .select('id,storage_path').eq('id', query.trackId).eq('active', true).maybeSingle();
+    const { data: track, error } = await db
+      .from('audio_tracks')
+      .select('id,storage_path')
+      .eq('id', query.trackId)
+      .eq('active', true)
+      .maybeSingle();
     if (error) throw databaseError(error);
     if (!track) throw new HttpError(404, 'Cette piste n’est plus disponible.');
     const { data: signed, error: signingError } = await db.storage
-      .from('pro-audio').createSignedUrl(track.storage_path, 120);
-    if (signingError || !signed) throw new HttpError(503, 'Impossible de préparer cette piste. Réessayez.');
+      .from('pro-audio')
+      .createSignedUrl(track.storage_path, 120);
+    if (signingError || !signed)
+      throw new HttpError(503, 'Impossible de préparer cette piste. Réessayez.');
     return NextResponse.json({ url: signed.signedUrl, expiresIn: 120 }, { headers: noStore });
   } catch (error) {
     const response = handleApiError(error);

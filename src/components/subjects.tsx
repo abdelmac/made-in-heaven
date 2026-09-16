@@ -1,5 +1,7 @@
 'use client';
 import { ui } from '@/lib/i18n/ui';
+import { localizeError } from '@/lib/i18n/errors';
+import { eventLabel } from '@/lib/i18n/dynamic';
 
 import { useState, type FormEvent } from 'react';
 import {
@@ -124,7 +126,7 @@ export function SubjectCard({ subject, compact = false }: { subject: Subject; co
         {subject.completedAt && <span className="badge">{learning.completedAt}</span>}
         <button
           className="icon-button"
-          aria-label={`Open ${subject.name}`}
+          aria-label={`Ouvrir ${subject.name}`}
           onClick={() => openSubject(subject.id)}
         >
           <ArrowUpRight size={18} />
@@ -557,7 +559,7 @@ export function SubjectEditor({ subjectId, onClose }: { subjectId?: string; onCl
                       {canEdit && (
                         <>
                           <IconButton
-                            label={`Edit ${p.name}`}
+                            label={`Modifier ${p.name}`}
                             onClick={() => {
                               setProjectEditId(p.id);
                               setProject(true);
@@ -566,7 +568,7 @@ export function SubjectEditor({ subjectId, onClose }: { subjectId?: string; onCl
                             <Pencil size={14} />
                           </IconButton>
                           <IconButton
-                            label={`${p.archived ? 'Restore' : 'Archive'} ${p.name}`}
+                            label={`${p.archived ? 'Restaurer' : 'Archiver'} ${p.name}`}
                             onClick={() => setProjectArchive(p)}
                           >
                             {p.archived ? <ArchiveRestore size={14} /> : <Archive size={14} />}
@@ -661,7 +663,7 @@ export function SubjectEditor({ subjectId, onClose }: { subjectId?: string; onCl
                     <div className="timeline-item" key={e.id}>
                       <span className="timeline-dot" />
                       <div>
-                        <strong>{e.type.replaceAll('_', ' ')}</strong>
+                        <strong>{eventLabel(e.type)}</strong>
                         <p>
                           {e.taskTitle && `${e.taskTitle} · `}
                           {e.details}
@@ -700,13 +702,13 @@ export function SubjectEditor({ subjectId, onClose }: { subjectId?: string; onCl
       )}
       {projectArchive && subject && (
         <Dialog
-          title={`${projectArchive.archived ? 'Restore' : 'Archive'} this project?`}
+          title={`${projectArchive.archived ? 'Restaurer' : 'Archiver'} ce projet ?`}
           onClose={() => setProjectArchive(null)}
         >
           <p>{ui.subjects.itsTasksAndCompletedFocusHistoryWillBePreserved}</p>
           {store.error && (
             <p className="error" role="alert">
-              {store.error}
+              {localizeError(store.error)}
             </p>
           )}
           <div className="form-actions">
@@ -722,7 +724,7 @@ export function SubjectEditor({ subjectId, onClose }: { subjectId?: string; onCl
                   addEvent(
                     draft,
                     'subject_updated',
-                    `${record.archived ? 'Archived' : 'Restored'} project: ${record.name}`,
+                    `Projet ${record.archived ? 'archivé' : 'restauré'} : ${record.name}`,
                     { subjectId: subject.id, projectId: record.id, userId: store.user?.id },
                   );
                 });
@@ -741,7 +743,7 @@ export function SubjectEditor({ subjectId, onClose }: { subjectId?: string; onCl
         >
           {store.error && (
             <p className="error" role="alert">
-              {store.error}
+              {localizeError(store.error)}
             </p>
           )}
           <p>

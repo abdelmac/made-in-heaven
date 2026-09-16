@@ -1,5 +1,7 @@
 'use client';
 import { ui } from '@/lib/i18n/ui';
+import { localizeError } from '@/lib/i18n/errors';
+import { eventLabel } from '@/lib/i18n/dynamic';
 
 import { useEffect, useMemo, useState } from 'react';
 import { paid } from '@/lib/i18n/paid';
@@ -39,7 +41,7 @@ export function SummaryCards() {
     {
       label: en.overview.today,
       value: minutesLabel(metrics.todayMinutes),
-      detail: `${metrics.todayCount} completed ${metrics.todayCount === 1 ? 'session' : 'sessions'}`,
+      detail: `${metrics.todayCount} séance${metrics.todayCount === 1 ? '' : 's'} terminée${metrics.todayCount === 1 ? '' : 's'}`,
       Icon: Clock3,
     },
     {
@@ -52,7 +54,7 @@ export function SummaryCards() {
     {
       label: en.overview.week,
       value: minutesLabel(metrics.weekMinutes),
-      detail: `${metrics.weekCount} sessions this week`,
+      detail: `${metrics.weekCount} séance${metrics.weekCount === 1 ? '' : 's'} cette semaine`,
       Icon: CalendarDays,
     },
     {
@@ -161,7 +163,7 @@ export function ActivityHeatmap({
   const selected =
     selectedDay?.scope === scope ? days.find((day) => day.date === selectedDay.date) : null;
   const minuteMode = data.preferences.heatmapMode === 'minutes';
-  const monthLabel = new Intl.DateTimeFormat('en-US', {
+  const monthLabel = new Intl.DateTimeFormat('fr-FR', {
     month: 'long',
     year: 'numeric',
     timeZone: 'UTC',
@@ -183,7 +185,7 @@ export function ActivityHeatmap({
               ? 3
               : 4
       : Math.min(4, day.count);
-    const label = `${day.date}: ${day.count} completed focus sessions, ${Math.round(day.minutes)} minutes${day.future ? ', future date' : ''}`;
+    const label = `${day.date}: ${day.count} séances de concentration terminées, ${Math.round(day.minutes)} minutes${day.future ? ', date future' : ''}`;
     return (
       <button
         type="button"
@@ -212,15 +214,15 @@ export function ActivityHeatmap({
   }
   const weekdays =
     data.preferences.weekStartsOn === 1
-      ? ['Mon', '', 'Wed', '', 'Fri', '', 'Sun']
-      : ['Sun', '', 'Tue', '', 'Thu', '', 'Sat'];
+      ? ['lun.', '', 'mer.', '', 'ven.', '', 'dim.']
+      : ['dim.', '', 'mar.', '', 'jeu.', '', 'sam.'];
   const months =
     view === 'year'
       ? Array.from({ length: 52 }, (_, i) => {
           const date = new Date(days[i * 7].date + 'T12:00Z');
           const previous = i ? new Date(days[(i - 1) * 7].date + 'T12:00Z') : null;
           return !previous || date.getUTCMonth() !== previous.getUTCMonth()
-            ? new Intl.DateTimeFormat('en', { month: 'short', timeZone: 'UTC' }).format(date)
+            ? new Intl.DateTimeFormat('fr-FR', { month: 'short', timeZone: 'UTC' }).format(date)
             : '';
         })
       : [];
@@ -361,7 +363,7 @@ export function ActivityHeatmap({
                   ? ['0 minutes', '1–25 minutes', '26–50 minutes', '51–75 minutes', '76+ minutes'][
                       i
                     ]
-                  : `${i}${i === 4 ? '+' : ''} completed sessions`
+                  : `${i}${i === 4 ? '+' : ''} séances terminées`
               }
             />
           ))}
@@ -464,7 +466,7 @@ export function HistoryPage() {
     );
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'folia-history.json';
+    a.download = 'solace-historique.json';
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -547,7 +549,7 @@ export function HistoryPage() {
             .sort()
             .map((type) => (
               <option key={type} value={type}>
-                {type.replaceAll('_', ' ')}
+                {eventLabel(type)}
               </option>
             ))}
         </select>
@@ -606,7 +608,7 @@ export function HistoryPage() {
               </span>
               <div>
                 <div className="row wrap">
-                  <strong>{e.type.replaceAll('_', ' ')}</strong>
+                  <strong>{eventLabel(e.type)}</strong>
                   {e.subjectName && <span className="badge">{e.subjectName}</span>}
                 </div>
                 {e.taskTitle && (
@@ -747,7 +749,7 @@ export function AnalyticsPage() {
           setRemote({
             key: requestKey,
             workspaceId: store.workspaceId,
-            error: body.error || paid.analyticsUnavailable,
+            error: localizeError(body.error || paid.analyticsUnavailable),
             denied: response.status === 403,
           });
           return;
@@ -759,7 +761,9 @@ export function AnalyticsPage() {
           setRemote({
             key: requestKey,
             workspaceId: store.workspaceId,
-            error: cause instanceof Error ? cause.message : paid.analyticsUnavailable,
+            error: localizeError(
+              cause instanceof Error ? cause.message : paid.analyticsUnavailable,
+            ),
           });
       });
     return () => controller.abort();

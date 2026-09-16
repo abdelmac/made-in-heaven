@@ -1,5 +1,7 @@
 'use client';
 import { ui } from '@/lib/i18n/ui';
+import { localizeError } from '@/lib/i18n/errors';
+import { themeLabels, widgetLabels } from '@/lib/i18n/dynamic';
 
 import { useState, useRef, useEffect, type FormEvent } from 'react';
 import {
@@ -219,11 +221,11 @@ export function SettingsPage() {
             <Panel title={en.settings.custom} subtitle={en.settings.customHint}>
               <div className="form-grid">
                 {(['accent', 'background', 'surface', 'border', 'text'] as const).map((key) => (
-                  <Field key={key} label={key.charAt(0).toUpperCase() + key.slice(1)}>
+                  <Field key={key} label={themeLabels[key]}>
                     <div className="color-input">
                       <input
                         type="color"
-                        aria-label={key.charAt(0).toUpperCase() + key.slice(1)}
+                        aria-label={themeLabels[key]}
                         value={custom[key]}
                         onChange={(e) => {
                           const next = { ...custom, [key]: e.target.value };
@@ -242,7 +244,7 @@ export function SettingsPage() {
                   <label key={index}>
                     <input
                       type="color"
-                      aria-label={`Heatmap intensity ${index}`}
+                      aria-label={`Intensité d’activité ${index}`}
                       value={color}
                       onChange={(e) => {
                         const next = {
@@ -407,7 +409,7 @@ export function SettingsPage() {
                     {ui.settings.apply}
                   </Button>
                   <IconButton
-                    label={`Delete preset ${preset.name}`}
+                    label={`Supprimer le préréglage ${preset.name}`}
                     onClick={() =>
                       set(
                         'presets',
@@ -490,7 +492,15 @@ export function SettingsPage() {
                 <Field label={en.settings.dateFormat}>
                   <select name="dateFormat" defaultValue={p.dateFormat}>
                     {['MMM d, yyyy', 'dd/MM/yyyy', 'MM/dd/yyyy', 'yyyy-MM-dd'].map((v) => (
-                      <option key={v}>{v}</option>
+                      <option key={v} value={v}>
+                        {v === 'MMM d, yyyy'
+                          ? '16 sept. 2026'
+                          : v === 'dd/MM/yyyy'
+                            ? '16/09/2026'
+                            : v === 'MM/dd/yyyy'
+                              ? '09/16/2026'
+                              : '2026-09-16'}
+                      </option>
                     ))}
                   </select>
                 </Field>
@@ -556,18 +566,18 @@ export function SettingsPage() {
                         )
                       }
                     />
-                    {widget.charAt(0).toUpperCase() + widget.slice(1)}
+                    {widgetLabels[widget]}
                   </label>
                   <div className="row">
                     <IconButton
-                      label={`Move ${widget} up`}
+                      label={`Monter ${widgetLabels[widget]}`}
                       disabled={index === 0 || !p.widgets.includes(widget)}
                       onClick={() => moveWidget(widget, index - 1)}
                     >
                       <ArrowUp size={16} />
                     </IconButton>
                     <IconButton
-                      label={`Move ${widget} down`}
+                      label={`Descendre ${widgetLabels[widget]}`}
                       disabled={index >= p.widgets.length - 1 || !p.widgets.includes(widget)}
                       onClick={() => moveWidget(widget, index + 1)}
                     >
@@ -612,7 +622,7 @@ export function SettingsPage() {
                   {ui.settings.apply}
                 </Button>
                 <IconButton
-                  label={`Delete layout ${layout.name}`}
+                  label={`Supprimer la disposition ${layout.name}`}
                   onClick={() =>
                     set(
                       'savedLayouts',
@@ -662,7 +672,9 @@ export function SettingsPage() {
                       try {
                         store.previewImport(await f.text());
                       } catch (error) {
-                        notify(error instanceof Error ? error.message : String(error));
+                        notify(
+                          localizeError(error instanceof Error ? error.message : String(error)),
+                        );
                       }
                     }
                     e.target.value = '';
@@ -697,7 +709,7 @@ export function SettingsPage() {
       </div>
       {store.importPreview && (
         <Dialog title={ui.settings.reviewYourImport} onClose={store.cancelImport}>
-          <p>{store.importPreview.warning}</p>
+          <p>{localizeError(store.importPreview.warning)}</p>
           <div className="mini-metrics">
             <div>
               <strong>{store.importPreview.subjects}</strong>
@@ -817,7 +829,11 @@ export function AccountPanel() {
         notify(ui.settings.signedInYourWorkspaceConnectionStatusAppearsBelow);
       }
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : ui.settings.unableToCompleteYourRequest);
+      setMessage(
+        localizeError(
+          error instanceof Error ? error.message : ui.settings.unableToCompleteYourRequest,
+        ),
+      );
     } finally {
       setBusy(false);
     }
@@ -865,7 +881,7 @@ export function AccountPanel() {
       setMode('signIn');
       notify(ui.settings.signedOutAccountDataClearedFromThisDevice);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
+      setMessage(localizeError(error instanceof Error ? error.message : String(error)));
     } finally {
       setBusy(false);
     }
@@ -886,7 +902,7 @@ export function AccountPanel() {
       if (!response.ok) throw new Error(body.error || 'Your display name could not be saved.');
       notify(ui.settings.accountSettingsSaved);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
+      setMessage(localizeError(error instanceof Error ? error.message : String(error)));
     } finally {
       setBusy(false);
     }
@@ -914,7 +930,7 @@ export function AccountPanel() {
       setConfirmation('');
       notify(ui.settings.yourAccountHasBeenDeleted);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : String(error));
+      setMessage(localizeError(error instanceof Error ? error.message : String(error)));
     } finally {
       setBusy(false);
     }

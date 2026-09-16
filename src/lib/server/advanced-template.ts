@@ -2,14 +2,14 @@ import 'server-only';
 
 export const SOFTWARE_DEVELOPMENT_TEMPLATE = {
   id: 'software-development' as const,
-  title: 'Software development',
-  description: '## Acceptance criteria\n\n- \n\n## Implementation notes\n\n## Repository\n\n',
+  title: 'Développement logiciel',
+  description: "## Critères d'acceptation\n\n- \n\n## Notes de réalisation\n\n## Dépôt\n\n",
   checklist: [
-    'Clarify acceptance criteria',
-    'Implement the change',
-    'Add meaningful tests',
-    'Run checks',
-    'Review the result',
+    "Clarifier les critères d'acceptation",
+    'Réaliser la modification',
+    'Ajouter des tests pertinents',
+    'Exécuter les vérifications',
+    'Examiner le résultat',
   ].map((text) => ({ text, done: false as const })),
   resources: [],
 };

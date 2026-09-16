@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createDemoData, id, type WorkspaceData } from '../src/lib/model';
 import { contrastRatio } from '../src/lib/calendar';
+import { plannerCopy } from '../src/lib/i18n/planner';
 
 test.use({ viewport: { width: 1280, height: 1200 } });
 
@@ -66,12 +67,12 @@ test('dragging a session moves its date/time and preserves its context after rel
   ).toHaveLength(1);
   await page.reload();
   await expect(page.locator('[data-planner-slot="2026-09-15:13"]')).toHaveAccessibleName(
-    /45 planned minutes/,
+    /45 minutes planifiées/,
   );
   expect((await readData(page)).focusSessions).toHaveLength(0);
   for (const mode of ['light', 'dark']) {
     if ((await page.locator('html').getAttribute('data-theme')) !== mode)
-      await page.getByRole('button', { name: "Basculer entre le mode clair et sombre" }).click();
+      await page.getByRole('button', { name: 'Basculer entre le mode clair et sombre' }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', mode);
     const colors = await page.locator('[data-planner-slot="2026-09-15:13"]').evaluate((cell) => {
       const style = getComputedStyle(cell);
@@ -96,10 +97,12 @@ test('an overlapping drop keeps the original session and reports the conflict', 
   await page
     .locator(`[data-plan-id="${original.id}"]`)
     .dragTo(page.locator('[data-planner-slot="2026-09-14:11"]'));
-  await expect(page.locator('.full-planner').getByRole('alert')).toContainText('overlap');
+  await expect(page.locator('.full-planner').getByRole('alert')).toContainText(plannerCopy.overlap);
   expect((await readData(page)).plannedSessions[0]).toEqual(original);
   await page.keyboard.press('Escape');
-  await expect(page.getByRole('button', { name: "Annuler le déplacement", exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: 'Annuler le déplacement', exact: true }),
+  ).toHaveCount(0);
 });
 
 test('a foreign drag payload cannot change the schedule', async ({ page }) => {
@@ -134,7 +137,9 @@ test('tasks can be dragged to the grid and sessions can also move using the keyb
     startsAt: '2026-09-14T14:00:00.000Z',
     completed: false,
   });
-  await page.getByRole('button', { name: `Move ${task.title}`, exact: true }).focus();
+  await page
+    .getByRole('button', { name: `${plannerCopy.move} ${task.title}`, exact: true })
+    .focus();
   await page.keyboard.press('Enter');
   await page.locator('[data-planner-slot="2026-09-16:15"]').focus();
   await page.keyboard.press('Enter');
@@ -145,7 +150,7 @@ test('tasks can be dragged to the grid and sessions can also move using the keyb
     )
     .toBe('2026-09-16T15:00:00.000Z');
   await page.locator(`[data-plan-id="${planned.id}"]`).click();
-  await expect(page.getByRole('dialog').getByLabel("Durée (minutes)")).toHaveValue('40');
+  await expect(page.getByRole('dialog').getByLabel('Durée (minutes)')).toHaveValue('40');
 });
 
 test.describe('touch planning', () => {

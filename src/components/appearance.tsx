@@ -1,5 +1,7 @@
 'use client';
 import { ui } from '@/lib/i18n/ui';
+import { localizeError } from '@/lib/i18n/errors';
+import { colorLabels, backgroundLabels } from '@/lib/i18n/dynamic';
 
 import { useEffect, useRef, useState } from 'react';
 import { Check, ImagePlus, Palette, RotateCcw, Sparkles } from 'lucide-react';
@@ -51,7 +53,7 @@ export function ClassicColors() {
             <span style={{ backgroundColor: choice.color }}>
               {p.accent === accent && !p.accentColor && !p.customTheme && <Check size={15} />}
             </span>
-            {choice.name}
+            {colorLabels[accent]}
           </button>
         ))}
       </div>
@@ -161,8 +163,8 @@ export function BackgroundPanel() {
             <span className="background-thumbnail" style={{ backgroundImage: choice.css }}>
               {draft.kind === 'preset' && draft.preset === preset && <Check size={17} />}
             </span>
-            <strong>{choice.name}</strong>
-            <small>{choice.description}</small>
+            <strong>{backgroundLabels[preset].name}</strong>
+            <small>{backgroundLabels[preset].description}</small>
           </button>
         ))}
       </div>
@@ -200,7 +202,7 @@ export function BackgroundPanel() {
               if (generation === uploadGeneration.current)
                 setError(
                   reason instanceof Error
-                    ? reason.message
+                    ? localizeError(reason.message)
                     : ui.appearance.theImageCouldNotBePrepared,
                 );
             } finally {
@@ -235,7 +237,7 @@ export function BackgroundPanel() {
         </p>
       )}
       <div className="form-grid background-controls">
-        <Field label={`Background dimming: ${draft.overlay}%`}>
+        <Field label={`Assombrissement de l’arrière-plan : ${draft.overlay}%`}>
           <input
             type="range"
             min={40}
@@ -244,7 +246,7 @@ export function BackgroundPanel() {
             onChange={(event) => change({ ...draft, overlay: Number(event.target.value) })}
           />
         </Field>
-        <Field label={`Background blur: ${draft.blur}px`}>
+        <Field label={`Flou de l’arrière-plan : ${draft.blur}px`}>
           <input
             type="range"
             min={0}

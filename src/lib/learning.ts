@@ -48,7 +48,7 @@ export function completeSubject(
     saveNoteSheet(
       data,
       {
-        title: `Completed: ${subject.name}`,
+        title: `Bilan : ${subject.name}`,
         content: summary,
         kind: 'subject_completion',
         subjectId,

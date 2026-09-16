@@ -47,6 +47,7 @@ import { createBrowserSupabase } from './supabase/browser';
 import { findOverlap } from './calendar';
 import type { Entitlements } from './billing/entitlements';
 import { fetchWorkspaceSnapshot, makeDocumentPatch } from './sync-transfer';
+import { localizeError } from './i18n/errors';
 
 export type WorkspaceSummary = {
   icon?: string;
@@ -78,10 +79,10 @@ const localWorkspace = (workspaceId: string): WorkspaceSummary => ({
 });
 function errorMessage(error: unknown) {
   if (error instanceof ZodError)
-    return [...new Set(error.issues.map((issue) => issue.message))].join(' ');
+    return [...new Set(error.issues.map((issue) => localizeError(issue.message)))].join(' ');
   return error instanceof Error
-    ? error.message
-    : 'Something went wrong. Your last saved data has been preserved.';
+    ? localizeError(error.message)
+    : 'Une erreur est survenue. Vos dernières données enregistrées sont conservées.';
 }
 function unionRecords<T extends { id: string }>(remote: T[], local: T[]) {
   return [...new Map([...remote, ...local].map((record) => [record.id, record])).values()];
@@ -92,7 +93,8 @@ function fetchFoliaApi(input: string, init: RequestInit = {}) {
   headers.set('X-Folia-Document-Version', '2');
   if (input.startsWith('/api/sync?') && (!init.method || init.method === 'GET')) {
     const workspace = new URL(input, window.location.origin).searchParams.get('workspaceId');
-    if (workspace) return fetchWorkspaceSnapshot(workspace).then((snapshot) => Response.json(snapshot));
+    if (workspace)
+      return fetchWorkspaceSnapshot(workspace).then((snapshot) => Response.json(snapshot));
   }
   return fetch(input, { ...init, headers });
 }
@@ -153,28 +155,48 @@ export function useFolia() {
       setSaveStatus('saving');
       let method = 'PUT';
       let requestBody = JSON.stringify({
-        ...(operation.kind === 'preferences' ? { preferences: operation.data.preferences } : { data: operation.data }),
+        ...(operation.kind === 'preferences'
+          ? { preferences: operation.data.preferences }
+          : { data: operation.data }),
         expectedVersion: operation.expectedVersion,
         operationId: operation.id,
       });
       const transferKey = `${storageKey(currentWorkspace, account.id)}:patch`;
       // Persist the exact compact request before sending, so a lost response can be
       // replayed even after another device has saved a newer document.
-      if (operation.kind !== 'preferences' && new TextEncoder().encode(requestBody).length > 450_000) {
+      if (
+        operation.kind !== 'preferences' &&
+        new TextEncoder().encode(requestBody).length > 450_000
+      ) {
         const cached = localStorage.getItem(transferKey);
         const cachedBody = cached ? JSON.parse(cached) : null;
-        if (cachedBody?.operationId === operation.id && cachedBody?.expectedVersion === operation.expectedVersion) {
+        if (
+          cachedBody?.operationId === operation.id &&
+          cachedBody?.expectedVersion === operation.expectedVersion
+        ) {
           requestBody = cached!;
         } else {
           const remote = await fetchWorkspaceSnapshot(currentWorkspace);
           if (token !== generation.current) return;
           if (remote.version !== operation.expectedVersion) {
-            showConflict({ ...remote, scope: 'cloud', localData: dataRef.current, storageVersion: loadLocal(storageKey(currentWorkspace, account.id))?.version, kind: 'document' });
+            showConflict({
+              ...remote,
+              scope: 'cloud',
+              localData: dataRef.current,
+              storageVersion: loadLocal(storageKey(currentWorkspace, account.id))?.version,
+              kind: 'document',
+            });
             setSaveStatus('conflict');
-            setError('Un autre appareil a modifié cet espace. Choisissez comment résoudre le conflit.');
+            setError(
+              'Un autre appareil a modifié cet espace. Choisissez comment résoudre le conflit.',
+            );
             return;
           }
-          requestBody = JSON.stringify({ patch: makeDocumentPatch(remote.data, operation.data), expectedVersion: operation.expectedVersion, operationId: operation.id });
+          requestBody = JSON.stringify({
+            patch: makeDocumentPatch(remote.data, operation.data),
+            expectedVersion: operation.expectedVersion,
+            operationId: operation.id,
+          });
           localStorage.setItem(transferKey, requestBody);
         }
         method = 'PATCH';
@@ -232,7 +254,8 @@ export function useFolia() {
           : undefined,
       );
       if (token !== generation.current) return;
-      if (method === 'PATCH' && localStorage.getItem(transferKey) === requestBody) localStorage.removeItem(transferKey);
+      if (method === 'PATCH' && localStorage.getItem(transferKey) === requestBody)
+        localStorage.removeItem(transferKey);
       const pending = readPending(account.id, currentWorkspace);
       if (!pending) {
         setSaveStatus('saved');
@@ -969,7 +992,7 @@ export function useFolia() {
   return {
     data,
     ready,
-    error,
+    error: error ? localizeError(error) : null,
     clearError: () => setError(null),
     saveStatus,
     update,

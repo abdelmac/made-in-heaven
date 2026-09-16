@@ -1,6 +1,18 @@
 export const previewTracks = [
-  { id: 'soft-rain', title: 'Pluie douce', attribution: 'Ambiance synthétique originale Solace', duration_seconds: 12, category: 'ambient' },
-  { id: 'calm-waves', title: 'Ondes calmes', attribution: 'Ambiance synthétique originale Solace', duration_seconds: 12, category: 'ambient' },
+  {
+    id: 'soft-rain',
+    title: 'Pluie douce',
+    attribution: 'Ambiance synthétique originale Solace',
+    duration_seconds: 12,
+    category: 'ambient',
+  },
+  {
+    id: 'calm-waves',
+    title: 'Ondes calmes',
+    attribution: 'Ambiance synthétique originale Solace',
+    duration_seconds: 12,
+    category: 'ambient',
+  },
 ] as const;
 
 /** Original, low-volume PCM loops generated locally; no third-party recordings. */
@@ -10,7 +22,8 @@ export function createAmbientPreview(trackId: string): Blob {
   const buffer = new ArrayBuffer(44 + samples * 2);
   const view = new DataView(buffer);
   const writeText = (offset: number, value: string) => {
-    for (let index = 0; index < value.length; index++) view.setUint8(offset + index, value.charCodeAt(index));
+    for (let index = 0; index < value.length; index++)
+      view.setUint8(offset + index, value.charCodeAt(index));
   };
   writeText(0, 'RIFF');
   view.setUint32(4, 36 + samples * 2, true);
@@ -32,10 +45,17 @@ export function createAmbientPreview(trackId: string): Blob {
     smooth = smooth * 0.96 + noise * 0.04;
     const time = index / sampleRate;
     const fade = Math.min(1, index / 1600, (samples - 1 - index) / 1600);
-    const signal = trackId === 'calm-waves'
-      ? smooth * 0.6 + Math.sin(time * Math.PI * 2 * 110) * 0.055 + Math.sin(time * Math.PI * 2 * 165) * 0.035
-      : smooth * 1.1 + noise * 0.04;
-    view.setInt16(44 + index * 2, Math.round(Math.max(-0.7, Math.min(0.7, signal)) * fade * 32767), true);
+    const signal =
+      trackId === 'calm-waves'
+        ? smooth * 0.6 +
+          Math.sin(time * Math.PI * 2 * 110) * 0.055 +
+          Math.sin(time * Math.PI * 2 * 165) * 0.035
+        : smooth * 1.1 + noise * 0.04;
+    view.setInt16(
+      44 + index * 2,
+      Math.round(Math.max(-0.7, Math.min(0.7, signal)) * fade * 32767),
+      true,
+    );
   }
   return new Blob([buffer], { type: 'audio/wav' });
 }

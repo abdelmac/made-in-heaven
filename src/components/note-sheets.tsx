@@ -4,6 +4,7 @@ import { Check, FileText, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useApp } from './app-context';
 import { Button, Dialog, Empty, Field, Markdown } from './ui';
 import { learning as copy } from '@/lib/i18n/learning';
+import { localizeError } from '@/lib/i18n/errors';
 import { completeSubject, saveNoteSheet } from '@/lib/learning';
 import type { NoteSheet } from '@/lib/model';
 import { formatDay, formatTime } from '@/lib/display';
@@ -190,7 +191,7 @@ function NoteReader({
           <p>{copy.deleteNotePrompt}</p>
           {store.error && (
             <p className="error" role="alert">
-              {store.error}
+              {localizeError(store.error)}
             </p>
           )}
           <div className="form-actions">
@@ -278,7 +279,7 @@ export function NoteEditor({
         onClose();
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(localizeError(cause instanceof Error ? cause.message : String(cause)));
     } finally {
       setBusy(false);
     }
@@ -333,7 +334,7 @@ export function NoteEditor({
               {sessions.map((item) => (
                 <option key={item.id} value={item.id}>
                   {formatDay(item.endedAt, store.data.preferences)} ·{' '}
-                  {formatTime(item.endedAt, store.data.preferences)} · {item.durationMinutes}m
+                  {formatTime(item.endedAt, store.data.preferences)} · {item.durationMinutes} min
                 </option>
               ))}
             </select>
@@ -429,7 +430,7 @@ export function SubjectCompletion({ subjectId }: { subjectId: string }) {
             <p>{copy.completeHelp}</p>
             {store.error && (
               <p className="error" role="alert">
-                {store.error}
+                {localizeError(store.error)}
               </p>
             )}
             <Field label={copy.completionSummary}>

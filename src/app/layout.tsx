@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 export const metadata: Metadata = {
   title: 'Solace — Faites place à la concentration',
-  description: 'Un espace serein pour vous concentrer, organiser vos tâches et progresser chaque jour.',
+  description:
+    'Un espace serein pour vous concentrer, organiser vos tâches et progresser chaque jour.',
   applicationName: 'Solace',
   icons: {
     icon: [{ url: '/icons/solace.svg', type: 'image/svg+xml' }],

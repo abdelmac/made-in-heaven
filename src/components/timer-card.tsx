@@ -1,5 +1,6 @@
 'use client';
 import { ui } from '@/lib/i18n/ui';
+import { localizeError } from '@/lib/i18n/errors';
 
 import { useState } from 'react';
 import { Play, Pause, RotateCcw, SkipForward, Maximize2, Volume2, VolumeX } from 'lucide-react';
@@ -31,7 +32,7 @@ export function TimerCard() {
     try {
       return await fn();
     } catch (error) {
-      notify(error instanceof Error ? error.message : String(error));
+      notify(localizeError(error instanceof Error ? error.message : String(error)));
       return false;
     }
   };
@@ -80,7 +81,7 @@ export function TimerCard() {
       </div>
       <div
         className="cycle-dots"
-        aria-label={`${timer.cycleCount % data.preferences.cycleLength} of ${data.preferences.cycleLength} focus sessions completed`}
+        aria-label={`${timer.cycleCount % data.preferences.cycleLength} séances terminées sur ${data.preferences.cycleLength}`}
       >
         {Array.from({ length: data.preferences.cycleLength }, (_, i) => (
           <span

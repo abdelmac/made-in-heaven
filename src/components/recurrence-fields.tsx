@@ -46,8 +46,8 @@ export function RecurrenceFields({
           {task
             ? " La date d'échéance sert de première date."
             : " L'heure locale est conservée, même lors du changement d'heure."}{' '}
-          Chaque occurrence se modifie et se supprime séparément. La répétition s'arrête après ce
-          nombre d'occurrences.
+          Chaque occurrence se modifie et se supprime séparément. La répétition s’arrête après ce
+          nombre d’occurrences.
         </p>
       )}
     </>

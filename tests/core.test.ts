@@ -168,7 +168,7 @@ describe('calendar rules', () => {
     expect(() => zonedDateTime('2026-03-29', '02:30', 'Europe/Paris')).toThrow(/n'existe pas/);
     expect(zonedDateTime('2026-10-25', '02:30', 'Europe/Paris')).toBe('2026-10-25T00:30:00.000Z');
     expect(zonedDateTime('2026-03-29', '03:30', 'Europe/Paris')).toBe('2026-03-29T01:30:00.000Z');
-    expect(() => zonedDateTime('2026-02-30', '12:00', 'UTC')).toThrow(/calendar date/);
+    expect(() => zonedDateTime('2026-02-30', '12:00', 'UTC')).toThrow(/date de calendrier/);
   });
   it('allocates partial hours and sessions crossing midnight', () => {
     const buckets = allocateToHourBuckets([makePlan('2026-09-11T09:45:00Z')], 'UTC');

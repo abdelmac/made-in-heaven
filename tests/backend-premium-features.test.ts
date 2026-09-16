@@ -291,7 +291,7 @@ describe('protected premium endpoints', () => {
       template: {
         id: 'software-development',
         checklist: [
-          { text: 'Clarify acceptance criteria', done: false },
+          { text: "Clarifier les critères d'acceptation", done: false },
           { text: 'Implement the change', done: false },
           { text: 'Add meaningful tests', done: false },
           { text: 'Run checks', done: false },

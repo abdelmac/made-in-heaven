@@ -9,7 +9,9 @@
   border-radius: 16px;
   background: var(--surface);
 }
-details.player { display: block; }
+details.player {
+  display: block;
+}
 .player summary {
   display: flex;
   align-items: center;
@@ -17,10 +19,37 @@ details.player { display: block; }
   gap: 10px;
   cursor: pointer;
 }
-.controls { display: grid; gap: 14px; padding-top: 16px; }
-.controls > label { display: grid; gap: 6px; }
-.transport { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; }
-.transport label { display: grid; gap: 6px; flex: 1; min-width: 140px; }
-.options { display: flex; flex-wrap: wrap; gap: 14px; }
-.options label { display: flex; align-items: center; gap: 8px; }
-.options input { width: auto; }
+.controls {
+  display: grid;
+  gap: 14px;
+  padding-top: 16px;
+}
+.controls > label {
+  display: grid;
+  gap: 6px;
+}
+.transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+}
+.transport label {
+  display: grid;
+  gap: 6px;
+  flex: 1;
+  min-width: 140px;
+}
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.options input {
+  width: auto;
+}

@@ -4,6 +4,7 @@ import { BookOpen, Download, Layers, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useApp } from './app-context';
 import { Button, Dialog, Empty, Field, Markdown } from './ui';
 import { learning as copy } from '@/lib/i18n/learning';
+import { localizeError } from '@/lib/i18n/errors';
 import { id, flashcardSchema, type Flashcard, type FlashcardDeck } from '@/lib/model';
 import { answerStudyCard, createStudySession, revealStudyCard } from '@/lib/learning';
 import styles from './learning.module.css';
@@ -150,7 +151,7 @@ function DeckEditor({ deckId, onClose }: { deckId?: string; onClose: () => void 
       <form onSubmit={save}>
         {store.error && (
           <p className="error" role="alert">
-            {store.error}
+            {localizeError(store.error)}
           </p>
         )}
         <Field label={copy.deckTitle}>
@@ -239,7 +240,7 @@ function DeckReader({
       if (!controller.signal.aborted) setStudy(permitted);
     } catch (cause) {
       if (!controller.signal.aborted)
-        setError(cause instanceof Error ? cause.message : copy.studyUnavailable);
+        setError(localizeError(cause instanceof Error ? cause.message : copy.studyUnavailable));
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
@@ -265,7 +266,7 @@ function DeckReader({
     );
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'folia-flashcards.json';
+    link.download = 'solace-cartes-memoire.json';
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
@@ -350,7 +351,7 @@ function DeckReader({
           <p>{deleting === 'deck' ? copy.deleteDeckPrompt : copy.deleteCardPrompt}</p>
           {store.error && (
             <p className="error" role="alert">
-              {store.error}
+              {localizeError(store.error)}
             </p>
           )}
           <div className="form-actions">
@@ -456,7 +457,7 @@ function CardEditor({
         <ProNotice />
         {store.error && (
           <p className="error" role="alert">
-            {store.error}
+            {localizeError(store.error)}
           </p>
         )}
         <Field label={copy.question}>

@@ -32,7 +32,7 @@ test('recurring tasks and plans persist, later conflicts are atomic, and the vis
   let dialog = page.getByRole('dialog');
   await dialog.getByLabel(en.tasks.titleField, { exact: true }).fill('Réviser les maths');
   await dialog.getByLabel(en.tasks.due, { exact: true }).fill('2026-09-14');
-  await dialog.getByLabel('Répéter', { exact: true }).selectOption('weekly');
+  await dialog.getByRole('combobox', { name: 'Répéter', exact: true }).selectOption('weekly');
   await dialog.getByLabel("Nombre d'occurrences (première incluse)").fill('3');
   await dialog.getByRole('button', { name: en.tasks.add, exact: true }).click();
   await expect(dialog).not.toBeVisible();
@@ -55,7 +55,7 @@ test('recurring tasks and plans persist, later conflicts are atomic, and the vis
   await dialog.getByLabel(en.planner.titleField, { exact: true }).fill('Concentration quotidienne');
   await dialog.getByLabel(en.planner.date, { exact: true }).fill('2026-09-14');
   await dialog.getByLabel(en.planner.time, { exact: true }).fill('09:00');
-  await dialog.getByLabel('Répéter', { exact: true }).selectOption('daily');
+  await dialog.getByRole('combobox', { name: 'Répéter', exact: true }).selectOption('daily');
   await dialog.getByLabel("Nombre d'occurrences (première incluse)").fill('3');
   await dialog.getByRole('button', { name: en.planner.add, exact: true }).click();
   await expect(dialog).not.toBeVisible();
@@ -70,7 +70,7 @@ test('recurring tasks and plans persist, later conflicts are atomic, and the vis
   await dialog.getByLabel(en.planner.titleField, { exact: true }).fill('Série en conflit');
   await dialog.getByLabel(en.planner.date, { exact: true }).fill('2026-09-12');
   await dialog.getByLabel(en.planner.time, { exact: true }).fill('09:00');
-  await dialog.getByLabel('Répéter', { exact: true }).selectOption('daily');
+  await dialog.getByRole('combobox', { name: 'Répéter', exact: true }).selectOption('daily');
   await dialog.getByLabel("Nombre d'occurrences (première incluse)").fill('3');
   await dialog.getByRole('button', { name: en.planner.add, exact: true }).click();
   await expect(dialog.getByRole('alert')).toContainText('chevauche');

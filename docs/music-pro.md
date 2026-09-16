@@ -1,32 +1,40 @@
-# Adding music and ambient sound to Pro
+# Ambiances audio
 
-Music playback is a proposed next feature, not part of the current release. The existing optional timer completion chime remains available to everyone.
+Le lecteur persistant propose choix de piste, lecture/pause, volume, boucle et arrêt pendant les pauses du minuteur. Il reste monté pendant la navigation entre les pages. La lecture commence uniquement après un clic sur « Écouter », jamais au chargement ni après un changement de piste. Le son de fin du minuteur reste indépendant.
 
-Start with an owned or licensed library of ambient loops (rain, forest, cafe) and instrumental tracks. Put MP3 or AAC files in a **private** Supabase Storage bucket named `pro-audio`. Keep the catalog in a server-owned table with a stable track ID, title, artist/attribution, duration, category, and storage path. Do not accept arbitrary media URLs from the browser or expose the bucket publicly.
+En mode local, deux boucles originales de 12 secondes (« Pluie douce » et « Ondes calmes ») sont synthétisées en WAV sur l’appareil. Ce sont des aperçus sonores générés, pas des enregistrements ni un catalogue musical hébergé. Aucune requête audio externe n’est nécessaire.
 
-## Server access
+Pour un compte connecté, les ambiances nécessitent les droits `music` du forfait Pro personnel ou Team de l’organisation. Un lecteur membre d’une organisation Team peut écouter ; un compte extérieur ne peut pas accéder au catalogue. Si aucun fichier autorisé n’a été ajouté, le lecteur affiche un catalogue vide.
 
-1. Add a `music` feature to `PLAN_FEATURES` and the database `workspace_entitlements` function: false for Free, true for Pro and Team. Apply an additive migration; local plan values cannot grant access.
-2. Create `/api/audio` as a Node route. Validate `workspaceId` and `trackId`, authenticate the user, call the existing workspace-membership and entitlement helpers, and enforce the existing durable rate limit. Look up the track in the allowlisted catalog.
-3. Only after those checks, generate a signed Storage URL with a short lifetime (for example, 120 seconds). Respond with `Cache-Control: private, no-store`. Bucket policies must deny direct reads to both anonymous and authenticated clients, so an ordinary signed-in account cannot bypass the paid-access check. Keep service-role credentials on the server.
-4. Recheck access when starting another track or renewing an expired link. On sign-out or workspace change, pause playback, clear the media source, and discard the old queue. A downgrade blocks future playback requests without deleting notes or other productivity data.
+## Accès serveur
 
-Supabase documents [private buckets and access control](https://supabase.com/docs/guides/storage/buckets/fundamentals) and [signed downloads](https://supabase.com/docs/guides/storage/serving/downloads). Signed links can be used until they expire; they do not provide DRM or retract audio already downloaded by a browser. Keep premium audio out of Folia's service-worker caches.
+`GET /api/audio?workspaceId=UUID` renvoie jusqu’à 100 pistes actives avec leurs titres, attributions, durées et catégories, sans chemins de stockage. Ajouter `trackId=UUID` demande une URL signée valable 120 secondes. La route vérifie à chaque demande l’authentification, l’appartenance à l’espace, la limite persistante de 60 demandes par minute et les droits Pro/Team calculés côté serveur. Les URLs arbitraires fournies par le navigateur sont refusées.
 
-## Player experience
+La migration `0010_pro_audio.sql` ajoute la capacité `music` sans changer le calcul des périodes payées, crée le catalogue serveur `audio_tracks` et, sur Supabase Storage, le bucket privé `pro-audio`. La table refuse l’accès direct des clients. Une politique Storage restrictive exclut ce bucket des accès anonymes et authentifiés, même si une autre politique client est permissive. Seul le service serveur signe les fichiers après autorisation.
 
-Add one persistent `FocusAudioPlayer` to `FoliaApp`, so music survives navigation between Timer, Notes, and Flashcards. Native `<audio>` is sufficient for the first version; no player dependency is required.
+Les réponses API portent `Cache-Control: private, no-store`. Le service worker existant ignore les routes API et les médias sur un domaine externe. Les URLs signées ne sont jamais enregistrées en localStorage. Le navigateur peut conserver des octets déjà téléchargés ; un lien reste utilisable jusqu’à son expiration. Cette protection n’est pas un mécanisme DRM, comme l’expliquent les [modèles d’accès des buckets Supabase](https://supabase.com/docs/guides/storage/buckets/fundamentals) et les [téléchargements signés](https://supabase.com/docs/guides/storage/serving/downloads).
 
-- Offer Play/Pause, a volume slider, loop, track selection, and an optional “Pause during breaks” setting.
-- Start playback only after a deliberate Play click and handle the promise from `audio.play()`. Show a retry action if autoplay restrictions block it. See [MDN's autoplay guide](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Autoplay).
-- Save track ID, volume, and loop preference. Do not save signed URLs, and do not automatically resume sound after a reload.
-- Keep a compact accessible player on mobile, alongside the existing active-timer control. Give every control an accessible name and support keyboard adjustment of volume.
-- Stop or fade a track when the user ends it. A two-track crossfade or independent ambient mixer can follow later using Web Audio, after a Play gesture unlocks the audio context.
+Le lecteur redemande une autorisation à chaque clic de lecture d’une piste hébergée, y compris après pause ou erreur. Un changement de compte ou d’espace, une déconnexion ou une perte des droits observée par l’application démontent le lecteur, arrêtent le son et retirent sa source. La piste, le volume, la boucle et l’option de pause sont enregistrés dans le préfixe de stockage existant de l’espace ; le nettoyage du cache du compte les supprime à la déconnexion.
 
-For a first release, keep audio online-only. Test Free/viewer/nonmember API access, expired URLs, downgrade/sign-out, failed playback, route navigation, volume persistence, and simultaneous timer completion. Document browser and locked-screen playback limitations.
+## Préparer le catalogue hébergé
 
-## Hosted setup
+1. Appliquer les migrations dans l’ordre jusqu’à `0010_pro_audio.sql` sur le projet Supabase prévu. Le test PostgreSQL seul n’a pas de service Storage et ignore sa création de bucket ; contrôler également le bucket et ses politiques sur Supabase.
+2. Depuis un compte opérateur autorisé, importer uniquement vos propres enregistrements ou des fichiers dont vous possédez les droits nécessaires dans le bucket **privé** `pro-audio`. MP3, AAC/MP4, Ogg et WAV sont acceptés, jusqu’à 50 Mo par fichier. Ne pas créer de politique de lecture publique.
+3. Ajouter les entrées au catalogue avec le chemin exact du fichier. Exemple à adapter avant exécution, sans clé dans le SQL :
 
-For the current site, the route would live at `https://folia-ennearock.vercel.app/api/audio`. Configure Supabase first, apply the music entitlement/catalog migration, create the private bucket, upload permitted audio, and add catalog entries. Redeploy only after the server tests and real-browser player tests pass.
+   ```sql
+   insert into public.audio_tracks
+     (title, attribution, duration_seconds, category, storage_path, active)
+   values
+     ('Ma pluie', 'Enregistrement original — votre nom', 120, 'ambient', 'owned/pluie.mp3', true);
+   ```
 
-If you later add a streaming-service integration, follow that provider's own playback SDK, account requirements, and content rules. A URL from Spotify or another provider is not a direct MP3 source for `<audio>`.
+4. Avec un compte Pro/Team de test, vérifier le catalogue, la lecture réelle, les attributions et les reprises après expiration du lien. Vérifier qu’un utilisateur Free/non membre ne peut ni signer une piste ni lire directement le bucket.
+
+Aucun fichier hébergé, upload, clé supplémentaire ou abonnement musical n’a été créé par cette implémentation. Les clés Supabase serveur existantes suffisent à l’API. Les liens Spotify/Apple Music ne sont pas des fichiers audio acceptés par ce lecteur.
+
+## Vérifications et limites
+
+Les tests unitaires simulent Supabase pour couvrir non-membres, lecteur Team, forfait Free/rétrogradé, limite de requêtes, erreurs de signature et sélection dans le catalogue autorisé. Ils contrôlent aussi le format WAV et l’amplitude bornée des aperçus. Les tests navigateur vérifient l’aperçu local ; ils ne constituent pas un test d’écoute des fichiers hébergés.
+
+Si le navigateur bloque `audio.play()`, le lecteur affiche une erreur et permet un nouveau clic. Le comportement dépend du navigateur, notamment après une requête réseau, en arrière-plan ou écran verrouillé ; voir la [documentation du démarrage de lecture](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/play). Il n’y a pas de lecture automatique après une pause du minuteur, de mixeur, de fondu entre pistes ni de téléchargement hors ligne du catalogue Pro.

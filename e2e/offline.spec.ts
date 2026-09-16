@@ -50,7 +50,7 @@ test('cached production shell supports offline task editing and persisted timer 
     (item) => item.title === 'Offline research note',
   )!;
   await page
-    .getByRole('button', { name: 'Start focus: Offline research note', exact: true })
+    .getByRole('button', { name: 'Commencer: Offline research note', exact: true })
     .click();
   await page.goto('/?view=overview');
   await page.getByRole('button', { name: "Mettre en pause", exact: true }).click();

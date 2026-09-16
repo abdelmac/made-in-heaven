@@ -5,7 +5,8 @@ export default function manifest(): MetadataRoute.Manifest {
     id: '/',
     name: 'Solace — Un peu de concentration, chaque jour',
     short_name: 'Solace',
-    description: 'Votre espace serein pour vous concentrer, vous organiser et avancer à votre rythme.',
+    description:
+      'Votre espace serein pour vous concentrer, vous organiser et avancer à votre rythme.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

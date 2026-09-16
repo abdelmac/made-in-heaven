@@ -9,29 +9,29 @@ async function preferences(page: Page) {
 test('classic colors persist and Pro background previews never silently save', async ({ page }) => {
   await page.goto('/?view=settings');
   await expect(page.locator('.background-presets')).toBeVisible();
-  await page.getByRole('button', { name: 'Blurple', exact: true }).click();
+  await page.getByRole('button', { name: 'Bleu violet', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'blurple');
-  await page.getByRole('button', { name: "Sombre", exact: true }).click();
+  await page.getByRole('button', { name: 'Sombre', exact: true }).click();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.locator('html')).toHaveAttribute('data-accent', 'blurple');
-  await page.getByLabel("Votre couleur d’accent").fill('#ffff00');
-  await page.getByRole('button', { name: "Enregistrer la couleur d’accent", exact: true }).click();
+  await page.getByLabel('Votre couleur d’accent').fill('#ffff00');
+  await page.getByRole('button', { name: 'Enregistrer la couleur d’accent', exact: true }).click();
   await expect.poll(async () => (await preferences(page)).accentColor).toBe('#ffff00');
   expect((await preferences(page)).customTheme).toBeNull();
-  await page.getByRole('button', { name: /^Aurora/ }).click();
+  await page.getByRole('button', { name: /^Aurore/ }).click();
   await expect(page.locator('html')).toHaveAttribute('data-backdrop', 'preset');
   expect((await preferences(page)).background.kind).toBe('none');
-  await page.getByRole('combobox', { name: "Densité", exact: true }).selectOption('compact');
+  await page.getByRole('combobox', { name: 'Densité', exact: true }).selectOption('compact');
   await expect(page.locator('html')).toHaveAttribute('data-backdrop', 'preset');
   await page
-    .getByRole('navigation', { name: "Navigation principale" })
+    .getByRole('navigation', { name: 'Navigation principale' })
     .getByRole('button', { name: /^Tâches/ })
     .click();
   await expect(page.locator('html')).toHaveAttribute('data-backdrop', 'none');
   await page.goto('/?view=settings');
-  await page.getByRole('button', { name: /^Aurora/ }).click();
-  await page.getByRole('button', { name: "Enregistrer l’arrière-plan", exact: true }).click();
+  await page.getByRole('button', { name: /^Aurore/ }).click();
+  await page.getByRole('button', { name: 'Enregistrer l’arrière-plan', exact: true }).click();
   await expect.poll(async () => (await preferences(page)).background.kind).toBe('preset');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-backdrop', 'preset');
@@ -48,18 +48,18 @@ test('all classic palettes and custom background colors update the complete work
 }) => {
   await page.goto('/?view=settings');
   await expect(page.locator('.background-presets')).toBeVisible();
-  for (const mode of ["Clair", "Sombre"]) {
+  for (const mode of ['Clair', 'Sombre']) {
     await page.getByRole('button', { name: mode, exact: true }).click();
     const backgrounds = new Set<string>();
     for (const name of [
-      "Vert jardin",
-      'Classic blue',
-      'Blurple',
-      'Soft plum',
+      'Vert jardin',
+      'Bleu classique',
+      'Bleu violet',
+      'Prune douce',
       'Rose',
-      'Lagoon',
-      'Warm amber',
-      'Charcoal',
+      'Lagon',
+      'Ambre chaleureux',
+      'Anthracite',
     ]) {
       await page.getByRole('button', { name, exact: true }).click();
       await expect(page.getByRole('button', { name, exact: true })).toHaveAttribute(
@@ -72,18 +72,18 @@ test('all classic palettes and custom background colors update the complete work
     }
     expect(backgrounds.size).toBe(8);
   }
-  await page.getByLabel('Background', { exact: true }).fill('#151524');
+  await page.getByLabel('Arrière-plan', { exact: true }).fill('#151524');
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(21, 21, 36)');
   expect((await preferences(page)).customTheme).toBeNull();
   await page.getByLabel('Surface', { exact: true }).fill('#252538');
-  await page.getByLabel('Text', { exact: true }).fill('#f4f4fa');
-  await page.getByRole('combobox', { name: "Densité", exact: true }).selectOption('compact');
+  await page.getByLabel('Texte', { exact: true }).fill('#f4f4fa');
+  await page.getByRole('combobox', { name: 'Densité', exact: true }).selectOption('compact');
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(21, 21, 36)');
-  await page.getByRole('button', { name: /^Ocean/ }).click();
+  await page.getByRole('button', { name: /^Océan/ }).click();
   await expect(page.locator('html')).toHaveAttribute('data-backdrop', 'preset');
-  await page.getByRole('button', { name: "Enregistrer l’arrière-plan", exact: true }).click();
+  await page.getByRole('button', { name: 'Enregistrer l’arrière-plan', exact: true }).click();
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(21, 21, 36)');
-  await page.getByRole('button', { name: "Enregistrer le thème", exact: true }).click();
+  await page.getByRole('button', { name: 'Enregistrer le thème', exact: true }).click();
   await expect.poll(async () => (await preferences(page)).customTheme?.background).toBe('#151524');
   await page.reload();
   await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(21, 21, 36)');
@@ -92,7 +92,7 @@ test('all classic palettes and custom background colors update the complete work
     .locator('.sidebar')
     .evaluate((node) => getComputedStyle(node).backgroundColor);
   expect(sidebar).not.toBe('rgb(35, 36, 40)');
-  await page.getByRole('button', { name: "Vert jardin", exact: true }).click();
+  await page.getByRole('button', { name: 'Vert jardin', exact: true }).click();
   await expect.poll(async () => (await preferences(page)).customTheme).toBeNull();
   await expect(page.locator('body')).not.toHaveCSS('background-color', 'rgb(21, 21, 36)');
 });
@@ -101,7 +101,7 @@ test('uploaded Pro backgrounds persist, while rejected files preserve the saved 
   page,
 }) => {
   await page.goto('/?view=settings');
-  const upload = page.getByLabel("Importer une image d’arrière-plan");
+  const upload = page.getByLabel('Importer une image d’arrière-plan');
   await upload.setInputFiles({
     name: 'background.png',
     mimeType: 'image/png',
@@ -110,8 +110,10 @@ test('uploaded Pro backgrounds persist, while rejected files preserve the saved 
       'base64',
     ),
   });
-  await expect(page.getByRole('button', { name: "Utiliser votre image", exact: true })).toBeVisible();
-  await page.getByRole('button', { name: "Enregistrer l’arrière-plan", exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: 'Utiliser votre image', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Enregistrer l’arrière-plan', exact: true }).click();
   await expect.poll(async () => (await preferences(page)).background.kind).toBe('image');
   const saved = (await preferences(page)).background;
   expect(saved.image.length).toBeLessThanOrEqual(350000);
@@ -120,18 +122,22 @@ test('uploaded Pro backgrounds persist, while rejected files preserve the saved 
     mimeType: 'image/svg+xml',
     buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'),
   });
-  await expect(page.locator('.error[role="alert"]')).toContainText('Choose a JPG, PNG, or WebP');
+  await expect(page.locator('.error[role="alert"]')).toContainText(
+    'Choisissez une image JPG, PNG ou WebP.',
+  );
   expect((await preferences(page)).background).toEqual(saved);
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-backdrop', 'image');
-  await page.getByRole('button', { name: "Restaurer l’arrière-plan classique", exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Restaurer l’arrière-plan classique', exact: true })
+    .click();
   await expect.poll(async () => (await preferences(page)).background.kind).toBe('none');
 });
 
 test('ending a preview cancels an image upload that is still being prepared', async ({ page }) => {
   await page.goto('/?view=settings');
   await expect(page.locator('.background-presets')).toBeVisible();
-  await page.getByRole('button', { name: /^Aurora/ }).click();
+  await page.getByRole('button', { name: /^Aurore/ }).click();
   await page.evaluate(() => {
     const original = Image.prototype.decode;
     Image.prototype.decode = async function () {
@@ -142,7 +148,7 @@ test('ending a preview cancels an image upload that is still being prepared', as
       });
     };
   });
-  await page.getByLabel("Importer une image d’arrière-plan").setInputFiles({
+  await page.getByLabel('Importer une image d’arrière-plan').setInputFiles({
     name: 'pending.png',
     mimeType: 'image/png',
     buffer: Buffer.from(
@@ -155,7 +161,9 @@ test('ending a preview cancels an image upload that is still being prepared', as
       typeof (window as typeof window & { finishBackgroundDecode?: () => void })
         .finishBackgroundDecode === 'function',
   );
-  await page.getByRole('button', { name: "Fermer l’aperçu de l’arrière-plan", exact: true }).click();
+  await page
+    .getByRole('button', { name: 'Fermer l’aperçu de l’arrière-plan', exact: true })
+    .click();
   await page.evaluate(async () => {
     (window as typeof window & { finishBackgroundDecode?: () => void }).finishBackgroundDecode?.();
     await new Promise<void>((resolve) =>
@@ -163,7 +171,11 @@ test('ending a preview cancels an image upload that is still being prepared', as
     );
   });
   await expect(page.locator('html')).toHaveAttribute('data-backdrop', 'none');
-  await expect(page.getByRole('button', { name: "Utiliser votre image", exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: "Importer un arrière-plan", exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Utiliser votre image', exact: true })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole('button', { name: 'Importer un arrière-plan', exact: true }),
+  ).toBeEnabled();
   expect((await preferences(page)).background.kind).toBe('none');
 });

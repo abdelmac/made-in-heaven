@@ -2,6 +2,12 @@
 
 A calm, connected space for focused work. Solace combines a Pomodoro timer, weekly workload planner, subjects, projects, detailed tasks, development journals, activity history, and workspace subscriptions.
 
+L’interface est maintenant en français. La nouvelle version ajoute un premier
+objectif guidé, les tâches et séances récurrentes, l’export calendrier `.ics`,
+un bilan personnel, les invitations par e-mail facultatives et un lecteur
+d’ambiances. Consultez [les fonctionnalités et conditions d’activation](docs/product-update.md).
+Les ajouts serveur nécessitent les migrations `0009` et `0010` avant déploiement.
+
 The Solace identity uses a crescent-and-star vector mark with a serif wordmark. Shared geometry lives in `src/lib/brand.ts`; run `node scripts/generate-icons.mjs` to regenerate the favicon and Apple/PWA installation icons. The existing deployment address, internal Folia identifiers, backup format, and storage keys are retained for compatibility with saved work.
 
 This repository started empty. It now contains a Next.js App Router application, a useful local/demo experience, Supabase integrations and versioned PostgreSQL migrations, and Stripe **test-mode-only** billing. No external account or payment credentials are bundled. Local productivity works without them; sign-in, cloud sync, and checkout accurately show their configuration requirements.
@@ -51,7 +57,7 @@ The disconnected local workspace clearly labels paid features as previews. Conne
 
 Migration `0008_learning_and_backgrounds.sql` adds the learning records, security policies, feature gates, and compatibility handling. Existing workspaces load new fields with safe defaults. Imports remap note/deck/card references and authors; Free cloud imports containing Pro flashcards are rejected before changing local work. Refresh older open Folia tabs after this release before editing on the same device.
 
-Stripe checkout verifies the configured Customer Portal supports cancellation, invoice history, and payment-method recovery before starting a paid session. See [billing activation instructions](docs/billing.md) for the deployed site's exact configuration. Music is a proposed next feature; [the Pro audio guide](docs/music-pro.md) explains private audio storage, server access checks, and a persistent accessible player.
+Stripe checkout verifies the configured Customer Portal supports cancellation, invoice history, and payment-method recovery before starting a paid session. See [billing activation instructions](docs/billing.md) for the deployed site's exact configuration. The persistent audio player offers an original local ambient preview and an authenticated Pro catalogue; [the Pro audio guide](docs/music-pro.md) explains private storage, catalogue setup, and server access checks.
 
 ## Connect Supabase
 
@@ -68,7 +74,7 @@ Never put the service-role key or Stripe secret in a `NEXT_PUBLIC_` variable. `.
 
 ## Workspaces, permissions, and subscriptions
 
-Personal workspaces are private. Organization membership does not grant access to members' personal records. Owner, admin, member, and viewer permissions are enforced in server handlers and database transactions, with RLS on all productivity tables. Owners alone manage billing and deliberate ownership transfer. Invitations expire, can be revoked, and are shared by link; this version does not send invitation emails automatically. Owners/admins can set an organization icon and timer/calendar defaults. Defaults initialize new member preferences once; members can explicitly apply updated defaults while keeping their appearance and accessibility choices. Viewers can save their own private preferences through a separate protected endpoint.
+Personal workspaces are private. Organization membership does not grant access to members' personal records. Owner, admin, member, and viewer permissions are enforced in server handlers and database transactions, with RLS on all productivity tables. Owners alone manage billing and deliberate ownership transfer. Invitations expire, can be revoked, and can be shared by link or sent by email when explicitly selected by an owner/admin and configured with a verified sender; see [invitation setup](docs/invitations.md). Owners/admins can set an organization icon and timer/calendar defaults. Defaults initialize new member preferences once; members can explicitly apply updated defaults while keeping their appearance and accessibility choices. Viewers can save their own private preferences through a separate protected endpoint.
 
 Create an organization from **Organization**, switch into it, and enable its Team subscription before creating new shared content or inviting teammates. Existing data remains available after downgrade. Subjects, projects, tasks, and work journals in an organization are shared content; keep private notes in a personal workspace. Appearance preferences and active timers remain per user.
 
@@ -107,7 +113,7 @@ Installation needs HTTPS or localhost and browser support. Background tabs and l
 | `src/lib/model.ts`                       | Strict schemas, entities, preferences, isolated demo and local data version            |
 | `src/lib/timer.ts`, `calendar.ts`        | Pure timer transitions, IANA-zone buckets, overlap, metrics, contrast                  |
 | `src/lib/persistence.ts`, `use-folia.ts` | Atomic local storage, imports, outbox, cross-tab coordination, cloud conflict handling |
-| `src/lib/i18n`                           | English product copy, static interface catalogs, and paid-feature messages             |
+| `src/lib/i18n`                           | French product copy, contextual labels, validation messages, and paid-feature messages |
 | `src/lib/supabase`, `server`             | Auth clients, validated document access, permissions and request protection            |
 | `src/lib/billing`                        | Central plan configuration, real Stripe integration, trusted entitlement policy        |
 | `supabase/migrations`, `supabase/tests`  | Database schema, constraints, security policies and direct SQL regressions             |
@@ -145,16 +151,16 @@ npx vercel@59.19.0 link --yes --project folia-ennearock --scope ennearock
 npx vercel@59.19.0 deploy --prod --yes --scope ennearock --logs
 ```
 
-The first deployment used the CLI because Vercel could not obtain write/admin access to the configured GitHub repository. Automatic deployments on Git pushes are not connected. `.vercelignore` excludes local environment files, generated builds, test artifacts, and local scratch files from deployment uploads; Vercel project linkage stays outside Git.
+The first deployment used the CLI because Vercel could not obtain write/admin access to the configured GitHub repository. A GitHub Actions workflow now runs the quality checks and can deploy successful main-branch builds after the Vercel secrets and enable flag are configured; follow [the automation guide](docs/development-automation.md). Its presence does not connect or configure the hosted accounts. `.vercelignore` excludes local environment files, generated builds, test artifacts, and local scratch files from deployment uploads; Vercel project linkage stays outside Git.
 
 Deploy to a Node-capable Next.js platform with Supabase PostgreSQL and HTTPS. Apply migrations before enabling the app, set server secrets and public build-time variables, configure email redirects and the Stripe webhook endpoint, and rebuild. This server-backed application cannot be deployed as a static-only site.
 
 - Hosted Supabase email confirmation/recovery and Stripe renewal, failed-payment recovery, paid-period expiration and automatic redelivery remain unverified. Password sign-in, authenticated sync across independent browser sessions, and the hosted sandbox Checkout/webhook/Portal journey passed; see the verification record for the exact coverage. Local PostgreSQL and mocked server tests do not establish provider integrations as verified.
-- Cloud synchronization uses workspace document revisions with normalized relational projections and a 2 MB request limit. Large histories/organizations will need paginated entity synchronization before that cap. There is no destructive automatic pruning.
+- Cloud synchronization uses version-consistent paged reads and compact record changes for large saves, with the existing atomic relational projections. The 2 MB per-request limit still applies to changed records: large one-shot imports and very large individual notes need a future staged upload flow. Server projections and browser local storage still retain the whole workspace; this is not unlimited-scale storage. There is no automatic pruning.
 - Concurrent same-record edits require explicit resolution; this version offers saved-version adoption or a documented local-preferred merge, with export before either choice.
 - Local activity timestamps are validated but this is a personal productivity application, not an anti-cheating or payroll system. Imported completed history is intentionally permitted after validation and consent.
 - Notification delivery while backgrounded or locked depends on the browser/OS. The app does not guarantee a background alarm.
-- English is the only language shipped. Static display copy lives in the English catalogs, maintained with `scripts/extract-ui-copy.mjs`; additional locales require translation and locale-aware contextual formatters and validation messages.
-- No GitHub integration, email invitation sending, live billing, seat-metered billing, or tax/legal compliance certification is implied.
+- French is the shipped interface language. The legacy `en` export name is retained for import compatibility; catalogues, contextual labels and date formatting are French. Explicitly saved US date preferences remain respected. Existing user-written content is not translated.
+- Calendar export is a downloadable snapshot of the filtered personal week. Google/Outlook account synchronization is not part of this first calendar integration. GitHub CI/CD requires account configuration; live billing remains disabled.
 
 User data is never removed because a subscription downgrades or an application cache updates.

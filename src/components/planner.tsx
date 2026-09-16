@@ -276,7 +276,7 @@ export function Planner({ full = false }: { full?: boolean }) {
       </div>
       {full && (
         <p className="helper">
-          L'export inclut vos séances de la semaine affichée et respecte les filtres. Importez ce
+          L’export inclut vos séances de la semaine affichée et respecte les filtres. Importez ce
           fichier dans Google Calendar, Outlook ou Apple Calendrier ; les changements ultérieurs ne
           sont pas synchronisés.
         </p>

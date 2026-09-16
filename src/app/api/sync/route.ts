@@ -83,14 +83,33 @@ export async function GET(request: Request) {
     const workspaceId = idSchema.parse(params.get('workspaceId'));
     const { user } = await requireWorkspace(workspaceId);
     if (params.get('transfer') === 'paged') {
-      const cursor = z.coerce.number().int().min(0).parse(params.get('cursor') || 0);
-      const version = params.has('version') ? z.coerce.number().int().min(0).parse(params.get('version')) : undefined;
+      const cursor = z.coerce
+        .number()
+        .int()
+        .min(0)
+        .parse(params.get('cursor') || 0);
+      const version = params.has('version')
+        ? z.coerce.number().int().min(0).parse(params.get('version'))
+        : undefined;
       const snapshot = await readDocument(workspaceId, user.id);
       if (version !== undefined && version !== snapshot.version)
-        return NextResponse.json({ error: 'Cet espace a changé pendant le chargement.' }, { status: 409, headers: { 'Cache-Control': 'private, no-store' } });
-      if (cursor > 0 && version === undefined) throw new HttpError(400, 'Une page suivante doit préciser sa version.');
-      if (cursor > Object.values(snapshot.data).filter(Array.isArray).reduce((total, items) => total + items.length, 0)) throw new HttpError(400, 'Page de synchronisation invalide.');
-      return NextResponse.json({ ...snapshotPage(snapshot.data, cursor), version: snapshot.version }, { headers: { 'Cache-Control': 'private, no-store' } });
+        return NextResponse.json(
+          { error: 'Cet espace a changé pendant le chargement.' },
+          { status: 409, headers: { 'Cache-Control': 'private, no-store' } },
+        );
+      if (cursor > 0 && version === undefined)
+        throw new HttpError(400, 'Une page suivante doit préciser sa version.');
+      if (
+        cursor >
+        Object.values(snapshot.data)
+          .filter(Array.isArray)
+          .reduce((total, items) => total + items.length, 0)
+      )
+        throw new HttpError(400, 'Page de synchronisation invalide.');
+      return NextResponse.json(
+        { ...snapshotPage(snapshot.data, cursor), version: snapshot.version },
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      );
     }
     return NextResponse.json(await clientDocument(request, workspaceId, user.id), {
       headers: { 'Cache-Control': 'private, no-store' },
@@ -100,7 +119,13 @@ export async function GET(request: Request) {
   }
 }
 
-const patchBodySchema = z.object({ patch: documentPatchSchema, expectedVersion: z.number().int().min(0), operationId: idSchema }).strict();
+const patchBodySchema = z
+  .object({
+    patch: documentPatchSchema,
+    expectedVersion: z.number().int().min(0),
+    operationId: idSchema,
+  })
+  .strict();
 
 export async function PATCH(request: Request) {
   try {
@@ -109,20 +134,46 @@ export async function PATCH(request: Request) {
     const { user } = await requireWorkspace(workspaceId, { roles: ['owner', 'admin', 'member'] });
     await durableRateLimit(user.id, 'sync', 180, 60);
     const body = patchBodySchema.parse(await readJson(request));
-    if (body.patch.metadata.workspaceId !== workspaceId) throw new HttpError(400, 'Le document appartient à un autre espace.');
+    if (body.patch.metadata.workspaceId !== workspaceId)
+      throw new HttpError(400, 'Le document appartient à un autre espace.');
     const current = await readDocument(workspaceId, user.id);
     const db = getAdminSupabase()!;
     if (current.version === body.expectedVersion) {
       const next = applyDocumentPatch(current.data, body.patch);
-      const { data: members, error } = await db.from('workspace_memberships').select('user_id').eq('workspace_id', workspaceId);
+      const { data: members, error } = await db
+        .from('workspace_memberships')
+        .select('user_id')
+        .eq('workspace_id', workspaceId);
       if (error) throw databaseError(error);
-      validateDocumentChange(current.data, next, user.id, new Set(members.map((member) => member.user_id)));
+      validateDocumentChange(
+        current.data,
+        next,
+        user.id,
+        new Set(members.map((member) => member.user_id)),
+      );
     }
     // The SQL transaction verifies the immutable patch hash on retries, before CAS.
-    const { data, error } = await db.rpc('folia_commit_patch', { p_actor: user.id, p_workspace: workspaceId, p_patch: body.patch, p_expected_version: body.expectedVersion, p_operation: body.operationId });
+    const { data, error } = await db.rpc('folia_commit_patch', {
+      p_actor: user.id,
+      p_workspace: workspaceId,
+      p_patch: body.patch,
+      p_expected_version: body.expectedVersion,
+      p_operation: body.operationId,
+    });
     if (error) throw databaseError(error);
-    if (data?.conflict) return NextResponse.json({ error: 'Un autre appareil a enregistré des modifications.', version: data.version }, { status: 409, headers: { 'Cache-Control': 'private, no-store' } });
-    return NextResponse.json({ version: data.version, committedVersion: data.committedVersion, replayed: Boolean(data.replayed) }, { headers: { 'Cache-Control': 'private, no-store' } });
+    if (data?.conflict)
+      return NextResponse.json(
+        { error: 'Un autre appareil a enregistré des modifications.', version: data.version },
+        { status: 409, headers: { 'Cache-Control': 'private, no-store' } },
+      );
+    return NextResponse.json(
+      {
+        version: data.version,
+        committedVersion: data.committedVersion,
+        replayed: Boolean(data.replayed),
+      },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    );
   } catch (error) {
     return handleApiError(error);
   }
