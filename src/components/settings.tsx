@@ -54,7 +54,19 @@ export function SettingsPage() {
   const [tab, setTab] = useState('appearance');
   const p = store.data.preferences;
   const [custom, setCustom] = useState(p.customTheme || baseCustom);
+  const [customSource, setCustomSource] = useState(p.customTheme);
+  if (customSource !== p.customTheme) {
+    setCustomSource(p.customTheme);
+    if (JSON.stringify(custom) === JSON.stringify(customSource || baseCustom))
+      setCustom(p.customTheme || baseCustom);
+  }
   const [preview, setPreview] = useState(false);
+  const appearanceKey = JSON.stringify([p.appearance, p.accent, p.accentColor, p.customTheme]);
+  const [previewSource, setPreviewSource] = useState(appearanceKey);
+  if (previewSource !== appearanceKey) {
+    setPreviewSource(appearanceKey);
+    setPreview(false);
+  }
   const [layoutName, setLayoutName] = useState('');
   const [dragging, setDragging] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -211,11 +223,12 @@ export function SettingsPage() {
                     <div className="color-input">
                       <input
                         type="color"
+                        aria-label={key.charAt(0).toUpperCase() + key.slice(1)}
                         value={custom[key]}
                         onChange={(e) => {
                           const next = { ...custom, [key]: e.target.value };
                           setCustom(next);
-                          if (preview) previewTheme(next);
+                          previewTheme(next);
                         }}
                       />
                       <code>{custom[key]}</code>
@@ -237,7 +250,7 @@ export function SettingsPage() {
                           heatmap: custom.heatmap.map((c, i) => (i === index ? e.target.value : c)),
                         };
                         setCustom(next);
-                        if (preview) previewTheme(next);
+                        previewTheme(next);
                       }}
                     />
                     <span>
@@ -249,7 +262,11 @@ export function SettingsPage() {
               {Math.min(
                 contrastRatio(custom.text, custom.surface),
                 contrastRatio(custom.text, custom.background),
-                contrastRatio('#ffffff', custom.accent),
+                contrastRatio(custom.accent, custom.surface),
+                Math.max(
+                  contrastRatio('#ffffff', custom.accent),
+                  contrastRatio('#000000', custom.accent),
+                ),
               ) < 4.5 && (
                 <div className="notice">
                   {en.settings.contrast}
@@ -257,7 +274,7 @@ export function SettingsPage() {
                     variant="ghost"
                     onClick={() => {
                       setCustom(baseCustom);
-                      if (preview) previewTheme(baseCustom);
+                      previewTheme(baseCustom);
                     }}
                   >
                     {ui.settings.useAccessibleColors}
@@ -279,9 +296,11 @@ export function SettingsPage() {
                 <Button
                   variant="secondary"
                   onClick={async () => {
-                    previewTheme(null);
-                    setCustom(baseCustom);
-                    await set('customTheme', null);
+                    if (await set('customTheme', null)) {
+                      applyPreview(null);
+                      setPreview(false);
+                      setCustom(baseCustom);
+                    }
                   }}
                 >
                   <RotateCcw size={15} />
@@ -291,6 +310,7 @@ export function SettingsPage() {
                   disabled={!paid || !canEdit}
                   onClick={async () => {
                     if (await set('customTheme', custom)) {
+                      applyPreview(custom);
                       setPreview(false);
                       notify(ui.settings.yourCustomThemeIsSaved);
                     }
@@ -299,6 +319,11 @@ export function SettingsPage() {
                   {en.settings.saveTheme}
                 </Button>
               </div>
+              {preview && (
+                <p className="helper" role="status">
+                  {ui.settings.unsavedThemePreview}
+                </p>
+              )}
               {!paid && (
                 <p className="helper">{ui.settings.customThemesRequireProOrTeamForThisWorkspace}</p>
               )}

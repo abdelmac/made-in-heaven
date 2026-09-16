@@ -110,8 +110,12 @@ export function BackgroundPanel() {
     [],
   );
   function change(next: Preferences['background']) {
+    uploadGeneration.current++;
+    setLoading(false);
+    setError('');
     setDraft(next);
-    if (preview) applyBackground(next);
+    setPreview(true);
+    applyBackground(next);
   }
   const hasChanges = JSON.stringify(draft) !== JSON.stringify(saved);
   return (
@@ -253,10 +257,19 @@ export function BackgroundPanel() {
       {draft.kind !== 'none' && draft.overlay < 70 && (
         <p className="notice">{ui.appearance.aBrighterBackgroundCanMakePageHeadingsHarderTo}</p>
       )}
+      {preview && (
+        <p className="helper" role="status">
+          {ui.appearance.unsavedBackgroundPreview}
+        </p>
+      )}
       <div className="form-actions wrap">
         <Button
           variant="secondary"
           onClick={() => {
+            if (preview) {
+              uploadGeneration.current++;
+              setLoading(false);
+            }
             applyBackground(preview ? saved : draft);
             setPreview(!preview);
           }}
@@ -302,6 +315,7 @@ export function BackgroundPanel() {
             ) {
               savedRef.current = draft;
               setPreview(false);
+              applyBackground(draft);
               notify(ui.appearance.yourBackgroundIsSaved);
             }
           }}

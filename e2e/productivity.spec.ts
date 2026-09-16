@@ -101,7 +101,7 @@ test('a complete personal journey preserves planning, development and actual foc
   await dialog.getByRole('button', { name: 'Plan a session', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   expect((await readData(page)).focusSessions).toHaveLength(0);
-  await page.getByRole('button', { name: /One focused design minute/ }).click();
+  await page.locator('.planner-cell[aria-label*="One focused design minute"]').click();
   dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Focus now', exact: true }).click();
   await expect(dialog).not.toBeVisible();

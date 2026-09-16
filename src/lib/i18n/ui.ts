@@ -77,6 +77,8 @@ export const ui = {
     copy3: ':',
   },
   settings: {
+    unsavedThemePreview:
+      'Previewing your custom colors. Save theme to keep them, or end the preview to restore your saved colors.',
     timerPreferencesSavedActiveSessionsKeepTheirOriginalDuration:
       'Timer preferences saved. Active sessions keep their original duration.',
     calendarPreferencesSaved: 'Calendar preferences saved.',
@@ -469,6 +471,8 @@ export const ui = {
     invoice: 'Invoice',
   },
   appearance: {
+    unsavedBackgroundPreview:
+      'Previewing this background. Save background to keep it, or end the preview to restore your saved choice.',
     classicColors: 'Classic colors',
     includedForEveryone: 'Included for everyone',
     aFamiliarPaletteFromGardenGreenToBlurplePick:

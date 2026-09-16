@@ -3,6 +3,10 @@ import { ui } from '@/lib/i18n/ui';
 
 import { useEffect, useMemo, useState } from 'react';
 import { paid } from '@/lib/i18n/paid';
+import { activityRange } from '@/lib/i18n/activity-range';
+import { activityForRange, shiftActivityMonth, type ActivityView } from '@/lib/activity-range';
+import { useActivityView } from '@/lib/use-activity-view';
+import styles from './activity-range.module.css';
 import {
   Search,
   Download,
@@ -18,13 +22,7 @@ import {
 import { useApp } from './app-context';
 import { Button, IconButton, Dialog, Panel, Empty, ColorDot } from './ui';
 import { en } from '@/lib/i18n/en';
-import {
-  activityDays,
-  allocateToHourBuckets,
-  calculateMetrics,
-  addDays,
-  type DayActivity,
-} from '@/lib/calendar';
+import { allocateToHourBuckets, calculateMetrics, addDays } from '@/lib/calendar';
 import {
   formatDay,
   formatTime,
@@ -108,106 +106,250 @@ export function ActivityHeatmap({
   to?: string;
 }) {
   const { store, navigate } = useApp();
-  const [selected, setSelected] = useState<DayActivity | null>(null);
+  const [selectedDay, setSelectedDay] = useState<{ date: string; scope: string } | null>(null);
   const { data } = store;
-  const days = useMemo(
-    () =>
-      activityDays(
-        data.focusSessions.filter((s) => {
-          const day = dateKey(s.endedAt, data.preferences.timeZone);
-          return (
-            (!subjectId || s.context.subjectId === subjectId) &&
-            (!projectId || s.context.projectId === projectId) &&
-            (!from || day >= from) &&
-            (!to || day <= to) &&
-            s.userId === store.userId
-          );
-        }),
-        data.preferences,
-      ),
-    [data.focusSessions, data.preferences, subjectId, projectId, from, to, store.userId],
+  const {
+    view,
+    month: chosenMonth,
+    setSelection,
+  } = useActivityView(store.userId, data.workspaceId);
+  const today = dateKey(new Date(), data.preferences.timeZone);
+  const currentMonth = today.slice(0, 7);
+  const month = chosenMonth && chosenMonth <= currentMonth ? chosenMonth : currentMonth;
+  const range = useMemo(
+    () => ({
+      ...activityForRange({
+        sessions: data.focusSessions,
+        preferences: data.preferences,
+        workspaceId: data.workspaceId,
+        userId: store.userId,
+        view,
+        month,
+        subjectId,
+        projectId,
+        from,
+        to,
+      }),
+      today,
+    }),
+    [
+      data.focusSessions,
+      data.preferences,
+      data.workspaceId,
+      subjectId,
+      projectId,
+      from,
+      to,
+      store.userId,
+      view,
+      month,
+      today,
+    ],
   );
-  const total = days.reduce((sum, day) => sum + day.count, 0);
+  const { days, count: total } = range;
+  const scope = [
+    data.workspaceId,
+    store.userId,
+    subjectId,
+    projectId,
+    from,
+    to,
+    view,
+    month,
+    data.preferences.timeZone,
+  ].join(':');
+  const selected =
+    selectedDay?.scope === scope ? days.find((day) => day.date === selectedDay.date) : null;
   const minuteMode = data.preferences.heatmapMode === 'minutes';
+  const monthLabel = new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(`${month}-01T12:00:00Z`));
+  function changeMonth(next: string) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(next) || next < '0001-01' || next > currentMonth) return;
+    setSelection({ view, month: next });
+    setSelectedDay(null);
+  }
+  function dayButton(day: (typeof days)[number], inMonth = false) {
+    const intensity = minuteMode
+      ? day.minutes === 0
+        ? 0
+        : day.minutes <= 25
+          ? 1
+          : day.minutes <= 50
+            ? 2
+            : day.minutes <= 75
+              ? 3
+              : 4
+      : Math.min(4, day.count);
+    const label = `${day.date}: ${day.count} completed focus sessions, ${Math.round(day.minutes)} minutes${day.future ? ', future date' : ''}`;
+    return (
+      <button
+        type="button"
+        className={`heatmap-cell ${inMonth ? styles.monthDay : `intensity-${intensity}`}`}
+        key={day.date}
+        aria-label={label}
+        aria-current={day.date === range.today ? 'date' : undefined}
+        title={label}
+        disabled={day.future}
+        onClick={() => setSelectedDay({ date: day.date, scope })}
+      >
+        {inMonth && (
+          <>
+            <span aria-hidden="true">{Number(day.date.slice(-2))}</span>
+            <span
+              aria-hidden="true"
+              className={`${styles.monthIntensity} intensity-${intensity}`}
+            />
+            <small aria-hidden="true" className={styles.monthValue}>
+              {day.count ? (minuteMode ? minutesLabel(day.minutes) : day.count) : '\u00a0'}
+            </small>
+          </>
+        )}
+      </button>
+    );
+  }
   const weekdays =
     data.preferences.weekStartsOn === 1
       ? ['Mon', '', 'Wed', '', 'Fri', '', 'Sun']
       : ['Sun', '', 'Tue', '', 'Thu', '', 'Sat'];
-  const months = Array.from({ length: 52 }, (_, i) => {
-    const date = new Date(days[i * 7].date + 'T12:00Z');
-    const previous = i ? new Date(days[(i - 1) * 7].date + 'T12:00Z') : null;
-    return !previous || date.getUTCMonth() !== previous.getUTCMonth()
-      ? new Intl.DateTimeFormat('en', { month: 'short', timeZone: 'UTC' }).format(date)
-      : '';
-  });
+  const months =
+    view === 'year'
+      ? Array.from({ length: 52 }, (_, i) => {
+          const date = new Date(days[i * 7].date + 'T12:00Z');
+          const previous = i ? new Date(days[(i - 1) * 7].date + 'T12:00Z') : null;
+          return !previous || date.getUTCMonth() !== previous.getUTCMonth()
+            ? new Intl.DateTimeFormat('en', { month: 'short', timeZone: 'UTC' }).format(date)
+            : '';
+        })
+      : [];
   return (
     <Panel
-      className="activity-panel"
+      className={`activity-panel ${styles.panel}`}
       title={en.overview.activity}
-      subtitle={en.overview.activitySubtitle}
+      subtitle={view === 'month' ? activityRange.monthSubtitle : en.overview.activitySubtitle}
       action={
-        <select
-          className="subtle-select"
-          aria-label={ui.activity.heatmapMeasure}
-          value={data.preferences.heatmapMode}
-          onChange={(e) =>
-            store.update((d) => {
-              d.preferences.heatmapMode = e.target.value as 'sessions' | 'minutes';
-            })
-          }
-        >
-          <option value="sessions">{ui.activity.sessions}</option>
-          <option value="minutes">{ui.activity.focusMinutes}</option>
-        </select>
+        <div className={styles.controls}>
+          <select
+            className="subtle-select"
+            aria-label={activityRange.period}
+            value={view}
+            onChange={(event) => {
+              setSelection({ view: event.target.value as ActivityView, month });
+              setSelectedDay(null);
+            }}
+          >
+            <option value="year">{activityRange.year}</option>
+            <option value="month">{activityRange.month}</option>
+          </select>
+          <select
+            className="subtle-select"
+            aria-label={ui.activity.heatmapMeasure}
+            value={data.preferences.heatmapMode}
+            onChange={(e) =>
+              store.update((d) => {
+                d.preferences.heatmapMode = e.target.value as 'sessions' | 'minutes';
+              })
+            }
+          >
+            <option value="sessions">{ui.activity.sessions}</option>
+            <option value="minutes">{ui.activity.focusMinutes}</option>
+          </select>
+        </div>
       }
     >
-      <div className="heatmap-scroll">
-        <div className="heatmap-wrap">
-          <div className="heatmap-months">
-            <span />
-            {months.map((m, i) => (
-              <span key={i}>{m}</span>
-            ))}
+      {(from || to) && <p className="helper">{activityRange.scope(from, to)}</p>}
+      {view === 'month' ? (
+        <>
+          <div className={styles.monthNavigation}>
+            <h3 aria-live="polite" aria-atomic="true">
+              {monthLabel}
+            </h3>
+            <div className="row wrap">
+              <IconButton
+                label={activityRange.previous}
+                disabled={month === '0001-01'}
+                onClick={() => changeMonth(shiftActivityMonth(month, -1))}
+              >
+                <ChevronLeft size={17} />
+              </IconButton>
+              <input
+                type="month"
+                aria-label={activityRange.monthInput}
+                min="0001-01"
+                max={currentMonth}
+                value={month}
+                onChange={(event) => changeMonth(event.target.value)}
+              />
+              <IconButton
+                label={activityRange.next}
+                disabled={month >= currentMonth}
+                onClick={() => changeMonth(shiftActivityMonth(month, 1))}
+              >
+                <ChevronRight size={17} />
+              </IconButton>
+              <Button
+                variant="ghost"
+                disabled={month === currentMonth}
+                onClick={() => changeMonth(currentMonth)}
+              >
+                {activityRange.current}
+              </Button>
+            </div>
           </div>
-          <div className="heatmap-body">
-            <div className="heatmap-weekdays">
-              {weekdays.map((d, i) => (
-                <span key={i}>{d}</span>
+          <div
+            className={styles.monthGrid}
+            data-testid="activity-month"
+            role="group"
+            aria-label={activityRange.calendarLabel(monthLabel)}
+          >
+            {Array.from(
+              { length: 7 },
+              (_, index) => activityRange.weekdays[(index + data.preferences.weekStartsOn) % 7],
+            ).map((weekday) => (
+              <span className={styles.weekday} key={weekday} aria-hidden="true">
+                {weekday}
+              </span>
+            ))}
+            {Array.from({ length: range.leadingDays }, (_, index) => (
+              <span key={`padding-${index}`} aria-hidden="true" />
+            ))}
+            {days.map((day) => dayButton(day, true))}
+          </div>
+        </>
+      ) : (
+        <div className="heatmap-scroll">
+          <div className="heatmap-wrap">
+            <div className="heatmap-months">
+              <span />
+              {months.map((m, i) => (
+                <span key={i}>{m}</span>
               ))}
             </div>
-            <div className="heatmap-grid">
-              {days.map((day) => {
-                const intensity = minuteMode
-                  ? day.minutes === 0
-                    ? 0
-                    : day.minutes <= 25
-                      ? 1
-                      : day.minutes <= 50
-                        ? 2
-                        : day.minutes <= 75
-                          ? 3
-                          : 4
-                  : Math.min(4, day.count);
-                const label = `${day.date}: ${day.count} completed focus sessions, ${Math.round(day.minutes)} minutes${day.future ? ', future date' : ''}`;
-                return (
-                  <button
-                    className={`heatmap-cell intensity-${intensity}`}
-                    key={day.date}
-                    aria-label={label}
-                    title={label}
-                    disabled={day.future}
-                    onClick={() => setSelected(day)}
-                  />
-                );
-              })}
+            <div className="heatmap-body">
+              <div className="heatmap-weekdays">
+                {weekdays.map((d, i) => (
+                  <span key={i}>{d}</span>
+                ))}
+              </div>
+              <div className="heatmap-grid">{days.map((day) => dayButton(day))}</div>
             </div>
           </div>
         </div>
-      </div>
+      )}
       <div className="heatmap-footer">
-        <span>
-          <strong>{total}</strong> {ui.activity.completedSessionsInTheLast52Weeks}
-        </span>
+        <div className={styles.total} aria-live="polite" aria-atomic="true">
+          <span>
+            <strong>{total}</strong>{' '}
+            {view === 'month'
+              ? activityRange.monthTotal(monthLabel)
+              : ui.activity.completedSessionsInTheLast52Weeks}
+          </span>
+          <span>
+            <strong>{minutesLabel(range.minutes)}</strong> {activityRange.focused}
+          </span>
+        </div>
         <div className="legend">
           <span>{en.overview.less}</span>
           {[0, 1, 2, 3, 4].map((i) => (
@@ -230,7 +372,7 @@ export function ActivityHeatmap({
       {selected && (
         <Dialog
           title={formatDay(selected.date + 'T12:00Z', { ...data.preferences, timeZone: 'UTC' })}
-          onClose={() => setSelected(null)}
+          onClose={() => setSelectedDay(null)}
         >
           <div className="mini-metrics">
             <div>
@@ -252,10 +394,7 @@ export function ActivityHeatmap({
                     {formatTime(s.endedAt, data.preferences)}
                   </span>
                 </div>
-                <strong>
-                  {s.durationMinutes}
-                  {ui.activity.m}
-                </strong>
+                <strong>{minutesLabel(s.actualSeconds / 60)}</strong>
               </div>
             ))
           ) : (
@@ -267,7 +406,7 @@ export function ActivityHeatmap({
           <Button
             variant="secondary"
             onClick={() => {
-              setSelected(null);
+              setSelectedDay(null);
               navigate('history');
             }}
           >

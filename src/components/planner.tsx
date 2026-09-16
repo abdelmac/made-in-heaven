@@ -1,7 +1,7 @@
 'use client';
 import { ui } from '@/lib/i18n/ui';
 
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -26,9 +26,16 @@ import {
   zonedDateTime,
 } from '@/lib/calendar';
 import { dateKey, formatTime } from '@/lib/display';
+import { plannerCopy } from '@/lib/i18n/planner';
+import {
+  isPlannableTask,
+  preparePlannerPlacement,
+  type PlannerSource,
+} from '@/lib/planner-placement';
+import styles from './planner.module.css';
 
 export function Planner({ full = false }: { full?: boolean }) {
-  const { store, openPlan, canEdit } = useApp();
+  const { store, openPlan, canEdit, notify } = useApp();
   const { data } = store;
   const [offset, setOffset] = useState(0);
   const [subject, setSubject] = useState('');
@@ -37,6 +44,33 @@ export function Planner({ full = false }: { full?: boolean }) {
   const [status, setStatus] = useState('');
   const [member, setMember] = useState(store.user?.id || LOCAL_USER_ID);
   const [cell, setCell] = useState<PlannedSession[] | null>(null);
+  const [dragging, setDragging] = useState<PlannerSource | null>(null);
+  const [selection, setSelection] = useState<PlannerSource | null>(null);
+  const [dropPreview, setDropPreview] = useState<{ key: string; error: string } | null>(null);
+  const [feedback, setFeedback] = useState('');
+  const [placementFailed, setPlacementFailed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const dragSource = useRef<PlannerSource | null>(null);
+  const savingRef = useRef(false);
+  const actorId = store.user?.id || LOCAL_USER_ID;
+  const selected = selection?.workspaceId === data.workspaceId && canEdit ? selection : null;
+  const activeSource = dragging?.workspaceId === data.workspaceId ? dragging : selected;
+  const sourceTitle = activeSource
+    ? (activeSource.kind === 'plan' ? data.plannedSessions : data.tasks).find(
+        (record) => record.id === activeSource.id,
+      )?.title
+    : null;
+  useEffect(() => {
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      dragSource.current = null;
+      setDragging(null);
+      setSelection(null);
+      setDropPreview(null);
+    };
+    document.addEventListener('keydown', cancel);
+    return () => document.removeEventListener('keydown', cancel);
+  }, []);
   const days = weekDays(new Date(), data.preferences, offset);
   const today = dateKey(new Date(), data.preferences.timeZone);
   const sessions = data.plannedSessions.filter(
@@ -52,6 +86,118 @@ export function Planner({ full = false }: { full?: boolean }) {
     [sessions, data.preferences.timeZone],
   );
   const hours = visibleHours(data.plannedSessions, data.preferences, days);
+  const weekSessionIds = new Set(
+    [...buckets.values()]
+      .filter((bucket) => days.includes(bucket.day))
+      .flatMap((bucket) => bucket.sessions.map((session) => session.id)),
+  );
+  const weekSessions = sessions
+    .filter((session) => weekSessionIds.has(session.id))
+    .sort((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt));
+  const plannedTaskIds = new Set(data.plannedSessions.map((session) => session.taskId));
+  const availableTasks = data.tasks.filter(
+    (record) =>
+      isPlannableTask(data, record) &&
+      !plannedTaskIds.has(record.id) &&
+      (!subject || record.subjectId === subject) &&
+      (!project || record.projectId === project) &&
+      (!task || record.id === task),
+  );
+  function source(kind: PlannerSource['kind'], recordId: string): PlannerSource {
+    return { kind, id: recordId, workspaceId: data.workspaceId };
+  }
+  function chooseSource(item: PlannerSource) {
+    if (!canEdit || savingRef.current) return;
+    setSelection(item);
+    setFeedback('');
+    setPlacementFailed(false);
+    setDropPreview(null);
+  }
+  function startDrag(event: DragEvent<HTMLElement>, item: PlannerSource) {
+    if (!canEdit || savingRef.current) {
+      event.preventDefault();
+      return;
+    }
+    dragSource.current = item;
+    event.dataTransfer.effectAllowed = item.kind === 'plan' ? 'move' : 'copy';
+    event.dataTransfer.setData('application/x-solace-planner', item.id);
+    setDragging(item);
+    setSelection(null);
+    setFeedback('');
+    setPlacementFailed(false);
+  }
+  function endDrag() {
+    dragSource.current = null;
+    setDragging(null);
+    setDropPreview(null);
+  }
+  function previewSlot(item: PlannerSource, day: string, hour: number) {
+    const key = `${day}:${hour}`;
+    if (dropPreview?.key === key) return;
+    let error = '';
+    try {
+      preparePlannerPlacement(data, item, day, hour, actorId, canEdit);
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    }
+    setDropPreview({ key, error });
+  }
+  async function place(item: PlannerSource, day: string, hour: number) {
+    if (!canEdit || savingRef.current) return;
+    endDrag();
+    setFeedback('');
+    setPlacementFailed(false);
+    try {
+      // Preview errors are shown immediately; repeat against the latest draft inside update.
+      const preview = preparePlannerPlacement(data, item, day, hour, actorId, canEdit);
+      if (!preview.changed) {
+        setFeedback(plannerCopy.unchanged);
+        setSelection(null);
+        return;
+      }
+      savingRef.current = true;
+      setSaving(true);
+      const saved = await store.update((draft) => {
+        const { record, changed } = preparePlannerPlacement(
+          draft,
+          item,
+          day,
+          hour,
+          actorId,
+          canEdit,
+        );
+        if (!changed) return;
+        if (item.kind === 'plan') {
+          draft.plannedSessions = draft.plannedSessions.map((session) =>
+            session.id === record.id ? record : session,
+          );
+        } else draft.plannedSessions.push(record);
+        addEvent(draft, item.kind === 'plan' ? 'plan_updated' : 'plan_created', record.title, {
+          subjectId: record.subjectId,
+          taskId: record.taskId,
+          projectId: record.projectId,
+          userId: actorId,
+        });
+      });
+      if (!saved) {
+        setPlacementFailed(true);
+        setFeedback(plannerCopy.failed);
+        setSelection(item);
+        return;
+      }
+      setSelection(null);
+      const message = item.kind === 'plan' ? plannerCopy.moved : plannerCopy.planned;
+      setFeedback(message);
+      notify(message);
+    } catch (cause) {
+      setFeedback(cause instanceof Error ? cause.message : String(cause));
+      setPlacementFailed(true);
+      setSelection(item);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }
   const monthFormat = new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
@@ -149,7 +295,129 @@ export function Planner({ full = false }: { full?: boolean }) {
           )}
         </div>
       )}
-      <div className="grid-scroller">
+      {full && (
+        <div className={styles.sources}>
+          {weekSessions.length > 0 && (
+            <div>
+              <div className={styles.sourceHeading}>
+                <strong>{plannerCopy.scheduled}</strong>
+                <span>{plannerCopy.edit}</span>
+              </div>
+              <div className={styles.cardList} aria-label={plannerCopy.scheduled}>
+                {weekSessions.map((session) => (
+                  <div
+                    className={`${styles.card} ${dragging?.kind === 'plan' && dragging.id === session.id ? styles.dragging : ''}`}
+                    key={session.id}
+                  >
+                    <button
+                      type="button"
+                      className={styles.cardButton}
+                      data-plan-id={session.id}
+                      draggable={canEdit && !saving}
+                      onDragStart={(event) => startDrag(event, source('plan', session.id))}
+                      onDragEnd={endDrag}
+                      onClick={() => openPlan(session.id)}
+                      title={session.title}
+                    >
+                      <strong>{session.title}</strong>
+                      <small>
+                        {new Intl.DateTimeFormat('en-US', {
+                          weekday: 'short',
+                          timeZone: data.preferences.timeZone,
+                        }).format(new Date(session.startsAt))}{' '}
+                        {formatTime(session.startsAt, data.preferences)} · {session.durationMinutes}
+                        {ui.planner.m}
+                      </small>
+                    </button>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className={styles.moveButton}
+                        aria-label={`${plannerCopy.move} ${session.title}`}
+                        aria-pressed={selected?.kind === 'plan' && selected.id === session.id}
+                        disabled={saving}
+                        onClick={() => chooseSource(source('plan', session.id))}
+                      >
+                        {plannerCopy.move}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {canEdit && (
+            <div>
+              <div className={styles.sourceHeading}>
+                <strong>{plannerCopy.available}</strong>
+                <span>{plannerCopy.availableHint}</span>
+              </div>
+              {availableTasks.length ? (
+                <div className={styles.cardList} aria-label={plannerCopy.available}>
+                  {availableTasks.map((record) => (
+                    <div className={styles.card} key={record.id}>
+                      <button
+                        type="button"
+                        className={styles.cardButton}
+                        data-task-id={record.id}
+                        draggable={!saving}
+                        disabled={saving}
+                        aria-pressed={selected?.kind === 'task' && selected.id === record.id}
+                        onDragStart={(event) => startDrag(event, source('task', record.id))}
+                        onDragEnd={endDrag}
+                        onClick={() => chooseSource(source('task', record.id))}
+                        title={record.title}
+                      >
+                        <strong>{record.title}</strong>
+                        <small>
+                          {data.preferences.focusMinutes}
+                          {ui.planner.m}
+                        </small>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p>{plannerCopy.noAvailable}</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+      {canEdit && (
+        <div className={`${styles.feedback} ${activeSource ? styles.selection : ''}`}>
+          <p role="status" aria-live="polite">
+            {saving
+              ? plannerCopy.saving
+              : activeSource
+                ? `${sourceTitle || ''} — ${dropPreview?.error || (dropPreview && dragging ? plannerCopy.ready : plannerCopy.chooseSlot)}`
+                : full
+                  ? plannerCopy.instructions
+                  : plannerCopy.compactInstructions}
+          </p>
+          {activeSource && (
+            <Button
+              variant="ghost"
+              disabled={saving}
+              onClick={() => {
+                endDrag();
+                setSelection(null);
+              }}
+            >
+              {plannerCopy.cancel}
+            </Button>
+          )}
+        </div>
+      )}
+      {feedback && (
+        <p
+          className={placementFailed ? 'error' : 'helper'}
+          role={placementFailed ? 'alert' : 'status'}
+        >
+          {placementFailed && feedback === plannerCopy.failed ? store.error || feedback : feedback}
+        </p>
+      )}
+      <div className={`grid-scroller ${activeSource ? styles.choosing : ''}`} aria-busy={saving}>
         <div className="planner-grid" role="group" aria-label={`Weekly planner ${range}`}>
           <div className="grid-corner">
             <CalendarDays size={14} />
@@ -178,10 +446,52 @@ export function Planner({ full = false }: { full?: boolean }) {
                   <button
                     key={day}
                     type="button"
-                    className={`planner-cell intensity-${plannerIntensity(bucket?.minutes || 0)} ${day === today ? 'today-column' : ''}`}
+                    className={`planner-cell intensity-${plannerIntensity(bucket?.minutes || 0)} ${day === today ? 'today-column' : ''} ${canEdit && bucket?.sessions.length === 1 ? styles.draggable : ''} ${dragging?.kind === 'plan' && bucket?.sessions.some((session) => session.id === dragging.id) ? styles.dragging : ''} ${dropPreview?.key === `${day}:${hour}` ? (dropPreview.error ? styles.dropInvalid : styles.dropTarget) : ''}`}
+                    data-planner-slot={`${day}:${hour}`}
                     aria-label={description}
                     title={description}
+                    draggable={canEdit && !saving && bucket?.sessions.length === 1}
+                    onDragStart={(event) => {
+                      if (bucket?.sessions.length === 1)
+                        startDrag(event, source('plan', bucket.sessions[0].id));
+                    }}
+                    onDragEnd={endDrag}
+                    onDragOver={(event) => {
+                      const item = dragSource.current;
+                      if (
+                        !canEdit ||
+                        savingRef.current ||
+                        !item ||
+                        item.workspaceId !== data.workspaceId
+                      )
+                        return;
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = item.kind === 'plan' ? 'move' : 'copy';
+                      previewSlot(item, day, hour);
+                    }}
+                    onDragLeave={(event) => {
+                      if (
+                        !(event.relatedTarget instanceof Node) ||
+                        !event.currentTarget.contains(event.relatedTarget)
+                      )
+                        setDropPreview(null);
+                    }}
+                    onDrop={(event) => {
+                      const item = dragSource.current;
+                      if (!item || !canEdit) return;
+                      event.preventDefault();
+                      void place(item, day, hour);
+                    }}
+                    onFocus={() => {
+                      if (selected) previewSlot(selected, day, hour);
+                    }}
+                    onBlur={() => setDropPreview(null)}
                     onClick={() => {
+                      if (savingRef.current) return;
+                      if (selected) {
+                        void place(selected, day, hour);
+                        return;
+                      }
                       if (bucket?.sessions.length === 1) openPlan(bucket.sessions[0].id);
                       else if (bucket?.sessions.length) setCell(bucket.sessions);
                       else if (canEdit) openPlan(undefined, day, hour);
@@ -212,7 +522,7 @@ export function Planner({ full = false }: { full?: boolean }) {
       </div>
       {full && (
         <p className="helper">
-          {en.planner.empty} {ui.planner.copy} {data.preferences.timeZone}
+          {en.planner.empty} {ui.planner.copy} {data.preferences.timeZone}. {plannerCopy.snap}
         </p>
       )}
       {cell && (

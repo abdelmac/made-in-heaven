@@ -6,7 +6,7 @@ import {
   preferencesSchema,
   workspaceDataSchema,
 } from '../src/lib/model';
-import { backgroundCss, classicColors, readableAccent } from '../src/lib/appearance';
+import { backgroundCss, classicColors, readableAccent, themeColors } from '../src/lib/appearance';
 import { contrastRatio } from '../src/lib/calendar';
 
 describe('personal appearance data', () => {
@@ -60,5 +60,67 @@ describe('personal appearance data', () => {
       expect(contrastRatio(readableAccent(color, false), '#ffffff')).toBeGreaterThanOrEqual(4.5);
       expect(contrastRatio(readableAccent(color, true), '#2b2d31')).toBeGreaterThanOrEqual(4.5);
     }
+  });
+  it('keeps text, links and buttons readable on every resolved classic palette', () => {
+    for (const dark of [false, true]) {
+      for (const accent of Object.keys(classicColors) as (keyof typeof classicColors)[]) {
+        const colors = themeColors({ ...DEFAULT_PREFERENCES, accent }, dark);
+        for (const surface of ['background', 'surface', 'surface-soft', 'sidebar']) {
+          for (const foreground of ['text', 'muted', 'secondary-text', 'accent'])
+            expect(contrastRatio(colors[foreground], colors[surface])).toBeGreaterThanOrEqual(4.5);
+        }
+        expect(contrastRatio(colors['on-accent'], colors.accent)).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(colors['on-accent'], colors['accent-hover'])).toBeGreaterThanOrEqual(
+          4.5,
+        );
+        for (let index = 0; index < 5; index++)
+          expect(
+            contrastRatio(colors[`on-heat-${index}`], colors[`heat-${index}`]),
+          ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
+  it('keeps planner minute labels readable with arbitrary accents and custom heatmaps', () => {
+    const samples = ['#000000', '#ffffff', '#ffff00', '#00ff00', '#ff00ff', '#5865f2', '#777777'];
+    for (const dark of [false, true]) {
+      for (const accentColor of samples) {
+        const colors = themeColors({ ...DEFAULT_PREFERENCES, accentColor }, dark);
+        for (let index = 0; index < 5; index++)
+          expect(
+            contrastRatio(colors[`on-heat-${index}`], colors[`heat-${index}`]),
+          ).toBeGreaterThanOrEqual(4.5);
+      }
+      const custom = themeColors(DEFAULT_PREFERENCES, dark, {
+        accent: '#808080',
+        background: '#171722',
+        surface: '#262638',
+        border: '#55556f',
+        text: '#f4f4fa',
+        heatmap: ['#ffffff', '#111111', '#777777', '#ffee00', '#000000'],
+      });
+      for (let index = 0; index < 5; index++)
+        expect(
+          contrastRatio(custom[`on-heat-${index}`], custom[`heat-${index}`]),
+        ).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+  it('resolves custom surfaces and secondary colors without retaining the previous classic palette', () => {
+    const customTheme = {
+      accent: '#e8b86d',
+      background: '#171722',
+      surface: '#262638',
+      border: '#55556f',
+      text: '#f4f4fa',
+      heatmap: ['#262638', '#68577b', '#997da4', '#c6a7c9', '#f5d5f7'],
+    };
+    const green = themeColors({ ...DEFAULT_PREFERENCES, accent: 'green', customTheme }, false);
+    const blue = themeColors({ ...DEFAULT_PREFERENCES, accent: 'blue', customTheme }, true);
+    expect(blue).toEqual(green);
+    expect(green.background).toBe(customTheme.background);
+    expect(green.surface).toBe(customTheme.surface);
+    expect(green['heat-4']).toBe(customTheme.heatmap[4]);
+    expect(contrastRatio(green.muted, green.sidebar)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(green['on-accent'], green.accent)).toBeGreaterThanOrEqual(4.5);
+    expect(themeColors(DEFAULT_PREFERENCES, false).background).not.toBe(green.background);
   });
 });

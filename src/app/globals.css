@@ -1675,30 +1675,23 @@ progress::-webkit-progress-value {
 }
 .intensity-0 {
   background: var(--heat-0);
+  color: var(--on-heat-0, var(--text));
 }
 .intensity-1 {
   background: var(--heat-1);
-  color: #21472a;
+  color: var(--on-heat-1, #21472a);
 }
 .intensity-2 {
   background: var(--heat-2);
-  color: #133d20;
+  color: var(--on-heat-2, #133d20);
 }
 .intensity-3 {
   background: var(--heat-3);
-  color: #102016;
+  color: var(--on-heat-3, #102016);
 }
 .intensity-4 {
   background: var(--heat-4);
-  color: #fff;
-}
-[data-theme='dark'] .planner-cell.intensity-1,
-[data-theme='dark'] .planner-cell.intensity-2 {
-  color: #ffffff;
-}
-[data-theme='dark'] .planner-cell.intensity-3,
-[data-theme='dark'] .planner-cell.intensity-4 {
-  color: #0b1c10;
+  color: var(--on-heat-4, #fff);
 }
 .planner-footer {
   display: flex;

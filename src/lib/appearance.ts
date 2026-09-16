@@ -54,45 +54,65 @@ export function readableAccent(color: string, dark: boolean) {
   }
   return dark ? '#ffffff' : '#000000';
 }
+function readableOn(color: string, surfaces: string[], dark: boolean) {
+  for (let step = 0; step <= 40; step++) {
+    const adjusted = mix(color, dark ? '#ffffff' : '#000000', step / 40);
+    if (surfaces.every((surface) => contrastRatio(adjusted, surface) >= 4.8)) return adjusted;
+  }
+  return dark ? '#ffffff' : '#000000';
+}
+
+/** Resolve the whole palette, so no sidebar, hover or muted color leaks from an old theme. */
+export function themeColors(p: Preferences, dark: boolean, theme = p.customTheme) {
+  const chosen = p.accentColor || classicColors[p.accent].color;
+  const background =
+    theme?.background || mix(dark ? '#1e1f22' : '#ffffff', chosen, dark ? 0.08 : 0.035);
+  const surface = theme?.surface || (dark ? mix('#2b2d31', chosen, 0.035) : '#ffffff');
+  const text = theme?.text || (dark ? '#f2f3f5' : '#24312b');
+  const surfaceSoft = mix(surface, text, 0.04);
+  const sidebar = mix(surface, background, 0.55);
+  const surfaces = [background, surface, surfaceSoft, sidebar];
+  const darkSurface = contrastRatio('#ffffff', surface) > contrastRatio('#000000', surface);
+  const accent = theme?.accent || readableOn(chosen, surfaces, darkSurface);
+  const onAccent =
+    contrastRatio('#ffffff', accent) >= contrastRatio('#000000', accent) ? '#ffffff' : '#000000';
+  const colors: Record<string, string> = {
+    background,
+    surface,
+    'surface-soft': surfaceSoft,
+    sidebar,
+    text,
+    muted: readableOn(mix(text, surface, 0.32), surfaces, darkSurface),
+    'secondary-text': readableOn(mix(text, surface, 0.18), surfaces, darkSurface),
+    border: theme?.border || mix(surface, text, 0.16),
+    accent,
+    'on-accent': onAccent,
+    'accent-hover': mix(accent, onAccent === '#ffffff' ? '#000000' : '#ffffff', 0.12),
+    'accent-soft': mix(surface, accent, 0.1),
+    sage: mix(surface, accent, 0.5),
+    danger: readableOn('#a34444', surfaces, darkSurface),
+    'danger-soft': mix(surface, '#a34444', 0.1),
+  };
+  const heatmap = theme?.heatmap || [
+    mix(surface, text, 0.08),
+    ...[0.25, 0.5, 0.75, 1].map((amount) => mix(surface, accent, amount)),
+  ];
+  heatmap.forEach((color, index) => {
+    colors[`heat-${index}`] = color;
+    colors[`on-heat-${index}`] =
+      contrastRatio('#ffffff', color) >= contrastRatio('#000000', color) ? '#ffffff' : '#000000';
+  });
+  return colors;
+}
+
 export function applyThemeColors(p: Preferences, theme = p.customTheme) {
   const root = document.documentElement;
-  for (const key of [
-    'accent',
-    'accent-hover',
-    'accent-soft',
-    'sage',
-    'background',
-    'surface',
-    'border',
-    'text',
-    'on-accent',
-  ])
-    root.style.removeProperty(`--${key}`);
-  for (let index = 0; index < 5; index++) root.style.removeProperty(`--heat-${index}`);
-  if (p.accentColor && !theme) {
-    const dark = root.dataset.theme === 'dark';
-    const accent = readableAccent(p.accentColor, dark);
-    root.style.setProperty('--accent', accent);
-    root.style.setProperty('--accent-hover', mix(accent, dark ? '#ffffff' : '#000000', 0.15));
-    root.style.setProperty('--accent-soft', mix(accent, dark ? '#232428' : '#ffffff', 0.88));
-    root.style.setProperty('--sage', mix(accent, dark ? '#232428' : '#ffffff', 0.45));
-    for (let index = 1; index < 5; index++)
-      root.style.setProperty(
-        `--heat-${index}`,
-        mix(accent, dark ? '#232428' : '#ffffff', (4 - index) / 4),
-      );
-  }
-  if (theme) {
-    for (const key of ['accent', 'background', 'surface', 'border', 'text'] as const)
-      root.style.setProperty(`--${key}`, theme[key]);
-    theme.heatmap.forEach((color, index) => root.style.setProperty(`--heat-${index}`, color));
-    root.style.setProperty(
-      '--on-accent',
-      contrastRatio('#ffffff', theme.accent) >= contrastRatio('#17281c', theme.accent)
-        ? '#ffffff'
-        : '#17281c',
-    );
-  }
+  const colors = themeColors(p, root.dataset.theme === 'dark', theme);
+  for (const [key, value] of Object.entries(colors)) root.style.setProperty(`--${key}`, value);
+  root.style.colorScheme =
+    contrastRatio('#ffffff', colors.background) > contrastRatio('#000000', colors.background)
+      ? 'dark'
+      : 'light';
 }
 export function backgroundCss(background: Preferences['background']) {
   if (background.kind === 'preset') return backgroundPresets[background.preset].css;

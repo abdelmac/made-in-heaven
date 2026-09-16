@@ -47,7 +47,7 @@ import { SummaryCards, ActivityHeatmap, HistoryPage, AnalyticsPage } from './act
 import { SettingsPage, AccountPanel } from './settings';
 import { OrganizationPage, BillingPage } from './workspaces';
 import { NotesPage, FlashcardsPage, NoteSheetEditor } from './learning';
-import { applyThemeColors, applyBackground } from '@/lib/appearance';
+import { applyThemeColors, applyBackground, themeColors } from '@/lib/appearance';
 
 const navigation = [
   { id: 'overview', Icon: LayoutDashboard },
@@ -110,6 +110,8 @@ export function FoliaApp() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef<string | null>(null);
   const completionWorkspace = useRef<string | null>(null);
+  const appliedAppearance = useRef('');
+  const appliedBackground = useRef('');
   const reflectionSession = store.data.focusSessions.find(
     (session) => session.id === reflectionSessionId && session.userId === store.userId,
   );
@@ -156,8 +158,24 @@ export function FoliaApp() {
       root.dataset.font = p.fontSize;
       root.dataset.radius = p.radius;
       root.dataset.motion = p.motion;
-      applyThemeColors(p);
-      applyBackground(p.background);
+      const appearanceKey = JSON.stringify([
+        store.workspaceId,
+        p.appearance,
+        root.dataset.theme,
+        p.accent,
+        p.accentColor,
+        p.customTheme,
+      ]);
+      const backgroundKey = JSON.stringify([store.workspaceId, p.background]);
+      // Unrelated preference saves must not erase an unsaved appearance preview.
+      if (appliedAppearance.current !== appearanceKey) {
+        applyThemeColors(p);
+        appliedAppearance.current = appearanceKey;
+      }
+      if (appliedBackground.current !== backgroundKey) {
+        applyBackground(p.background);
+        appliedBackground.current = backgroundKey;
+      }
     };
     apply();
     media.addEventListener('change', apply);
@@ -171,6 +189,7 @@ export function FoliaApp() {
           resolvedAccent: root.style.getPropertyValue('--accent'),
           resolvedAccentHover: root.style.getPropertyValue('--accent-hover'),
           resolvedTheme: root.dataset.theme,
+          resolvedColors: themeColors(p, root.dataset.theme === 'dark'),
           customTheme: p.customTheme,
           density: p.density,
           fontSize: p.fontSize,
@@ -180,7 +199,7 @@ export function FoliaApp() {
       );
     } catch {}
     return () => media.removeEventListener('change', apply);
-  }, [store.ready, store.data.preferences]);
+  }, [store.ready, store.data.preferences, store.workspaceId]);
   useEffect(() => {
     if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
       void navigator.serviceWorker
