@@ -136,7 +136,7 @@ npm run test:browser
 
 With an installed Microsoft Edge, browser tests can use `PLAYWRIGHT_CHANNEL=msedge`. `PLAYWRIGHT_BASE_URL` selects an already running server; the default is `http://127.0.0.1:3000`. The offline tests require a production server and `PLAYWRIGHT_PWA=1`; they are intentionally skipped in ordinary development runs. The responsive checks cover 320, 390, 768, 1024, and 1440 pixels. Automated axe checks cover light/dark appearances, mobile, and task dialogs, alongside actual keyboard focus and timer-access tests.
 
-Direct database tests use an isolated Docker PostgreSQL instance and real roles, policies, constraints, and transactions. Follow the commands in [docs/security.md](docs/security.md). Never apply `supabase/tests/bootstrap.sql` to a hosted Supabase project.
+Direct database tests use an isolated PostgreSQL WASM runtime (also run in CI), or a Docker PostgreSQL instance, with real roles, policies, constraints, and transactions. Follow the commands and environment limitations in [docs/security.md](docs/security.md). Never apply `supabase/tests/bootstrap.sql` to a hosted Supabase project.
 
 Observed executions and exact test results are recorded in [docs/verification.md](docs/verification.md). A test is not considered verified merely because its code exists.
 

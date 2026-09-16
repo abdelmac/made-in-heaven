@@ -1,6 +1,18 @@
 # Verification record
 
-Latest UI, hosted database and Stripe sandbox verification were performed on September 16, 2026. Solace Pro is connected at **EUR 1.00/month in test mode**. Earlier release records are retained below.
+Latest local UI and database verification was performed on September 16, 2026. The separate hosted database and Stripe sandbox checks from earlier that day are retained below; they do not verify this new local version. The recorded hosted offering is Solace Pro at **EUR 1.00/month in test mode**.
+
+## September 16: French product update — local verification
+
+- Implemented French interface copy and dates, Solace-facing downloads, guided first-objective creation, daily/weekly personal summaries, finite task/session recurrence, filtered personal-week calendar export, optional invitation email delivery, a persistent audio player and protected Pro/Team audio catalog. Existing user content and technical storage identifiers are preserved.
+- Added version-consistent paged cloud reads and compact, durable, replay-safe changes for large saves. API tests cover authorization, origin checks, validation, conflicts, page consistency and retries. This improves network transfer, not the whole-document server projection or browser storage limits; new deltas still have a 2 MB request limit.
+- **218 unit/server tests passed across 26 files.** Production build, ESLint, TypeScript, formatting and Git whitespace checks passed.
+- **All 38 production browser scenarios passed in one final run (46.1 seconds).** Tests ran against the final `npm start` build with Microsoft Edge and production PWA behavior enabled. Coverage includes the complete personal journey, French first use, recurrence persistence and atomic conflict rejection, calendar download, intentional audio playback and navigation, accessibility, offline recovery and layouts from 320 to 1440 pixels. Earlier desktop and mobile screenshots were inspected without browser exceptions.
+- **191 actual PostgreSQL assertions passed across 7 suites**, after applying all 10 migrations to an isolated PostgreSQL 18.3 WASM runtime (PGlite 0.5.8): security 41, billing 38, organization defaults 17, private preferences 13, learning/backgrounds 55, incremental synchronization 20 and audio 7. The reproducible runner is `node scripts/verify-database.mjs`; setup is documented in [security.md](security.md).
+- SQL execution caught and fixed an operator-precedence error in migration 0009 that could replace existing collections when merging patch metadata. Regression assertions now verify exact remove/replace/insert/order behavior, preservation of untouched collections and metadata, transaction rollback and replay receipts.
+- Added CI quality checks including the isolated SQL runner and an explicitly opt-in Vercel deployment job. No hosted migrations, account settings, email sends, audio uploads or deployments were performed for this update.
+
+The local SQL bootstrap has minimal Auth fixtures and no Supabase Storage schema. These results do **not** verify hosted authentication, actual email delivery, Storage bucket policies, simultaneous database connections, or the remaining Stripe provider lifecycle checks. Apply migrations 0009 and 0010 before deploying the new server, then complete the activation steps in [product-update.md](product-update.md). Calendar export is a snapshot, not continuous Google/Outlook synchronization.
 
 ## September 16: activity range, planner movement, and appearance fixes
 

@@ -292,10 +292,10 @@ describe('protected premium endpoints', () => {
         id: 'software-development',
         checklist: [
           { text: "Clarifier les critères d'acceptation", done: false },
-          { text: 'Implement the change', done: false },
-          { text: 'Add meaningful tests', done: false },
-          { text: 'Run checks', done: false },
-          { text: 'Review the result', done: false },
+          { text: 'Réaliser la modification', done: false },
+          { text: 'Ajouter des tests pertinents', done: false },
+          { text: 'Exécuter les vérifications', done: false },
+          { text: 'Examiner le résultat', done: false },
         ],
       },
     });

@@ -1,6 +1,6 @@
 # Security, privacy, and synchronization
 
-Folia uses Supabase Auth and PostgreSQL. Browser clients hold a publishable key; the service-role key and Stripe secret are server-only. API authentication calls `auth.getUser()` rather than trusting cookie contents. Supabase SSR refreshes cookies through the Next.js proxy. Provider email confirmation and password-recovery redirects must be configured for the deployed origin.
+Solace uses Supabase Auth and PostgreSQL. Browser clients hold a publishable key; the service-role key and Stripe secret are server-only. API authentication calls `auth.getUser()` rather than trusting cookie contents. Supabase SSR refreshes cookies through the Next.js proxy. Provider email confirmation and password-recovery redirects must be configured for the deployed origin.
 
 The callback supports PKCE `code` exchange and email `token_hash` verification for signup, email confirmation, and recovery. To support confirmation links opened in a different browser, configure Supabase email templates to send `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=signup` (and `type=recovery` for reset). PKCE links require the browser that initiated authentication. Recovery always redirects to the application's password-reset form; arbitrary return URLs are rejected.
 
@@ -45,7 +45,7 @@ Editable entities have normalized relational projections written in the same tra
 
 Per-user active timer rows prevent simultaneous timers across workspaces. Replacing an active timer requires recording its conclusion. Duration, start timestamp, phase, and context are frozen, including when the completion is written. Prepared idle phases and cycle counts persist privately. A task deletion cannot cascade-delete focus history because historical snapshots have no current task/subject foreign key. Saved focus and activity records cannot be removed or changed through document synchronization. Journal edits must append the previous content to revision metadata.
 
-Document writes currently have a 2 MB API limit and serialize at workspace level. This is a deliberate small-workspace implementation. Large organizations and long histories require paginated entity synchronization before this limit is reached. Clients always retain read/export access; no downgrade deletes data.
+Document writes have a 2 MB API limit and serialize at workspace level. Migration 0009 adds compact `PATCH` transactions for large saves, with immutable receipts tied to actor, expected version and normalized payload. Paged `GET` reads require a consistent version and never expose a partial snapshot. Compact conflicts return the version; the client reads the complete version-consistent snapshot for explicit resolution. The server still loads and projects the full document, and the browser retains it locally. Large new imports and individual records can still exceed request or local-storage limits; there is no staged upload or automatic pruning. See [product-update.md](product-update.md) for exact transfer behavior. Downgrade never deletes data.
 
 Advanced cloud reports use `/api/analytics`, which authenticates membership and checks the trusted `advancedAnalytics` entitlement before reading permitted workspace data. It validates date/subject/project/member filters, uses the caller's stored time zone, clips planned intervals at calendar boundaries, and counts only completed focus sessions. Personal Pro reports are forced to the caller's activity; Team reports can select permitted current/former workspace members. Estimates remain separate from completed effort, and deleted-task history remains in aggregate totals. Basic heatmaps and totals remain available on Free. The software-development template uses `/api/templates` with an allowlisted template key and the trusted `advancedTemplates` entitlement; basic templates remain local. Both paid read operations use rate limits and `private, no-store` responses. Local/demo previews do not assert paid cloud access.
 
@@ -53,7 +53,7 @@ Cloud study starts use `GET /api/flashcards/study?workspaceId=UUID&deckId=UUID`.
 
 ## Invitations and account deletion
 
-Owners/admins generate a shareable invitation URL; Folia does not send invitation emails automatically. The database stores only a SHA-256 token hash. Invitations expire after seven days, can be revoked, require the invited verified email, and cannot be replayed. Acceptance checks current Team entitlement and member limits inside the workspace transaction. Role changes, invitations, and ownership transfer produce audit records. Owners cannot be removed or demoted without deliberate transfer; transfer also moves the organization's lifecycle ownership.
+Owners/admins generate a shareable invitation URL and may explicitly request email delivery when a verified sender is configured. Sending is rate limited; provider acceptance is not presented as confirmed receipt, and failures preserve the shareable link. See [invitations.md](invitations.md) for server-only configuration and delivery states. The database stores only a SHA-256 token hash. Invitations expire after seven days, can be revoked, require the invited verified email, and cannot be replayed. Acceptance checks current Team entitlement and member limits inside the workspace transaction. Role changes, invitations, and ownership transfer produce audit records. Owners cannot be removed or demoted without deliberate transfer; transfer also moves the organization's lifecycle ownership.
 
 Account deletion requires the exact confirmation `DELETE`, a login within ten minutes, and same-origin authentication. Owned organizations must first be transferred. Personal workspace data and preferences are deleted with the account. Contributions already shared with organizations remain attributed to a pseudonymous UUID; separate personal content is never copied into organizations. The database guards against orphaned ownership or deleting a scope with an active subscription.
 
@@ -67,11 +67,22 @@ Missing Supabase/server credentials return honest 503 configuration errors. The 
 
 ## Reproducible database checks
 
-These tests run only against an isolated Docker PostgreSQL database, with minimal Auth role/function fixtures. They exercise actual migrations, constraints, grants, row-level policies, transaction behavior, and trusted billing RPCs. They do not prove hosted Supabase email delivery, SSR authentication, actual Stripe Checkout, webhook delivery, or authenticated browser-to-browser synchronization.
+These tests run against an isolated PostgreSQL runtime, with minimal Auth role/function fixtures. They exercise actual migrations, constraints, grants, row-level policies, transaction behavior, and trusted billing RPCs. They do not prove hosted Supabase email delivery, SSR authentication, Storage service behavior, actual Stripe Checkout, webhook delivery, or authenticated browser-to-browser synchronization.
+
+Without Docker, use the pinned [PGlite PostgreSQL WASM runtime](https://pglite.dev/docs/about). Its bundled [pgcrypto and btree_gist extensions](https://pglite.dev/extensions/) execute the same migrations in memory. Installation is limited to the ignored `.local/sql-harness` directory and does not change application dependencies, start a network service, or contact a database:
+
+```powershell
+npm install --prefix .local/sql-harness --ignore-scripts --no-audit --no-fund --save-exact @electric-sql/pglite@0.5.8
+node scripts/verify-database.mjs
+```
+
+The runner applies every migration in lexical order, then all SQL test suites. It omits only psql client directives (`\\set`, `\\i`) and reports the actual `PASS:` assertion count. Fixtures roll back and the memory database is discarded afterward. CI runs this command before the production build. This runtime uses PostgreSQL 18.3; the Docker alternative below uses PostgreSQL 17.11. PGlite has one connection, so this does not test races between simultaneous database connections. The test bootstrap has no Storage schema: migration 0010's hosted bucket/policy branch is intentionally skipped, while catalog constraints, privileges, and paid audio entitlements are exercised.
+
+Docker alternative:
 
 ```powershell
 docker compose -p folia-security-test -f supabase/docker-compose.test.yml up -d --wait
-docker compose -p folia-security-test -f supabase/docker-compose.test.yml exec -T postgres psql -U postgres -d folia_test -f /workspace/tests/bootstrap.sql -f /workspace/tests/security.sql -f /workspace/tests/billing-security.sql -f /workspace/tests/organization-settings.sql -f /workspace/tests/preferences.sql -f /workspace/tests/learning-security.sql
+docker compose -p folia-security-test -f supabase/docker-compose.test.yml exec -T postgres psql -U postgres -d folia_test -f /workspace/tests/bootstrap.sql -f /workspace/tests/security.sql -f /workspace/tests/billing-security.sql -f /workspace/tests/organization-settings.sql -f /workspace/tests/preferences.sql -f /workspace/tests/learning-security.sql -f /workspace/tests/incremental-sync.sql -f /workspace/tests/audio-security.sql
 docker compose -p folia-security-test -f supabase/docker-compose.test.yml down --volumes
 ```
 

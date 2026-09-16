@@ -1,6 +1,6 @@
 # Vérifications et déploiement
 
-Le workflow `.github/workflows/ci.yml` vérifie chaque pull request et chaque push sur `main` : installation verrouillée par `npm ci`, format, lint, TypeScript, tests unitaires, build Next.js puis parcours Chromium sur ce build de production. Aucun secret de production n’est accessible au job de vérification. Les tests utilisent le mode local de Solace ; ils ne valident pas les services hébergés. Les traces d’échec navigateur sont conservées 7 jours.
+Le workflow `.github/workflows/ci.yml` vérifie chaque pull request et chaque push sur `main` : installation verrouillée par `npm ci`, format, lint, TypeScript, tests unitaires, migrations et assertions SQL dans PostgreSQL WASM isolé, build Next.js puis parcours Chromium sur ce build de production. Le runtime SQL est installé séparément dans `.local/sql-harness` avec une version exacte ; les commandes et limites sont dans [security.md](security.md). Aucun secret de production n’est accessible au job de vérification. Les tests utilisent le mode local de Solace ; ils ne valident pas les services hébergés. Les traces d’échec navigateur sont conservées 7 jours.
 
 En local, `npm run test:browser` démarre le serveur de développement. Pour vérifier le build final sous PowerShell :
 

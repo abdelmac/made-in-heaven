@@ -106,7 +106,7 @@ describe('billing owner and request authorization', () => {
     );
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({
-      error: 'Billing is not configured. Checkout is unavailable.',
+      error: 'La facturation n’est pas configurée. Le paiement est indisponible.',
     });
     expect(mocks.getStripe).not.toHaveBeenCalled();
   });

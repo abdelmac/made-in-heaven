@@ -30,10 +30,12 @@ declare
   b jsonb:=jsonb_build_object('id',gen_random_uuid(),'name','B','archived',false);
   c jsonb:=jsonb_build_object('id',gen_random_uuid(),'name','C','archived',false);
   d jsonb:=jsonb_build_object('id',gen_random_uuid(),'name','D','archived',false);
+  untouched jsonb:=jsonb_build_array(jsonb_build_object('id',gen_random_uuid(),'name','Untouched project','archived',false));
   doc jsonb; patch jsonb; later jsonb; bad jsonb; result jsonb; snapshot jsonb;
   operation uuid:=gen_random_uuid();
 begin
   doc:=jsonb_set(pg_temp.sync_document(wid),'{subjects}',jsonb_build_array(a,b,c));
+  doc:=jsonb_set(doc,'{projects}',untouched);
   perform public.folia_commit_document(alice,wid,doc,0,gen_random_uuid());
   a:=a||'{"name":"A updated"}'::jsonb;
   patch:=jsonb_build_object('metadata',doc-array['subjects','projects','tasks','plannedSessions','focusSessions','journal','noteSheets','flashcardDecks','flashcards','events'],
@@ -42,10 +44,13 @@ begin
       'insert',jsonb_build_array(jsonb_build_object('at',1,'value',d)),
       'order',jsonb_build_array(c->>'id',d->>'id',a->>'id')
     )));
+  patch:=jsonb_set(patch,'{metadata,updatedAt}','"2026-09-16T12:00:00Z"');
   result:=public.folia_commit_patch(alice,wid,patch,1,operation);
   perform pg_temp.assert_true(result->>'version'='2' and result->>'committedVersion'='2','Patch returns its own committed version');
   perform pg_temp.assert_true((select data->'subjects'=jsonb_build_array(c,d,a) from public.workspace_documents where workspace_id=wid),'SQL patch preserves exact remove, replace, insert and order semantics: '||(select (data->'subjects')::text from public.workspace_documents where workspace_id=wid));
   perform pg_temp.assert_true((select count(*)=3 from public.subjects where workspace_id=wid),'Patch updates relational projections atomically');
+  perform pg_temp.assert_true((select data->'projects'=untouched from public.workspace_documents where workspace_id=wid),'A collection omitted from the patch remains byte-equivalent');
+  perform pg_temp.assert_true((select data->>'updatedAt'='2026-09-16T12:00:00Z' and data->>'workspaceId'=wid::text and data->>'revision'='2' from public.workspace_documents where workspace_id=wid),'Metadata merges with existing collections and commit normalizes the revision');
   perform pg_temp.assert_true((select not (data ? 'preferences') from public.workspace_documents where workspace_id=wid),'Compact writes keep private preferences outside shared documents');
   result:=public.folia_commit_patch(alice,wid,patch,1,operation);
   perform pg_temp.assert_true((result->>'replayed')::boolean and result->>'committedVersion'='2','Exact patch replay is idempotent');
