@@ -21,7 +21,7 @@ import {
 import { useApp } from './app-context';
 import { Button, IconButton, Panel, Field, Dialog } from './ui';
 import { en } from '@/lib/i18n/en';
-import { billingCopy } from '@/lib/i18n/billing';
+import { billingCopy, invoiceStatusLabels, subscriptionStatusLabels } from '@/lib/i18n/billing';
 import styles from './workspaces.module.css';
 import {
   DEFAULT_BILLING_POLICY,
@@ -918,7 +918,9 @@ export function BillingPage() {
             </div>
             <div>
               <strong className="subscription-status">
-                {billing?.subscription?.status || ui.workspaces.noSubscription}
+                {billing?.subscription?.status
+                  ? subscriptionStatusLabels[billing.subscription.status] || 'État indisponible'
+                  : ui.workspaces.noSubscription}
               </strong>
               <span>{ui.workspaces.subscriptionStatus}</span>
             </div>
@@ -970,7 +972,7 @@ export function BillingPage() {
                   <strong>{invoice.number || ui.workspaces.invoice}</strong>
                   <span>
                     {new Date(invoice.created).toLocaleDateString('fr-FR')} {ui.workspaces.copy}{' '}
-                    {invoice.status}
+                    {invoiceStatusLabels[invoice.status] || 'État indisponible'}
                   </span>
                 </div>
                 <strong>{formatStripeAmount(invoice.total, invoice.currency)}</strong>

@@ -1,5 +1,24 @@
 import type { PlanLimits } from '@/lib/billing/config';
 
+export const subscriptionStatusLabels: Record<string, string> = {
+  active: 'Actif',
+  trialing: 'Période d’essai',
+  past_due: 'Paiement en retard',
+  unpaid: 'Impayé',
+  canceled: 'Résilié',
+  incomplete: 'Paiement à compléter',
+  incomplete_expired: 'Paiement expiré',
+  paused: 'En pause',
+};
+
+export const invoiceStatusLabels: Record<string, string> = {
+  draft: 'Brouillon',
+  open: 'À régler',
+  paid: 'Réglée',
+  void: 'Annulée',
+  uncollectible: 'Irrécouvrable',
+};
+
 /** French plan copy. Amounts always come from the configured Stripe Prices. */
 export const billingCopy = {
   freeDescription: 'L’essentiel, avec des couleurs qui vous ressemblent.',

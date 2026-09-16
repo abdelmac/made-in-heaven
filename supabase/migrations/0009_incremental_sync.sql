@@ -41,7 +41,7 @@ begin
   if p_patch->'metadata'->>'workspaceId' is distinct from p_workspace::text then
     raise exception 'Le document appartient à un autre espace.' using errcode='22023';
   end if;
-  document:=coalesce(document,'{}'::jsonb)||p_patch->'metadata';
+  document:=coalesce(document,'{}'::jsonb)||(p_patch->'metadata');
   foreach collection in array array['subjects','projects','tasks','plannedSessions','focusSessions','journal','noteSheets','flashcardDecks','flashcards','events'] loop
     if not document ? collection then document:=jsonb_set(document,array[collection],'[]'::jsonb); end if;
     change:=p_patch->'collections'->collection;

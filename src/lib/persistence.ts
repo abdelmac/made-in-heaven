@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { en } from './i18n/en';
+import { eventLabel } from './i18n/dynamic';
 import {
   emptyTimer,
   id,
@@ -362,28 +364,29 @@ export function addMutationHistory(
   };
   for (const subject of after.subjects) {
     const old = before.subjects.find((item) => item.id === subject.id);
-    if (!old) event('subject_created', `Created ${subject.name}.`, subject.id);
+    if (!old)
+      event('subject_created', `${eventLabel('subject_created')} : ${subject.name}.`, subject.id);
     else if (old.completedAt !== subject.completedAt)
       event(
         subject.completedAt ? 'subject_completed' : 'subject_reopened',
-        `${subject.completedAt ? 'Completed' : 'Reopened'} ${subject.name}.`,
+        `${eventLabel(subject.completedAt ? 'subject_completed' : 'subject_reopened')} : ${subject.name}.`,
         subject.id,
       );
     else if (old.archived !== subject.archived)
       event(
         subject.archived ? 'subject_archived' : 'subject_restored',
-        `${subject.archived ? 'Archived' : 'Restored'} ${subject.name}.`,
+        `${eventLabel(subject.archived ? 'subject_archived' : 'subject_restored')} : ${subject.name}.`,
         subject.id,
       );
     else if (JSON.stringify(old) !== JSON.stringify(subject))
-      event('subject_updated', `Updated ${subject.name}.`, subject.id);
+      event('subject_updated', `${eventLabel('subject_updated')} : ${subject.name}.`, subject.id);
   }
   for (const task of after.tasks) {
     const old = before.tasks.find((item) => item.id === task.id);
     if (!old)
       event(
         'task_created',
-        `Created ${task.title}.`,
+        `${eventLabel('task_created')} : ${task.title}.`,
         task.subjectId,
         task.id,
         task.title,
@@ -392,7 +395,7 @@ export function addMutationHistory(
     else if (old.status !== task.status)
       event(
         task.status === 'done' ? 'task_completed' : 'status_changed',
-        `${old.status.replaceAll('_', ' ')} → ${task.status.replaceAll('_', ' ')}.`,
+        `${en.statuses[old.status]} → ${en.statuses[task.status]}.`,
         task.subjectId,
         task.id,
         task.title,
@@ -401,7 +404,7 @@ export function addMutationHistory(
     else if (JSON.stringify(old) !== JSON.stringify(task))
       event(
         'task_updated',
-        `Updated ${task.title}.`,
+        `${eventLabel('task_updated')} : ${task.title}.`,
         task.subjectId,
         task.id,
         task.title,
@@ -412,7 +415,7 @@ export function addMutationHistory(
     if (!after.tasks.some((item) => item.id === task.id))
       event(
         'task_deleted',
-        `Deleted ${task.title}. Focus history is preserved.`,
+        `${eventLabel('task_deleted')} : ${task.title}. Historique des séances conservé.`,
         task.subjectId,
         task.id,
         task.title,
@@ -424,7 +427,7 @@ export function addMutationHistory(
       const task = after.tasks.find((item) => item.id === note.taskId);
       event(
         old ? 'journal_edited' : 'journal_added',
-        `${old ? 'Updated' : 'Added'} a ${note.kind.replaceAll('_', ' ')} note.`,
+        `${eventLabel(old ? 'journal_edited' : 'journal_added')} (${({ progress: 'avancement', decision: 'décision', blocker: 'blocage', next_steps: 'prochaines étapes', reflection: 'bilan' } as const)[note.kind]}).`,
         task?.subjectId,
         note.taskId,
         task?.title,
@@ -439,7 +442,7 @@ export function addMutationHistory(
     if (!old || JSON.stringify(old) !== JSON.stringify(plan))
       event(
         old ? 'plan_updated' : 'plan_created',
-        `${old ? 'Updated' : 'Planned'} ${plan.title} · ${plan.durationMinutes} minutes.`,
+        `${eventLabel(old ? 'plan_updated' : 'plan_created')} : ${plan.title} · ${plan.durationMinutes} minutes.`,
         plan.subjectId,
         plan.taskId,
         after.tasks.find((task) => task.id === plan.taskId)?.title,
@@ -451,7 +454,7 @@ export function addMutationHistory(
     if (!old || JSON.stringify(old) !== JSON.stringify(note)) {
       event(
         old ? 'note_updated' : 'note_created',
-        `${old ? 'Updated' : 'Created'} note: ${note.title}.`,
+        `${eventLabel(old ? 'note_updated' : 'note_created')} : ${note.title}.`,
         note.subjectId,
       );
       if (
@@ -467,25 +470,29 @@ export function addMutationHistory(
   }
   for (const note of before.noteSheets)
     if (!after.noteSheets.some((item) => item.id === note.id))
-      event('note_deleted', `Deleted note: ${note.title}.`, note.subjectId);
+      event('note_deleted', `${eventLabel('note_deleted')} : ${note.title}.`, note.subjectId);
   for (const deck of after.flashcardDecks) {
     const old = before.flashcardDecks.find((item) => item.id === deck.id);
     if (!old || JSON.stringify(old) !== JSON.stringify(deck))
       event(
         old ? 'flashcard_deck_updated' : 'flashcard_deck_created',
-        `${old ? 'Updated' : 'Created'} flashcard deck: ${deck.title}.`,
+        `${eventLabel(old ? 'flashcard_deck_updated' : 'flashcard_deck_created')} : ${deck.title}.`,
         deck.subjectId,
       );
   }
   for (const deck of before.flashcardDecks)
     if (!after.flashcardDecks.some((item) => item.id === deck.id))
-      event('flashcard_deck_deleted', `Deleted flashcard deck: ${deck.title}.`, deck.subjectId);
+      event(
+        'flashcard_deck_deleted',
+        `${eventLabel('flashcard_deck_deleted')} : ${deck.title}.`,
+        deck.subjectId,
+      );
   for (const card of after.flashcards) {
     const old = before.flashcards.find((item) => item.id === card.id);
     if (!old || JSON.stringify(old) !== JSON.stringify(card))
       event(
         old ? 'flashcard_updated' : 'flashcard_created',
-        `${old ? 'Updated' : 'Created'} a flashcard.`,
+        `${eventLabel(old ? 'flashcard_updated' : 'flashcard_created')}.`,
         after.flashcardDecks.find((deck) => deck.id === card.deckId)?.subjectId,
       );
   }
@@ -493,12 +500,17 @@ export function addMutationHistory(
     if (!after.flashcards.some((item) => item.id === card.id))
       event(
         'flashcard_deleted',
-        'Deleted a flashcard.',
+        `${eventLabel('flashcard_deleted')}.`,
         before.flashcardDecks.find((deck) => deck.id === card.deckId)?.subjectId,
       );
   for (const plan of before.plannedSessions)
     if (!after.plannedSessions.some((item) => item.id === plan.id))
-      event('plan_deleted', `Removed ${plan.title} from the planner.`, plan.subjectId, plan.taskId);
+      event(
+        'plan_deleted',
+        `${eventLabel('plan_deleted')} : ${plan.title}.`,
+        plan.subjectId,
+        plan.taskId,
+      );
   return { ...after, events: [...after.events, ...events] };
 }
 export function resetWorkspace(data: WorkspaceData): WorkspaceData {

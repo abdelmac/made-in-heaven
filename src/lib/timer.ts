@@ -154,7 +154,7 @@ function recordTimer(
     taskId: timer.context.taskId,
     taskTitle: timer.context.taskTitle,
     projectId: timer.context.projectId,
-    details: `${timer.phase === 'focus' ? 'Focus' : 'Break'} ${status}: ${Math.round(session.actualSeconds / 60)} minutes${timer.context.taskTitle ? ` · ${timer.context.taskTitle}` : ''}.`,
+    details: `${timer.phase === 'focus' ? 'Séance de concentration' : 'Pause'} ${status === 'completed' ? 'terminée' : status === 'skipped' ? 'passée' : 'interrompue'} : ${Math.round(session.actualSeconds / 60)} minutes${timer.context.taskTitle ? ` · ${timer.context.taskTitle}` : ''}.`,
   };
   return {
     ...data,

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { WorkspaceData } from '../src/lib/model';
+import { en } from '../src/lib/i18n/en';
 
 async function readData(page: Page): Promise<WorkspaceData> {
   return page.evaluate(() => {
@@ -78,7 +79,7 @@ test('a complete personal journey preserves planning, development and actual foc
   await checklistItem.click();
   await expect(checklistItem).toBeChecked();
   await expect(dialog.getByText('1 sur 1 terminés')).toBeVisible();
-  await dialog.getByRole('button', { name: 'Développement', exact: true }).click();
+  await dialog.getByRole('button', { name: en.tasks.development, exact: true }).click();
   await dialog
     .getByRole('textbox', { name: 'Note de travail', exact: true })
     .fill('Found a simpler layout. Next: test the timer controls.');

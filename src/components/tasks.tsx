@@ -807,7 +807,7 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
                       addEvent(
                         d,
                         'task_updated',
-                        `${item.done ? 'Reopened' : 'Completed'} subtask: ${item.text}`,
+                        `Sous-tâche ${item.done ? 'rouverte' : 'terminée'} : ${item.text}`,
                         { taskId: task.id, subjectId: task.subjectId, userId: store.user?.id },
                       );
                     })
@@ -841,7 +841,7 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
                   d.tasks
                     .find((t) => t.id === task.id)!
                     .checklist.push({ id: id(), text, done: false });
-                  addEvent(d, 'task_updated', `Added subtask: ${text}`, {
+                  addEvent(d, 'task_updated', `Sous-tâche ajoutée : ${text}`, {
                     taskId: task.id,
                     subjectId: task.subjectId,
                     userId: store.user?.id,
