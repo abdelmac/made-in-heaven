@@ -1,14 +1,14 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 export const metadata: Metadata = {
-  title: 'folia. — Make room for focused work',
+  title: 'Solace — Make room for focused work',
   description: 'A calm space for your timer, tasks, weekly plans, and little moments of growth.',
-  applicationName: 'Folia',
+  applicationName: 'Solace',
   icons: {
-    icon: [{ url: '/icons/folia.svg', type: 'image/svg+xml' }],
-    apple: [{ url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    icon: [{ url: '/icons/solace.svg', type: 'image/svg+xml' }],
+    apple: [{ url: '/icons/solace-180.png', sizes: '180x180', type: 'image/png' }],
   },
-  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Folia' },
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Solace' },
 };
 export const viewport: Viewport = {
   width: 'device-width',

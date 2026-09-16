@@ -1,5 +1,5 @@
 export const en = {
-  brand: 'folia.',
+  brand: 'Solace',
   tagline: 'A little focus. A little growth.',
   navigation: {
     overview: 'Overview',
@@ -221,7 +221,7 @@ export const en = {
     sound: 'Play a completion sound',
     notifications: 'Enable browser notifications',
     notificationHelp:
-      'Background tabs and locked screens may delay sound and notifications. Folia restores the countdown from timestamps when you return.',
+      'Background tabs and locked screens may delay sound and notifications. Solace restores the countdown from timestamps when you return.',
     focusDuration: 'Focus (minutes)',
     shortDuration: 'Short break (minutes)',
     longDuration: 'Long break (minutes)',
@@ -328,9 +328,9 @@ export const en = {
     offline:
       'Offline, you can use the timer, read cached work, edit tasks, and write development notes. Cloud changes queue on this device and are checked when you reconnect. Billing and workspace administration require a connection.',
     alarms:
-      'Browsers may suspend tabs or silence alarms when the screen is locked. Keep Folia open for the best experience; the timer will recover correctly when you return.',
+      'Browsers may suspend tabs or silence alarms when the screen is locked. Keep Solace open for the best experience; the timer will recover correctly when you return.',
     install:
-      'Install Folia from your browser’s app menu on HTTPS or localhost. Installation availability varies by browser.',
+      'Install Solace from your browser’s app menu on HTTPS or localhost. Installation availability varies by browser.',
   },
 } as const;
 export type View = keyof typeof en.navigation;

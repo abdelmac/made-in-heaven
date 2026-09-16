@@ -2,18 +2,10 @@
 import { ui } from '@/lib/i18n/ui';
 
 import { useState } from 'react';
-import {
-  Play,
-  Pause,
-  RotateCcw,
-  SkipForward,
-  Maximize2,
-  Volume2,
-  VolumeX,
-  Leaf,
-} from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, Maximize2, Volume2, VolumeX } from 'lucide-react';
 import { useApp } from './app-context';
 import { Button, Dialog, IconButton } from './ui';
+import { SolaceMark } from './solace-mark';
 import { en } from '@/lib/i18n/en';
 import type { TimerPhase } from '@/lib/model';
 
@@ -71,7 +63,7 @@ export function TimerCard() {
           />
         </svg>
         <div className="timer-numbers">
-          <Leaf size={19} strokeWidth={1.5} />
+          <SolaceMark size={23} />
           <span className="countdown" aria-label={`${minutes} minutes, ${seconds} seconds`}>
             {minutes}
             <span>{ui.timerCard.copy}</span>

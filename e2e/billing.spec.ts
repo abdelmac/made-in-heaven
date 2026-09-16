@@ -23,7 +23,7 @@ test('Free colors and notes stay clear, and an unconfigured upgrade leads to acc
   await expect(page.locator('.breadcrumb strong')).toHaveText('Settings');
   await page.goto('/?view=billing');
   await pro.getByRole('button', { name: 'Sign in to upgrade' }).click();
-  await expect(page.getByRole('dialog', { name: 'Your Folia account' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'Your Solace account' })).toBeVisible();
 });
 
 test('monthly and annual amounts come from the Stripe catalog with explicit annual billing', async ({

@@ -10,14 +10,17 @@ import {
 import { X, Leaf, ArrowRight, Plus } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { en } from '@/lib/i18n/en';
+import { SolaceMark } from './solace-mark';
 
 export function Brand({ small = false }: { small?: boolean }) {
   return (
-    <div className={`brand ${small ? 'small' : ''}`}>
-      <span className="brand-mark">
-        <Leaf strokeWidth={1.8} />
+    <div className={`brand ${small ? 'small' : ''}`} role="img" aria-label={en.brand}>
+      <span className="brand-mark" aria-hidden="true">
+        <SolaceMark />
       </span>
-      <span>{en.brand}</span>
+      <span className="brand-wordmark" aria-hidden="true">
+        {en.brand}
+      </span>
     </div>
   );
 }

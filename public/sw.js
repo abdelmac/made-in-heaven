@@ -1,4 +1,4 @@
-/* Folia caches its public application shell and immutable assets only.
+/* Solace caches its public application shell and immutable assets only.
  * Account/workspace data and its pending queue belong to the application's
  * scoped persistence layer, which rechecks permissions after reconnection. */
 const CACHE_PREFIX = 'folia-shell-';
@@ -47,10 +47,11 @@ self.addEventListener('install', (event) => {
       await refreshPublicShell();
       const cache = await caches.open(CACHE_NAME);
       await cache.addAll([
-        '/icons/icon-192.png',
-        '/icons/icon-512.png',
-        '/icons/icon-maskable-512.png',
-        '/icons/folia.svg',
+        '/icons/solace-180.png',
+        '/icons/solace-192.png',
+        '/icons/solace-512.png',
+        '/icons/solace-maskable-512.png',
+        '/icons/solace.svg',
       ]);
     })(),
   );
@@ -113,7 +114,7 @@ self.addEventListener('fetch', (event) => {
         return (
           cached ??
           new Response(
-            'Folia has not finished preparing offline access. Reconnect and open it once.',
+            'Solace has not finished preparing offline access. Reconnect and open it once.',
             { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
           )
         );

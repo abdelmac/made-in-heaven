@@ -38,6 +38,7 @@ import { en, type View } from '@/lib/i18n/en';
 import { formatDay } from '@/lib/display';
 import { AppContext } from './app-context';
 import { Brand, Button, IconButton, Dialog, Empty } from './ui';
+import { SolaceMark } from './solace-mark';
 import { TimerCard } from './timer-card';
 import { Planner, PlanEditor } from './planner';
 import { TasksPage, TasksWidget, TaskEditor } from './tasks';
@@ -267,7 +268,7 @@ export function FoliaApp() {
       <div className="app-loading">
         <Brand />
         <div className="loading-leaf">
-          <Leaf size={30} />
+          <SolaceMark size={34} />
         </div>
         <p>{en.common.loading}</p>
       </div>
@@ -768,7 +769,7 @@ export function FoliaApp() {
       {help && (
         <Dialog title={en.help.title} onClose={() => setHelp(false)}>
           <div className="help-content">
-            <Leaf size={34} />
+            <SolaceMark size={40} />
             <p>{en.help.body}</p>
             <h3>{ui.foliaApp.whenYouReOffline}</h3>
             <p>{en.help.offline}</p>
@@ -822,7 +823,7 @@ export function FoliaApp() {
           aria-label={en.timer.distractionFree}
           onClick={() => setTimerSheet(true)}
         >
-          <Leaf size={19} />
+          <SolaceMark size={21} />
           <span>
             <strong>
               {store.timer.context?.taskTitle || store.timer.context?.subjectName || en.timer.title}

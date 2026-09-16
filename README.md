@@ -1,6 +1,8 @@
-# folia.
+# Solace
 
-A calm, connected space for focused work. Folia combines a Pomodoro timer, weekly workload planner, subjects, projects, detailed tasks, development journals, activity history, and workspace subscriptions.
+A calm, connected space for focused work. Solace combines a Pomodoro timer, weekly workload planner, subjects, projects, detailed tasks, development journals, activity history, and workspace subscriptions.
+
+The Solace identity uses a crescent-and-star vector mark with a serif wordmark. Shared geometry lives in `src/lib/brand.ts`; run `node scripts/generate-icons.mjs` to regenerate the favicon and Apple/PWA installation icons. The existing deployment address, internal Folia identifiers, backup format, and storage keys are retained for compatibility with saved work.
 
 This repository started empty. It now contains a Next.js App Router application, a useful local/demo experience, Supabase integrations and versioned PostgreSQL migrations, and Stripe **test-mode-only** billing. No external account or payment credentials are bundled. Local productivity works without them; sign-in, cloud sync, and checkout accurately show their configuration requirements.
 

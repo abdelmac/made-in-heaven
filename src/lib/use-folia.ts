@@ -630,14 +630,14 @@ export function useFolia() {
                       : undefined;
                   const options = {
                     body: 'Take a breath. Your next session is ready when you are.',
-                    icon: '/icons/icon-192.png',
+                    icon: '/icons/solace-192.png',
                   };
                   if (registration?.active)
-                    await registration.showNotification('folia. — Session complete', options);
-                  else new Notification('folia. — Session complete', options);
+                    await registration.showNotification('Solace — Session complete', options);
+                  else new Notification('Solace — Session complete', options);
                 } catch {
                   setError(
-                    'Your session was saved. This browser could not show a background notification; keep Folia open for visual completion feedback.',
+                    'Your session was saved. This browser could not show a background notification; keep Solace open for visual completion feedback.',
                   );
                 }
               };
@@ -923,7 +923,7 @@ export function useFolia() {
       permission = await Notification.requestPermission();
     } catch {
       setError(
-        'This browser could not request notification permission. Your timer will still show completion in Folia.',
+        'This browser could not request notification permission. Your timer will still show completion in Solace.',
       );
       return false;
     }
