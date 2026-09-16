@@ -35,11 +35,11 @@ test('cached production shell supports offline task editing and persisted timer 
   await prepareOffline(page);
   await context.setOffline(true);
   await page.goto('/?view=tasks');
-  await expect(page.locator('.breadcrumb strong')).toHaveText("Tâches");
-  await page.getByRole('button', { name: "Nouvelle tâche", exact: true }).first().click();
+  await expect(page.locator('.breadcrumb strong')).toHaveText('Tâches');
+  await page.getByRole('button', { name: 'Nouvelle tâche', exact: true }).first().click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel("Titre de la tâche", { exact: true }).fill('Offline research note');
-  await dialog.getByRole('button', { name: "Nouvelle tâche", exact: true }).click();
+  await dialog.getByLabel('Titre de la tâche', { exact: true }).fill('Offline research note');
+  await dialog.getByRole('button', { name: 'Nouvelle tâche', exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await expect
     .poll(async () =>
@@ -49,12 +49,10 @@ test('cached production shell supports offline task editing and persisted timer 
   const task = (await localData(page)).tasks.find(
     (item) => item.title === 'Offline research note',
   )!;
-  await page
-    .getByRole('button', { name: 'Commencer: Offline research note', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Commencer: Offline research note', exact: true }).click();
   await page.goto('/?view=overview');
-  await page.getByRole('button', { name: "Mettre en pause", exact: true }).click();
-  await expect(page.getByRole('button', { name: "Reprendre", exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Mettre en pause', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Reprendre', exact: true })).toBeVisible();
   const paused = (await localData(page)).timer;
   expect(paused.context?.taskId).toBe(task.id);
   expect(paused.status).toBe('paused');
@@ -71,7 +69,7 @@ test('cached production shell supports offline task editing and persisted timer 
     return { key, raw };
   });
   await page.reload();
-  await expect(page.getByRole('button', { name: "Reprendre", exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Reprendre', exact: true })).toBeVisible();
   const recovered = await localData(page);
   expect(recovered.timer).toMatchObject({
     sessionId: paused.sessionId,
@@ -83,9 +81,9 @@ test('cached production shell supports offline task editing and persisted timer 
   expect(await page.evaluate((key) => localStorage.getItem(key), dormantQueue.key)).toBe(
     dormantQueue.raw,
   );
-  await page.getByRole('button', { name: "Reprendre", exact: true }).click();
+  await page.getByRole('button', { name: 'Reprendre', exact: true }).click();
   await page.reload();
-  await expect(page.getByRole('button', { name: "Mettre en pause", exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Mettre en pause', exact: true })).toBeVisible();
   expect((await localData(page)).timer.sessionId).toBe(paused.sessionId);
   expect((await localData(page)).focusSessions).toHaveLength(0);
   await context.setOffline(false);

@@ -41,7 +41,9 @@ test('ambient preview plays deliberately, survives navigation, pauses for breaks
   await player.getByLabel('En boucle', { exact: true }).uncheck();
   await page.reload();
   await player.locator('summary').click();
-  await expect(player.getByRole('combobox', { name: 'Ambiance', exact: true })).toHaveValue('calm-waves');
+  await expect(player.getByRole('combobox', { name: 'Ambiance', exact: true })).toHaveValue(
+    'calm-waves',
+  );
   await expect(volume).toHaveValue('0.3');
   await expect(player.getByLabel('En boucle', { exact: true })).not.toBeChecked();
   await expect(audio).toHaveJSProperty('paused', true);
