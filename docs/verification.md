@@ -10,6 +10,7 @@ Latest UI, hosted database and Stripe sandbox verification were performed on Sep
 - **167 unit/server tests passed across 18 files.** Production build, ESLint, TypeScript, formatting and Git whitespace checks passed.
 - **35 distinct production browser scenarios verified:** the full 34-scenario suite passed, then all 11 affected appearance, planner and accessibility scenarios passed again after the final contrast/cancellation fixes, including the additional upload-cancellation scenario. Tests ran against `npm start` with Microsoft Edge and production PWA behavior enabled. The full run includes existing billing, learning, productivity and offline checks.
 - Desktop/month/background and mobile/planner screenshots were inspected; no mobile page overflow or browser exceptions were observed. Independent code reviews covered activity boundaries/storage scope and appearance lifecycle/contrast.
+- Production deployment `dpl_E9e1KURhkFbKbahPFJAXZvvB7WVf` is ready at `https://folia-ennearock.vercel.app`, built from commit `31da1bc`. A fresh browser on the public site verified month-view persistence, draggable planner controls, saved background persistence and 390px layout with no page exceptions. This smoke check used browser-local demo data only.
 
 These checks use local/demo workspace data and existing server unit coverage. This UI release does not reverify authenticated cloud synchronization or provider payment delivery; the hosted records below document those earlier checks. No database migration or billing configuration change is part of this release.
 
