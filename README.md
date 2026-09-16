@@ -60,6 +60,8 @@ Stripe checkout verifies the configured Customer Portal supports cancellation, i
 
 Never put the service-role key or Stripe secret in a `NEXT_PUBLIC_` variable. `.env.local` is ignored by Git.
 
+`npm run build` first validates Supabase credential types and rejects server credentials in public settings before browser assets are generated. The hosted Solace app uses a dedicated Supabase project; password sign-in and cloud task persistence have been verified across two independent browser sessions. Email delivery and Stripe sandbox checkout remain pending; see the [verification record](docs/verification.md).
+
 ## Workspaces, permissions, and subscriptions
 
 Personal workspaces are private. Organization membership does not grant access to members' personal records. Owner, admin, member, and viewer permissions are enforced in server handlers and database transactions, with RLS on all productivity tables. Owners alone manage billing and deliberate ownership transfer. Invitations expire, can be revoked, and are shared by link; this version does not send invitation emails automatically. Owners/admins can set an organization icon and timer/calendar defaults. Defaults initialize new member preferences once; members can explicitly apply updated defaults while keeping their appearance and accessibility choices. Viewers can save their own private preferences through a separate protected endpoint.
@@ -70,8 +72,8 @@ See the [permission matrix and integrity model](docs/security.md) and [billing s
 
 ### Stripe test setup
 
-1. Use Stripe test-mode products and distinct monthly/yearly recurring prices for Pro and Team.
-2. Set the test secret, four Price IDs, webhook secret, and separate restricted Customer Portal configuration IDs in `.env.local`.
+1. The selected first offering is **Solace Pro at EUR 1.00 per month**, in Stripe test mode. Create one recurring, licensed, per-unit Price at 100 minor units; leave yearly and Team offerings unset.
+2. Set the test secret, `STRIPE_PRO_MONTH_PRICE_ID`, webhook secret, and `STRIPE_PRO_PORTAL_CONFIGURATION_ID` in `.env.local` (or the deployed environment). Other tiers and intervals need their own configuration only when offered.
 3. Start the server and forward verified events with the Stripe CLI:
 
 ```bash

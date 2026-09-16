@@ -1,6 +1,16 @@
 # Test-mode billing and entitlements
 
-Folia uses Stripe-hosted Checkout and the Customer Portal. This version deliberately rejects live secret keys and live events in every environment. No card details enter Folia. Without credentials, pricing shows an unavailable state and the separate local/demo application remains usable. Opening a successful checkout return URL never grants access.
+Solace uses Stripe-hosted Checkout and the Customer Portal. This version deliberately rejects live secret keys and live events in every environment. No card details enter Solace. Without credentials, pricing shows an unavailable state and the separate local/demo application remains usable. Opening a successful checkout return URL never grants access.
+
+## Selected first sandbox offering
+
+On September 16, 2026, the product owner selected **Pro at EUR 1.00 per month**, starting with test checkout. Configure one product named **Solace Pro** and an active sandbox Price with `currency: eur`, `unit_amount: 100`, and `recurring.interval: month`. Use flat, licensed, per-unit billing at quantity one, with no trial. Set its actual provider-generated ID as `STRIPE_PRO_MONTH_PRICE_ID`.
+
+Only this monthly Pro offering is selected. Leave the yearly and Team Price variables unset until those offerings are chosen. Create the Pro portal configuration with invoice history, payment-method updates, and cancellation at period end. With one offered Price, subscription price updates may remain disabled.
+
+The dedicated **Solace** Supabase project (`xtvgadjobeecjwgzqwpp`, Paris, Free plan) is connected to the hosted app. All eight application migrations are applied; hosted checks verified the permissions on all 25 application tables and 15 RPCs. Sign-in redirects point to the production origin below. Credentials remain outside Git and are configured in Vercel.
+
+Stripe setup is still pending a test API key: no Stripe Price has yet been created or connected for this offering. The UI must continue displaying prices retrieved from Stripe, never a hardcoded fallback. Configure the sandbox resources and secrets below, then verify the complete owner journey before declaring checkout operational.
 
 ## Activate the hosted checkout
 
@@ -30,7 +40,7 @@ Real payments require an activated Stripe account and a deliberately enabled, re
 ## Setup
 
 1. Apply every migration in `supabase/migrations` in filename order. Migration `0002_billing.sql` creates billing tables, server-only writes, entitlement policy, fenced workspace locks, and atomic webhook receipts. The Supabase service-role key must be available only to the Next.js server.
-2. In a Stripe sandbox/test account, create separate Pro and Team products, each with an active monthly and yearly recurring Price. Use licensed, flat, per-unit billing, quantity one, and a single currency per Price. Fill the four `STRIPE_*_PRICE_ID` variables in `.env.local`. Unset intervals are unavailable; there are no fallback prices or discount claims. Price amounts, currency, and intervals are retrieved from Stripe using its official SDK.
+2. In a Stripe sandbox/test account, create the selected **Solace Pro** monthly Price at **EUR 1.00** and fill `STRIPE_PRO_MONTH_PRICE_ID` in `.env.local`. Use licensed, flat, per-unit billing, quantity one, and a single currency per Price. Additional yearly or Team offerings can use their corresponding `STRIPE_*_PRICE_ID` variables later; leave those unset for this first verification. Unset intervals are unavailable; there are no fallback prices or discount claims. Price amounts, currency, and intervals are retrieved from Stripe using its official SDK.
 3. Set `STRIPE_SECRET_KEY` to a test secret, and `NEXT_PUBLIC_APP_URL` to your canonical origin. Only HTTPS origins or HTTP localhost are accepted. All checkout/portal returns use the fixed billing destination under that origin; client URLs, customer IDs, amounts, and raw Price IDs are rejected.
 4. Create two **test Customer Portal configurations** (or only the configuration for the tier you offer). Enable invoice history, payment-method updates, and cancellation at the end of the current billing period. Allow price changes only between the Pro monthly/yearly Prices in the Pro configuration and the Team Prices in the Team configuration. Do not allow quantity changes. Set `STRIPE_PRO_PORTAL_CONFIGURATION_ID` and `STRIPE_TEAM_PORTAL_CONFIGURATION_ID`. The server checks these restrictions **before checkout and when opening the portal**. Plan changes use Stripe's configured prorations and payment behavior; review these settings before testing. No seats are billed separately. [Stripe portal settings](https://docs.stripe.com/customer-management/configure-portal)
 5. Run Next.js, then run the Stripe CLI:
@@ -42,7 +52,7 @@ Real payments require an activated Stripe account and a deliberately enabled, re
 
    Copy the printed signing secret into `STRIPE_WEBHOOK_SECRET` and restart Next.js. Use the CLI signing secret locally; a deployed endpoint has its own signing secret.
 
-6. For deployment, register `https://YOUR-ORIGIN/api/billing/webhook` in the same Stripe sandbox. Subscribe to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.payment_action_required`, `invoice.voided`, and `invoice.marked_uncollectible`. Use an API version compatible with the installed SDK (the integration retrieves current typed resources rather than trusting historical event snapshots).
+6. For deployment, register `https://YOUR-ORIGIN/api/billing/webhook` in the same Stripe sandbox. Use **snapshot events from this account**, not thin events or a Connect destination: the handler reads `data.object.customer`. Subscribe to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `customer.subscription.paused`, `customer.subscription.resumed`, `invoice.paid`, `invoice.payment_failed`, `invoice.payment_action_required`, `invoice.voided`, and `invoice.marked_uncollectible`. Use an API version compatible with the installed SDK (the integration retrieves current typed resources rather than trusting historical event snapshots).
 
 Folia requires a Node-capable Next.js deployment plus Supabase and a reachable webhook. Static-only hosting cannot run this integration. Configure Stripe's option to limit customers to one subscription as an additional provider-side guard. Folia also uses durable checkout attempts, a per-workspace lock, stable idempotency keys, reuse/expiration of open sessions, and a current subscription lookup before creating checkout.
 

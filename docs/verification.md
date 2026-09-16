@@ -1,6 +1,20 @@
 # Verification record
 
-Latest release verification completed on September 12, 2026. Hosted provider integrations remain explicitly unverified without credentials. The initial release record is retained below.
+Latest hosted database setup and verification were performed on September 16, 2026. Stripe provider checkout remains unverified without its test credentials. Earlier release records are retained below.
+
+## September 16: dedicated Solace database and payment preparation
+
+- Created a separate **Solace** project (`xtvgadjobeecjwgzqwpp`) in Supabase's Paris region on the Free plan. Existing projects were not changed.
+- Applied migrations `0001` through `0008` with their original versions. Hosted read-only checks passed for all 25 application tables, 15 RPC permissions, RLS, client write restrictions, server privileges, extension placement, account deletion guards, constraints, and the seeded billing policy.
+- Configured the production origin and authentication callbacks, with separate modern publishable and server-only API keys stored privately and in Vercel.
+- During setup, a PowerShell array-handling bug combined legacy public and server keys into a public environment value. The initial configuration deployment was defective. Both legacy API keys were disabled and the old HS256 signing key was revoked; direct checks rejected the previous credential in both Auth and database requests, including when paired with the replacement public key. The active ES256 signing key was preserved. Subsequent checks found zero accounts and zero workspaces, and all database permission checks passed again.
+- Added a prebuild credential guard that loads Next.js production environment files and rejects misplaced server keys, combined values, malformed keys, and wrong-role or wrong-project legacy tokens before bundling. All **11 targeted guard tests**, TypeScript checking, and scoped lint passed.
+- The corrected production deployment (`dpl_DD6dHfCtcUtDsuW9vi2VE11d4KVP`) built successfully with the guard enabled and serves `https://folia-ennearock.vercel.app`. The defective deployment was removed after its replacement became ready.
+- Scanned the live HTML and its seven initial JavaScript assets (1,588,592 bytes): the expected publishable key was present, while the actual replacement secret key, secret-key patterns, and service-role JWTs were absent. This check covers the initial public assets, not every dynamic import or historical cache.
+- **Hosted cloud journey passed:** a disposable confirmed account signed in through the actual UI, received a private Free workspace, saved one task through authenticated sync, and restored it in an independent second browser session. The billing endpoint reported owner access with Free entitlements and no paid features. No browser exceptions occurred. The test account, workspace, content and rate-limit records were removed and cleanup verified. This test did not send account email or test email delivery.
+- Selected **Solace Pro at EUR 1.00/month**, sandbox only. The 27 targeted billing configuration, authorization, and entitlement tests passed. Stripe resources, Checkout, Portal and webhook delivery remain pending the test API key; no payment or subscription was created.
+
+Email confirmation/recovery delivery and the full Stripe owner journey still need verification. Provider tests must not substitute local previews or manually assigned paid entitlements for a real sandbox payment.
 
 ## September 12: personalization, learning, and billing
 
@@ -27,7 +41,7 @@ The corrected export check was then verified with:
 npm run test:browser -- e2e/learning.spec.ts --grep 'local flashcards' --workers=1 --output=.local/premium-export-results
 ```
 
-Production has an application origin configured, but no Supabase or Stripe credentials. Hosted authentication, cloud synchronization, and actual provider Checkout/Portal/webhook delivery therefore remain unverified and unavailable until configured. Billing remains test-only. Local previews of premium features do not confer a cloud subscription. Music playback is a documented next step, not an implemented player; see [music-pro.md](music-pro.md).
+At the September 12 release, production had an application origin configured, but no Supabase or Stripe credentials. Hosted authentication, cloud synchronization, and actual provider Checkout/Portal/webhook delivery were therefore unavailable and unverified. The September 16 record above supersedes that configuration status. Billing remains test-only. Local previews of premium features do not confer a cloud subscription. Music playback is a documented next step, not an implemented player; see [music-pro.md](music-pro.md).
 
 ## September 11: initial release
 
@@ -94,4 +108,4 @@ The final successful suite supersedes those intermediate failures. No additional
 
 ## External verification still required
 
-Hosted account lifecycle and provider email, two authenticated physical devices, actual Stripe test Checkout/Portal/invoices and event delivery, and phone installation/locked-screen behavior. Provider endpoints do not simulate successful authentication, subscription payments, or cloud synchronization when configuration is absent.
+Provider confirmation/recovery email and the remaining account lifecycle flows, two authenticated physical devices, actual Stripe test Checkout/Portal/invoices and event delivery, and phone installation/locked-screen behavior. Hosted password login, personal onboarding, Free billing reads and cloud task persistence across independent browser sessions were verified on September 16. Provider endpoints do not simulate successful subscription payments or cloud synchronization when configuration is absent.

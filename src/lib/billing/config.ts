@@ -123,6 +123,6 @@ export function approvedAppOrigin(env: Record<string, string | undefined> = proc
 
 export function assertTestSecret(key: string): void {
   if (!key.startsWith('sk_test_') && !key.startsWith('rk_test_')) {
-    throw new Error('Folia billing accepts Stripe test-mode secret keys only.');
+    throw new Error('Solace billing accepts Stripe test-mode secret keys only.');
   }
 }

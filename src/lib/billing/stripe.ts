@@ -18,7 +18,7 @@ export function getStripe(): Stripe | null {
     client = new Stripe(key, {
       maxNetworkRetries: 2,
       timeout: 15_000,
-      appInfo: { name: 'Folia', version: '1.0.0' },
+      appInfo: { name: 'Solace', version: '1.0.0' },
     });
   return client;
 }

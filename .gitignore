@@ -9,3 +9,4 @@ coverage/
 *.tsbuildinfo
 .local/
 .vercel/
+supabase/.temp/
