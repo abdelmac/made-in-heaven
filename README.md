@@ -60,7 +60,7 @@ Stripe checkout verifies the configured Customer Portal supports cancellation, i
 
 Never put the service-role key or Stripe secret in a `NEXT_PUBLIC_` variable. `.env.local` is ignored by Git.
 
-`npm run build` first validates Supabase credential types and rejects server credentials in public settings before browser assets are generated. The hosted Solace app uses a dedicated Supabase project; password sign-in and cloud task persistence have been verified across two independent browser sessions. Email delivery and Stripe sandbox checkout remain pending; see the [verification record](docs/verification.md).
+`npm run build` first validates Supabase credential types and rejects server credentials in public settings before browser assets are generated. The hosted Solace app uses a dedicated Supabase project; password sign-in and cloud task persistence have been verified across two independent browser sessions. The EUR 1.00/month Stripe sandbox journey also passed: Checkout, signed webhook provisioning of Pro, duplicate-event handling, and portal cancellation with paid access retained through the period end. Email delivery remains unverified; see the [verification record](docs/verification.md).
 
 ## Workspaces, permissions, and subscriptions
 
@@ -132,20 +132,20 @@ Observed executions and exact test results are recorded in [docs/verification.md
 
 ## Deployment and current limits
 
-The public deployment is [folia-ennearock.vercel.app](https://folia-ennearock.vercel.app), hosted in the `ennearock/folia-ennearock` Vercel project. It currently runs the local/demo experience; Supabase and Stripe are not connected. `NEXT_PUBLIC_APP_URL` is configured as this exact production origin.
+The public deployment is [folia-ennearock.vercel.app](https://folia-ennearock.vercel.app), hosted in the `ennearock/folia-ennearock` Vercel project. Its dedicated Solace Supabase project and Stripe test billing are connected alongside the local/demo experience. The only configured paid offering is Pro at EUR 1.00/month in test mode; real payments remain disabled. `NEXT_PUBLIC_APP_URL` is configured as this exact production origin.
 
 To deploy this checkout again using the authorized Vercel account:
 
 ```bash
-npx vercel@59.16.0 link --yes --project folia-ennearock --scope ennearock
-npx vercel@59.16.0 deploy --prod --yes --scope ennearock --logs
+npx vercel@59.19.0 link --yes --project folia-ennearock --scope ennearock
+npx vercel@59.19.0 deploy --prod --yes --scope ennearock --logs
 ```
 
 The first deployment used the CLI because Vercel could not obtain write/admin access to the configured GitHub repository. Automatic deployments on Git pushes are not connected. `.vercelignore` excludes local environment files, generated builds, test artifacts, and local scratch files from deployment uploads; Vercel project linkage stays outside Git.
 
 Deploy to a Node-capable Next.js platform with Supabase PostgreSQL and HTTPS. Apply migrations before enabling the app, set server secrets and public build-time variables, configure email redirects and the Stripe webhook endpoint, and rebuild. This server-backed application cannot be deployed as a static-only site.
 
-- Hosted Supabase sign-up/verification/reset, browser-to-browser authenticated sync, and real Stripe test Checkout/webhook delivery still require external credentials and end-to-end verification. Local PostgreSQL and mocked server tests do not establish those provider integrations as verified.
+- Hosted Supabase email confirmation/recovery and Stripe renewal, failed-payment recovery, paid-period expiration and automatic redelivery remain unverified. Password sign-in, authenticated sync across independent browser sessions, and the hosted sandbox Checkout/webhook/Portal journey passed; see the verification record for the exact coverage. Local PostgreSQL and mocked server tests do not establish provider integrations as verified.
 - Cloud synchronization uses workspace document revisions with normalized relational projections and a 2 MB request limit. Large histories/organizations will need paginated entity synchronization before that cap. There is no destructive automatic pruning.
 - Concurrent same-record edits require explicit resolution; this version offers saved-version adoption or a documented local-preferred merge, with export before either choice.
 - Local activity timestamps are validated but this is a personal productivity application, not an anti-cheating or payroll system. Imported completed history is intentionally permitted after validation and consent.

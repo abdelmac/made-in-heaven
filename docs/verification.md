@@ -1,6 +1,19 @@
 # Verification record
 
-Latest hosted database setup and verification were performed on September 16, 2026. Stripe provider checkout remains unverified without its test credentials. Earlier release records are retained below.
+Latest hosted database and Stripe sandbox verification were performed on September 16, 2026. Solace Pro is connected at **EUR 1.00/month in test mode**. Earlier release records are retained below.
+
+## September 16: hosted Stripe sandbox payments
+
+- Configured the selected test product and recurring monthly Price, a Pro Customer Portal with cancellation at period end, and the hosted signed webhook endpoint. No annual or Team offering was enabled. The non-secret resource IDs are recorded in [billing.md](billing.md); API and signing secrets remain outside Git and in Vercel's server-only environment.
+- Production deployment `dpl_GVZGYEgaXsYtSXZvMTZ8WtZvptdo` built successfully with the credential guard and serves `https://folia-ennearock.vercel.app`. The public catalog reports one available EUR 100-minor-unit monthly Pro Price and `mode: "test"`. An unsigned webhook request returns HTTP 400.
+- A confirmed disposable `.invalid` account signed in through the deployed UI with a Free personal workspace, opened app-created Stripe Checkout, and paid **one EUR 1.00 sandbox invoice** using Stripe's documented `4242` test card. Provider reads verified the exact selected Price, quantity one, paid invoice, and active subscription. No real money moved or account email was sent.
+- Stripe's natural, signed `invoice.paid` delivery was processed by the deployed webhook. The authenticated billing API then reported Pro, backgrounds and flashcards, with verified paid coverage through the subscription period. No entitlement or subscription record was manually assigned.
+- Replayed that same already-processed provider event twice with fresh signatures generated locally by Stripe's SDK. Both requests acknowledged the duplicate and left the processed receipt timestamp unchanged. This verifies duplicate handling; it does not establish Stripe's automatic redelivery behavior.
+- The deployed app opened the configured Customer Portal, where cancellation was scheduled at the current period end. This Stripe API represents the schedule with `cancel_at` equal to the item's `current_period_end`, while `cancel_at_period_end` remains false. The app already stores and exposes both fields; the operational verifier was corrected to accept the explicit date. The authenticated API retained Pro, backgrounds and flashcards with paid coverage through the exact provider period end, and the billing UI displayed the matching cancellation date.
+- The final complete browser run passed all **11 checks**, including cleanup, from **15:46:16 to 15:47:38 UTC**. Cleanup canceled only the run-owned subscription without invoicing/proration, waited for natural deletion-event processing, removed the disposable app account/workspace through guarded account deletion, deleted its test Stripe customer and rate-limit records, and verified completion. Provider event/invoice history remains in Stripe's test environment. The private login journal was removed; sanitized operational results remain outside Git.
+- Repeated the public HTML and seven initial JavaScript asset scan with both Supabase and Stripe server credentials: none of the actual private keys or generic secret/service-role patterns appeared; the expected public Supabase key was present. Coverage remains limited to the initial public assets, not every dynamic import or historical cache.
+
+Renewal, failed-payment recovery, paid-period expiration, automatic provider redelivery, and a second authenticated device's Pro refresh still need hosted verification. Some concurrent subscription/Checkout deliveries received retryable failures while the paid-invoice event successfully provisioned access; successful automatic retries were not established. Live payments remain intentionally disabled.
 
 ## September 16: dedicated Solace database and payment preparation
 
@@ -12,9 +25,9 @@ Latest hosted database setup and verification were performed on September 16, 20
 - The corrected production deployment (`dpl_DD6dHfCtcUtDsuW9vi2VE11d4KVP`) built successfully with the guard enabled and serves `https://folia-ennearock.vercel.app`. The defective deployment was removed after its replacement became ready.
 - Scanned the live HTML and its seven initial JavaScript assets (1,588,592 bytes): the expected publishable key was present, while the actual replacement secret key, secret-key patterns, and service-role JWTs were absent. This check covers the initial public assets, not every dynamic import or historical cache.
 - **Hosted cloud journey passed:** a disposable confirmed account signed in through the actual UI, received a private Free workspace, saved one task through authenticated sync, and restored it in an independent second browser session. The billing endpoint reported owner access with Free entitlements and no paid features. No browser exceptions occurred. The test account, workspace, content and rate-limit records were removed and cleanup verified. This test did not send account email or test email delivery.
-- Selected **Solace Pro at EUR 1.00/month**, sandbox only. The 27 targeted billing configuration, authorization, and entitlement tests passed. Stripe resources, Checkout, Portal and webhook delivery remain pending the test API key; no payment or subscription was created.
+- Selected **Solace Pro at EUR 1.00/month**, sandbox only. The 27 targeted billing configuration, authorization, and entitlement tests passed. At this preparation stage, Stripe resources and provider verification were pending the test API key; the later sandbox record above supersedes that status.
 
-Email confirmation/recovery delivery and the full Stripe owner journey still need verification. Provider tests must not substitute local previews or manually assigned paid entitlements for a real sandbox payment.
+Email confirmation/recovery delivery still needs verification. The subsequent Stripe checks above used a real sandbox payment and provider delivery, without substituting local previews or manually assigned paid entitlements.
 
 ## September 12: personalization, learning, and billing
 
@@ -108,4 +121,4 @@ The final successful suite supersedes those intermediate failures. No additional
 
 ## External verification still required
 
-Provider confirmation/recovery email and the remaining account lifecycle flows, two authenticated physical devices, actual Stripe test Checkout/Portal/invoices and event delivery, and phone installation/locked-screen behavior. Hosted password login, personal onboarding, Free billing reads and cloud task persistence across independent browser sessions were verified on September 16. Provider endpoints do not simulate successful subscription payments or cloud synchronization when configuration is absent.
+Provider confirmation/recovery email and the remaining account lifecycle flows, two authenticated physical devices, Stripe renewal/failed-payment recovery/paid-period expiration and automatic redelivery, and phone installation/locked-screen behavior. Hosted password login, personal onboarding, cloud task persistence across independent browser sessions, and the sandbox Checkout/invoice/webhook/Portal journey were verified on September 16 as detailed above. Provider endpoints do not simulate successful subscription payments or cloud synchronization when configuration is absent.
