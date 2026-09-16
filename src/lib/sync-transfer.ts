@@ -8,9 +8,13 @@ const entity = z.object({ id: z.string().uuid() }).passthrough();
 const collectionPatch = z.object({
   remove: z.array(z.string().uuid()),
   replace: z.array(entity),
-  insert: z.array(z.object({ at: z.number().int().min(0), value: entity }).strict()),
+  insert: z.array(z.object({ at: z.number().int().min(0).max(500000), value: entity }).strict()),
   order: z.array(z.string().uuid()).optional(),
-}).strict();
+}).strict().superRefine((change, context) => {
+  for (const values of [change.remove, change.replace.map((item) => item.id), change.insert.map((item) => item.value.id), change.insert.map((item) => item.at)]) {
+    if (new Set(values).size !== values.length) context.addIssue({ code: 'custom', message: 'La modification contient des identifiants ou positions en double.' });
+  }
+});
 export const documentPatchSchema = z.object({
   metadata: z.object({
     schemaVersion: z.literal(1), workspaceId: z.string().uuid(), revision: z.number().int().min(0),
@@ -97,7 +101,11 @@ export async function fetchWorkspaceSnapshot(workspaceId: string, fetcher: typeo
       if (response.status === 409) break;
       if (!response.ok) throw new Error(body.error || 'Impossible de charger cet espace.');
       // A previous server release may still return a complete snapshot during rollout.
-      if (body.data) return { data: workspaceDataSchema.parse(body.data), version: body.version as number };
+      if (body.data) {
+        const data = workspaceDataSchema.parse(body.data);
+        if (data.workspaceId !== workspaceId || !Number.isSafeInteger(body.version) || body.version < 0) throw new Error('La réponse de synchronisation est incohérente.');
+        return { data, version: body.version as number };
+      }
       if (!Number.isSafeInteger(body.version) || body.cursor !== cursor || !Array.isArray(body.entries) || (version !== undefined && version !== body.version))
         throw new Error('La réponse de synchronisation est incohérente.');
       version = body.version;

@@ -46,6 +46,12 @@ begin
     if not document ? collection then document:=jsonb_set(document,array[collection],'[]'::jsonb); end if;
     change:=p_patch->'collections'->collection;
     if change is null then continue; end if;
+    if exists(select 1 from jsonb_array_elements(change->'replace') item group by item->>'id' having count(*)>1)
+       or exists(select 1 from jsonb_array_elements(change->'insert') item group by item->'value'->>'id' having count(*)>1)
+       or exists(select 1 from jsonb_array_elements(change->'insert') item group by item->>'at' having count(*)>1)
+       or exists(select 1 from jsonb_array_elements(change->'insert') item where (item->>'at')::numeric not between 0 and 500000) then
+      raise exception 'La modification contient des identifiants ou positions invalides.' using errcode='22023';
+    end if;
     select coalesce(jsonb_agg(coalesce(replacement.item,old.item) order by old.position),'[]'::jsonb) into values_now
       from jsonb_array_elements(document->collection) with ordinality old(item,position)
       left join lateral (select value item from jsonb_array_elements(change->'replace') where value->>'id'=old.item->>'id' limit 1) replacement on true

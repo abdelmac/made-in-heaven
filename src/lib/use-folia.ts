@@ -220,7 +220,6 @@ export function useFolia() {
         throw new Error(
           body.error || 'Cloud saving failed. Your edits remain queued on this device.',
         );
-      if (method === 'PATCH' && localStorage.getItem(transferKey) === requestBody) localStorage.removeItem(transferKey);
       const committedVersion = body.committedVersion ?? body.version;
       serverVersion.current = committedVersion;
       localStorage.setItem(
@@ -233,6 +232,7 @@ export function useFolia() {
           : undefined,
       );
       if (token !== generation.current) return;
+      if (method === 'PATCH' && localStorage.getItem(transferKey) === requestBody) localStorage.removeItem(transferKey);
       const pending = readPending(account.id, currentWorkspace);
       if (!pending) {
         setSaveStatus('saved');

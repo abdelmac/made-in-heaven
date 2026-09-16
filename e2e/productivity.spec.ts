@@ -14,13 +14,13 @@ async function openView(page: Page, view: string) {
   await expect(page.locator('.app-shell')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('.breadcrumb strong')).toHaveText(
     {
-      overview: 'Overview',
-      subjects: 'Subjects',
-      tasks: 'Tasks',
-      planner: 'Planner',
-      settings: 'Settings',
-      history: 'History',
-      analytics: 'Analytics',
+      overview: "Vue d’ensemble",
+      subjects: "Matières",
+      tasks: "Tâches",
+      planner: "Planning",
+      settings: "Paramètres",
+      history: "Historique",
+      analytics: "Statistiques",
     }[view] || view,
   );
 }
@@ -28,11 +28,11 @@ async function startFresh(page: Page) {
   await openView(page, 'settings');
   await page
     .locator('.settings-tabs')
-    .getByRole('button', { name: 'Your data', exact: true })
+    .getByRole('button', { name: "Vos données", exact: true })
     .click();
-  await page.getByRole('button', { name: 'Start fresh', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'Start with a clean workspace?' });
-  await dialog.getByRole('button', { name: 'Start fresh', exact: true }).click();
+  await page.getByRole('button', { name: "Repartir de zéro", exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: "Repartir avec un espace vide ?" });
+  await dialog.getByRole('button', { name: "Repartir de zéro", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await expect.poll(async () => (await readData(page)).subjects.length).toBe(0);
 }
@@ -44,84 +44,84 @@ test('a complete personal journey preserves planning, development and actual foc
   await page.clock.install({ time: new Date('2026-09-14T08:00:00Z') });
   await startFresh(page);
   await openView(page, 'subjects');
-  await page.getByRole('button', { name: 'New subject', exact: true }).first().click();
+  await page.getByRole('button', { name: "Nouvelle matière", exact: true }).first().click();
   let dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Subject name', { exact: true }).fill('Interface research');
+  await dialog.getByLabel("Nom de la matière", { exact: true }).fill('Interface research');
   await dialog
     .getByLabel('Description', { exact: true })
     .fill('Understand what helps people stay focused.');
-  await dialog.getByRole('button', { name: 'New subject', exact: true }).click();
+  await dialog.getByRole('button', { name: "Nouvelle matière", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await expect(page.getByRole('button', { name: 'Interface research', exact: true })).toBeVisible();
 
-  await openView(page, 'tasks');
-  await page.getByRole('button', { name: 'New task', exact: true }).first().click();
+  await openView(page, "tâches");
+  await page.getByRole('button', { name: "Nouvelle tâche", exact: true }).first().click();
   dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Task title', { exact: true }).fill('Draft the interface');
+  await dialog.getByLabel("Titre de la tâche", { exact: true }).fill('Draft the interface');
   await dialog
-    .getByRole('combobox', { name: 'Subject', exact: true })
+    .getByRole('combobox', { name: "Matière", exact: true })
     .selectOption({ label: 'Interface research' });
   await dialog
-    .getByLabel('Description (Markdown supported)', { exact: true })
+    .getByLabel("Description (Markdown accepté)", { exact: true })
     .fill('## Acceptance criteria\n\nA clear, readable first draft.');
-  await dialog.getByLabel('Estimated Pomodoros').fill('2');
-  await dialog.getByRole('button', { name: 'New task', exact: true }).click();
+  await dialog.getByLabel("Pomodoros estimés").fill('2');
+  await dialog.getByRole('button', { name: "Nouvelle tâche", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   await page.getByRole('button', { name: /^Draft the interface/ }).click();
   dialog = page.getByRole('dialog', { name: 'Draft the interface', exact: true });
-  await dialog.getByRole('button', { name: 'Subtasks', exact: true }).click();
+  await dialog.getByRole('button', { name: "Sous-tâches", exact: true }).click();
   await dialog
-    .getByRole('textbox', { name: 'Add a subtask', exact: true })
+    .getByRole('textbox', { name: "Ajouter une sous-tâche", exact: true })
     .fill('Capture the main flow');
-  await dialog.getByRole('button', { name: 'Create', exact: true }).click();
+  await dialog.getByRole('button', { name: "Créer", exact: true }).click();
   const checklistItem = dialog.getByRole('checkbox', { name: 'Capture the main flow' });
   await checklistItem.click();
   await expect(checklistItem).toBeChecked();
   await expect(dialog.getByText('1 of 1 complete')).toBeVisible();
-  await dialog.getByRole('button', { name: 'Development', exact: true }).click();
+  await dialog.getByRole('button', { name: "Développement", exact: true }).click();
   await dialog
-    .getByRole('textbox', { name: 'Development note', exact: true })
+    .getByRole('textbox', { name: "Note de travail", exact: true })
     .fill('Found a simpler layout. Next: test the timer controls.');
-  await dialog.getByRole('button', { name: 'Add development note', exact: true }).click();
+  await dialog.getByRole('button', { name: "Ajouter une note de travail", exact: true }).click();
   await expect(
     dialog.getByText('Found a simpler layout. Next: test the timer controls.'),
   ).toBeVisible();
-  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await dialog.getByRole('button', { name: "Fermer", exact: true }).click();
 
   await openView(page, 'planner');
-  await page.getByRole('button', { name: 'Plan a session', exact: true }).first().click();
+  await page.getByRole('button', { name: "Planifier une séance", exact: true }).first().click();
   dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Session title').fill('One focused design minute');
+  await dialog.getByLabel("Titre de la séance").fill('One focused design minute');
   await dialog.getByLabel('Date', { exact: true }).fill('2026-09-14');
-  await dialog.getByLabel('Start time').fill('10:00');
-  await dialog.getByLabel('Duration (minutes)').fill('1');
+  await dialog.getByLabel("Heure de début").fill('10:00');
+  await dialog.getByLabel("Durée (minutes)").fill('1');
   await dialog
-    .getByRole('combobox', { name: 'Task title', exact: true })
+    .getByRole('combobox', { name: "Titre de la tâche", exact: true })
     .selectOption({ label: 'Draft the interface' });
-  await dialog.getByRole('button', { name: 'Plan a session', exact: true }).click();
+  await dialog.getByRole('button', { name: "Planifier une séance", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   expect((await readData(page)).focusSessions).toHaveLength(0);
   await page.locator('.planner-cell[aria-label*="One focused design minute"]').click();
   dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: 'Focus now', exact: true }).click();
+  await dialog.getByRole('button', { name: "Commencer maintenant", exact: true }).click();
   await expect(dialog).not.toBeVisible();
 
   await openView(page, 'overview');
-  await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: "Mettre en pause", exact: true })).toBeVisible();
   await page.clock.fastForward(15000);
-  await page.getByRole('button', { name: 'Pause', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: "Mettre en pause", exact: true }).click();
+  await expect(page.getByRole('button', { name: "Reprendre", exact: true })).toBeVisible();
   const paused = (await readData(page)).timer;
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: "Reprendre", exact: true })).toBeVisible();
   expect((await readData(page)).timer.remainingMs).toBe(paused.remainingMs);
-  await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  await page.getByRole('button', { name: "Reprendre", exact: true }).click();
   await page.clock.fastForward(61000);
   await expect
     .poll(
       async () =>
         (await readData(page)).focusSessions.filter(
-          (session) => session.status === 'completed' && session.phase === 'focus',
+          (session) => session.status === "réalisés" && session.phase === 'focus',
         ).length,
     )
     .toBe(1);
@@ -134,12 +134,12 @@ test('a complete personal journey preserves planning, development and actual foc
   expect(completed.plannedSessions[0].completed).toBe(true);
   expect(completed.tasks[0].status).toBe('todo');
   expect(completed.journal).toHaveLength(1);
-  await page.getByRole('button', { name: 'Add session note', exact: true }).click();
-  dialog = page.getByRole('dialog', { name: 'New note', exact: true });
+  await page.getByRole('button', { name: "Ajouter une note de séance", exact: true }).click();
+  dialog = page.getByRole('dialog', { name: "Nouvelle note", exact: true });
   await dialog
-    .getByLabel('Note content (Markdown supported)', { exact: true })
+    .getByLabel("Contenu de la note (Markdown accepté)", { exact: true })
     .fill('The timer controls are clearer after this focus session.');
-  await dialog.getByRole('button', { name: 'Save note', exact: true }).click();
+  await dialog.getByRole('button', { name: "Enregistrer la note", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   const reflection = (await readData(page)).noteSheets[0];
   expect(reflection.sessionId).toBe(completed.focusSessions[0].id);
@@ -152,7 +152,7 @@ test('a complete personal journey preserves planning, development and actual foc
   await openView(page, 'subjects');
   await page.getByRole('button', { name: 'Interface research', exact: true }).click();
   dialog = page.getByRole('dialog');
-  await dialog.getByRole('button', { name: 'Subject history', exact: true }).click();
+  await dialog.getByRole('button', { name: "Historique de la matière", exact: true }).click();
   await expect(dialog.getByText('focus completed', { exact: true })).toBeVisible();
 });
 
@@ -160,13 +160,13 @@ test('overlap errors retain the editor and preserve the original plan', async ({
   await startFresh(page);
   await openView(page, 'planner');
   for (const title of ['First block', 'Conflicting block']) {
-    await page.getByRole('button', { name: 'Plan a session', exact: true }).first().click();
+    await page.getByRole('button', { name: "Planifier une séance", exact: true }).first().click();
     const dialog = page.getByRole('dialog');
-    await dialog.getByLabel('Session title').fill(title);
+    await dialog.getByLabel("Titre de la séance").fill(title);
     await dialog.getByLabel('Date', { exact: true }).fill('2026-09-14');
-    await dialog.getByLabel('Start time').fill('09:45');
-    await dialog.getByLabel('Duration (minutes)').fill('30');
-    await dialog.getByRole('button', { name: 'Plan a session', exact: true }).click();
+    await dialog.getByLabel("Heure de début").fill('09:45');
+    await dialog.getByLabel("Durée (minutes)").fill('30');
+    await dialog.getByRole('button', { name: "Planifier une séance", exact: true }).click();
     if (title === 'First block') await expect(dialog).not.toBeVisible();
     else {
       await expect(dialog).toBeVisible();
@@ -182,15 +182,15 @@ test('local development templates create a checklist without inventing analytics
   page,
 }) => {
   await startFresh(page);
-  await openView(page, 'tasks');
-  await page.getByRole('button', { name: 'New task', exact: true }).first().click();
+  await openView(page, "tâches");
+  await page.getByRole('button', { name: "Nouvelle tâche", exact: true }).first().click();
   const dialog = page.getByRole('dialog');
-  await dialog.getByLabel('Task title', { exact: true }).fill('Build the settings screen');
-  await dialog.getByLabel('Start with a template').selectOption('Software development');
+  await dialog.getByLabel("Titre de la tâche", { exact: true }).fill('Build the settings screen');
+  await dialog.getByLabel("Utiliser un modèle").selectOption('Software development');
   await expect(
-    dialog.getByRole('textbox', { name: 'Description (Markdown supported)', exact: true }),
+    dialog.getByRole('textbox', { name: "Description (Markdown accepté)", exact: true }),
   ).toHaveValue(/Acceptance criteria/);
-  await dialog.getByRole('button', { name: 'New task', exact: true }).click();
+  await dialog.getByRole('button', { name: "Nouvelle tâche", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   const data = await readData(page);
   expect(data.tasks[0].checklist.map((item) => item.text)).toEqual([
@@ -203,8 +203,8 @@ test('local development templates create a checklist without inventing analytics
   expect(new Set(data.tasks[0].checklist.map((item) => item.id)).size).toBe(5);
   expect(data.focusSessions).toHaveLength(0);
   await openView(page, 'analytics');
-  await expect(page.getByRole('heading', { name: 'Focus by subject', exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Focus by project', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Concentration par matière", exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: "Concentration par projet", exact: true })).toBeVisible();
   const row = page.getByRole('row').filter({ hasText: 'Build the settings screen' });
   await expect(row).toBeVisible();
   await expect(row.getByRole('cell').nth(2)).toHaveText('0');
@@ -216,16 +216,16 @@ test('appearance persists, invalid imports change no data, and dialogs restore f
 }) => {
   await startFresh(page);
   await openView(page, 'settings');
-  await page.getByRole('button', { name: 'Dark', exact: true }).click();
+  await page.getByRole('button', { name: "Sombre", exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page
     .locator('.settings-tabs')
-    .getByRole('button', { name: 'Your data', exact: true })
+    .getByRole('button', { name: "Vos données", exact: true })
     .click();
   const before = await readData(page);
-  await page.getByLabel('Import JSON file', { exact: true }).setInputFiles({
+  await page.getByLabel("Importer un fichier JSON", { exact: true }).setInputFiles({
     name: 'invalid.json',
     mimeType: 'application/json',
     buffer: Buffer.from(
@@ -237,15 +237,15 @@ test('appearance persists, invalid imports change no data, and dialogs restore f
       }),
     ),
   });
-  await expect(page.getByRole('dialog', { name: 'Review your import' })).not.toBeVisible();
+  await expect(page.getByRole('dialog', { name: "Vérifiez votre import" })).not.toBeVisible();
   await expect(page.getByRole('alert').first()).toBeVisible();
   expect(await readData(page)).toEqual(before);
-  await openView(page, 'tasks');
-  const trigger = page.getByRole('button', { name: 'New task', exact: true }).first();
+  await openView(page, "tâches");
+  const trigger = page.getByRole('button', { name: "Nouvelle tâche", exact: true }).first();
   await trigger.click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByLabel('Task title', { exact: true })).toBeFocused();
+  await expect(dialog.getByLabel("Titre de la tâche", { exact: true })).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).not.toBeVisible();
   await expect(trigger).toBeFocused();
@@ -258,15 +258,15 @@ test('two tabs recover the same session without duplicate completions', async ({
   const instant = new Date('2026-09-14T08:00:00Z');
   await page.clock.install({ time: instant });
   await startFresh(page);
-  await page.locator('.settings-tabs').getByRole('button', { name: 'Timer', exact: true }).click();
-  await page.getByLabel('Focus (minutes)', { exact: true }).fill('1');
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await page.locator('.settings-tabs').getByRole('button', { name: "Minuteur", exact: true }).click();
+  await page.getByLabel("Concentration (minutes)", { exact: true }).fill('1');
+  await page.getByRole('button', { name: "Enregistrer les modifications", exact: true }).click();
   await openView(page, 'overview');
   const other = await context.newPage();
   await other.clock.install({ time: instant });
   await openView(other, 'overview');
-  await page.getByRole('button', { name: 'Start focus', exact: true }).click();
-  await expect(other.getByRole('button', { name: 'Pause', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: "Commencer", exact: true }).click();
+  await expect(other.getByRole('button', { name: "Mettre en pause", exact: true })).toBeVisible();
   const sessionId = (await readData(page)).timer.sessionId;
   expect((await readData(other)).timer.sessionId).toBe(sessionId);
   await page.clock.fastForward(61000);
@@ -284,29 +284,29 @@ test('reset and skip require confirmation and never count as completed Pomodoros
   await page.clock.install({ time: new Date('2026-09-14T08:00:00Z') });
   await startFresh(page);
   await openView(page, 'overview');
-  await page.getByRole('button', { name: 'Start focus', exact: true }).click();
+  await page.getByRole('button', { name: "Commencer", exact: true }).click();
   await page.clock.fastForward(30000);
-  await page.getByRole('button', { name: 'Reset timer', exact: true }).click();
-  let dialog = page.getByRole('dialog', { name: 'Reset this session?' });
+  await page.getByRole('button', { name: "Réinitialiser le minuteur", exact: true }).click();
+  let dialog = page.getByRole('dialog', { name: "Réinitialiser cette séance ?" });
   await expect(dialog).toBeVisible();
   expect((await readData(page)).focusSessions).toHaveLength(0);
-  await dialog.getByRole('button', { name: 'Reset timer', exact: true }).click();
+  await dialog.getByRole('button', { name: "Réinitialiser le minuteur", exact: true }).click();
   await expect(dialog).not.toBeVisible();
-  await page.getByRole('button', { name: 'Start focus', exact: true }).click();
+  await page.getByRole('button', { name: "Commencer", exact: true }).click();
   await page.clock.fastForward(10000);
-  await page.getByRole('button', { name: 'Skip phase', exact: true }).click();
-  dialog = page.getByRole('dialog', { name: 'Skip this session?' });
-  await dialog.getByRole('button', { name: 'Skip phase', exact: true }).click();
+  await page.getByRole('button', { name: "Passer cette phase", exact: true }).click();
+  dialog = page.getByRole('dialog', { name: "Passer cette séance ?" });
+  await dialog.getByRole('button', { name: "Passer cette phase", exact: true }).click();
   await expect(dialog).not.toBeVisible();
   const data = await readData(page);
-  expect(data.focusSessions.map((session) => session.status)).toEqual(['interrupted', 'skipped']);
+  expect(data.focusSessions.map((session) => session.status)).toEqual(["interrompu", "passé"]);
   expect(data.timer).toMatchObject({ phase: 'shortBreak', status: 'idle', cycleCount: 0 });
 });
 
 for (const width of [320, 390, 768, 1024, 1440]) {
   test(`layout keeps page content within the ${width}px viewport`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
-    for (const view of ['overview', 'tasks', 'planner', 'subjects', 'settings']) {
+    for (const view of ['overview', "tâches", 'planner', 'subjects', 'settings']) {
       await openView(page, view);
       const overflow = await page.evaluate(() => ({
         document: document.documentElement.scrollWidth,
@@ -317,6 +317,6 @@ for (const width of [320, 390, 768, 1024, 1440]) {
       expect(overflow.body, `${view} body width`).toBeLessThanOrEqual(width + 1);
     }
     await openView(page, 'overview');
-    await expect(page.getByRole('button', { name: 'Start focus', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: "Commencer", exact: true })).toBeVisible();
   });
 }

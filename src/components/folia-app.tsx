@@ -50,6 +50,7 @@ import { NotesPage, FlashcardsPage, NoteSheetEditor } from './learning';
 import { applyThemeColors, applyBackground, themeColors } from '@/lib/appearance';
 import { GettingStarted } from './getting-started';
 import { WorkSummary } from './work-summary';
+import { FocusAudioPlayer } from './focus-audio-player';
 
 const navigation = [
   { id: 'overview', Icon: LayoutDashboard },
@@ -684,6 +685,7 @@ export function FoliaApp() {
             {view === 'settings' && <SettingsPage key={`${store.userId}:${store.workspaceId}`} />}
             {view === 'organization' && <OrganizationPage />}
             {view === 'billing' && <BillingPage />}
+            <FocusAudioPlayer />
             <footer className="page-footer">
               <span className={`save-status ${store.saveStatus}`} title={saveLabel}>
                 {store.saveStatus === 'offline' ? (

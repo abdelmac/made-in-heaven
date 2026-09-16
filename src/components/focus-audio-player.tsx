@@ -5,6 +5,7 @@ import { Headphones, Pause, Play, RefreshCw } from 'lucide-react';
 import { useApp } from './app-context';
 import { Button } from './ui';
 import { createAmbientPreview, previewTracks } from '@/lib/ambient-preview';
+import { storageKey as workspaceStorageKey } from '@/lib/persistence';
 import styles from './focus-audio-player.module.css';
 
 type Track = { id: string; title: string; attribution: string; duration_seconds: number; category: string };
@@ -27,13 +28,14 @@ export function FocusAudioPlayer() {
 
 function Player({ preview }: { preview: boolean }) {
   const { store } = useApp();
-  const storageKey = `solace:audio:${store.userId}:${store.workspaceId}`;
+  const storageKey = `${workspaceStorageKey(store.workspaceId, store.user?.id)}:audio`;
   const [preferences, setPreferences] = useState(defaults);
   const [tracks, setTracks] = useState<Track[]>(preview ? [...previewTracks] : []);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(!preview);
   const [playing, setPlaying] = useState(false);
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const blobRef = useRef('');
   const version = useRef(0);
@@ -80,7 +82,7 @@ function Player({ preview }: { preview: boolean }) {
       })
       .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, [preview, store.workspaceId]);
+  }, [preview, store.workspaceId, catalogAttempt]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -154,7 +156,11 @@ function Player({ preview }: { preview: boolean }) {
       <summary><Headphones size={18} />Ambiances audio <span className="badge">{preview ? 'Aperçu local' : 'Pro'}</span>{playing && <span>En lecture</span>}</summary>
       <div className={styles.controls}>
         <audio ref={audioRef} preload="none" onPlay={() => setPlaying(true)} onPause={() => setPlaying(false)} onEnded={() => setPlaying(false)} onError={() => {
-          if (audioRef.current?.getAttribute('src')) setError('Lecture interrompue. Cliquez sur Écouter pour renouveler l’accès et réessayer.');
+          if (audioRef.current?.getAttribute('src')) {
+            audioRef.current.pause();
+            setPlaying(false);
+            setError('Lecture interrompue. Cliquez sur Écouter pour renouveler l’accès et réessayer.');
+          }
         }} />
         {loading ? <p className="helper">Chargement des ambiances…</p> : !tracks.length ? <p className="helper">Aucune piste n’est encore disponible dans le catalogue.</p> : <>
           <label>Ambiance
@@ -178,6 +184,7 @@ function Player({ preview }: { preview: boolean }) {
           <p className="helper">{selected?.attribution}{preview ? ' · Générée sur cet appareil, sans téléchargement.' : ''}</p>
         </>}
         {error && <p role="alert" className="error">{error}</p>}
+        {!preview && !loading && !tracks.length && <Button variant="secondary" onClick={() => { setLoading(true); setError(''); setCatalogAttempt((attempt) => attempt + 1); }}>Actualiser le catalogue</Button>}
       </div>
     </details>
   );

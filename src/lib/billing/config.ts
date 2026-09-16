@@ -4,7 +4,7 @@ export type BillingInterval = 'month' | 'year';
 export type WorkspaceKind = 'personal' | 'organization';
 
 export function formatStripeAmount(amount: number, currency: string): string {
-  const formatter = new Intl.NumberFormat('en', {
+  const formatter = new Intl.NumberFormat('fr-FR', {
     style: 'currency',
     currency: currency.toUpperCase(),
   });

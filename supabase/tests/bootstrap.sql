@@ -19,3 +19,5 @@ grant execute on function auth.uid(),auth.role() to anon,authenticated,service_r
 \i /workspace/migrations/0006_organization_settings.sql
 \i /workspace/migrations/0007_private_preferences.sql
 \i /workspace/migrations/0008_learning_and_backgrounds.sql
+\i /workspace/migrations/0009_incremental_sync.sql
+\i /workspace/migrations/0010_pro_audio.sql

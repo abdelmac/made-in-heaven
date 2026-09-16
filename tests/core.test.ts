@@ -111,12 +111,14 @@ describe('timestamp timer', () => {
     let data = createDemoData(new Date(now));
     const task = data.tasks[0];
     const subject = data.subjects[0];
+    const originalTitle = task.title;
+    const originalSubject = subject.name;
     data = startTimer(data, { taskId: task.id }, LOCAL_USER_ID, now);
     data.tasks[0].title = 'A new name';
     data.subjects[0].name = 'A different subject';
     data = completeTimer(data, now + 25 * 60000);
-    expect(data.focusSessions[0].context.taskTitle).toBe('Explore the dashboard direction');
-    expect(data.focusSessions[0].context.subjectName).toBe('Product design');
+    expect(data.focusSessions[0].context.taskTitle).toBe(originalTitle);
+    expect(data.focusSessions[0].context.subjectName).toBe(originalSubject);
     data.tasks = data.tasks.filter((record) => record.id !== task.id);
     data.plannedSessions = data.plannedSessions.filter((record) => record.taskId !== task.id);
     expect(workspaceDataSchema.safeParse(data).success).toBe(true);
@@ -163,7 +165,7 @@ describe('calendar rules', () => {
     expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
   });
   it('rejects nonexistent DST time and deterministically uses earlier repeated time', () => {
-    expect(() => zonedDateTime('2026-03-29', '02:30', 'Europe/Paris')).toThrow(/does not exist/);
+    expect(() => zonedDateTime('2026-03-29', '02:30', 'Europe/Paris')).toThrow(/n'existe pas/);
     expect(zonedDateTime('2026-10-25', '02:30', 'Europe/Paris')).toBe('2026-10-25T00:30:00.000Z');
     expect(zonedDateTime('2026-03-29', '03:30', 'Europe/Paris')).toBe('2026-03-29T01:30:00.000Z');
     expect(() => zonedDateTime('2026-02-30', '12:00', 'UTC')).toThrow(/calendar date/);

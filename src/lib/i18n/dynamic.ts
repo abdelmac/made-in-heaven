@@ -1,7 +1,7 @@
 import type { ActivityEvent, Preferences } from '@/lib/model';
 
 export const widgetLabels: Record<Preferences['widgets'][number], string> = {
-  summary: 'Résumé', timer: 'Minuteur', heatmap: 'Activité', tasks: 'Tâches', planner: 'Planning',
+  timer: 'Minuteur', activity: 'Activité', tasks: 'Tâches', planner: 'Planning', subjects: 'Matières',
 };
 
 export const themeLabels = {

@@ -87,12 +87,12 @@ test('month navigation crosses years, includes leap day and preserves saved acti
   const fixture = await openFixture(page);
   const before = await persistedActivity(page);
   const panel = page.locator('.activity-panel');
-  const period = panel.getByRole('combobox', { name: 'Activity period', exact: true });
-  await expect(period).toHaveValue('year');
+  const period = panel.getByRole('combobox', { name: "Période d’activité", exact: true });
+  await expect(period).toHaveValue("an");
   await expect(panel.locator('.heatmap-cell')).toHaveCount(364);
 
-  await period.selectOption('month');
-  const month = panel.getByLabel('Activity month', { exact: true });
+  await period.selectOption("mois");
+  const month = panel.getByLabel("Mois d’activité", { exact: true });
   const grid = panel.getByTestId('activity-month');
   await expect(month).toHaveValue('2027-01');
   await expect(grid).toBeVisible();
@@ -101,10 +101,10 @@ test('month navigation crosses years, includes leap day and preserves saved acti
   await expect(grid.getByRole('button', { name: /^2027-01-16:.*future date/ })).toBeDisabled();
   expect(await persistedActivity(page)).toEqual(before);
 
-  await panel.getByRole('button', { name: 'Previous month', exact: true }).click();
+  await panel.getByRole('button', { name: "Mois précédent", exact: true }).click();
   await expect(month).toHaveValue('2026-12');
   await expect(grid.getByRole('button', { name: /^2026-12-31: 1 completed/ })).toBeEnabled();
-  await panel.getByRole('button', { name: 'Next month', exact: true }).click();
+  await panel.getByRole('button', { name: "Mois suivant", exact: true }).click();
   await expect(month).toHaveValue('2027-01');
 
   await month.fill('2024-02');
@@ -119,37 +119,37 @@ test('month navigation crosses years, includes leap day and preserves saved acti
   const viewKey = `folia:v1:activity-view:${LOCAL_USER_ID}:${fixture.workspaceId}`;
   await expect
     .poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key) || 'null'), viewKey))
-    .toEqual({ version: 1, view: 'month', month: '2024-02' });
+    .toEqual({ version: 1, view: "mois", month: '2024-02' });
   expect(await persistedActivity(page)).toEqual(before);
 
   await page
     .locator('.main-navigation')
-    .getByRole('button', { name: /^Tasks/ })
+    .getByRole('button', { name: /^Tâches/ })
     .click();
-  await expect(page.locator('.breadcrumb strong')).toHaveText('Tasks');
+  await expect(page.locator('.breadcrumb strong')).toHaveText("Tâches");
   await expect(panel).not.toBeVisible();
   await page
     .locator('.main-navigation')
-    .getByRole('button', { name: 'Overview', exact: true })
+    .getByRole('button', { name: "Vue d’ensemble", exact: true })
     .click();
-  await expect(period).toHaveValue('month');
+  await expect(period).toHaveValue("mois");
   await expect(month).toHaveValue('2024-02');
   await expect(grid.getByRole('button', { name: /^2024-02-\d{2}:/ })).toHaveCount(29);
   await expect(panel.locator('.heatmap-footer strong').first()).toHaveText('3');
   expect(await persistedActivity(page)).toEqual(before);
   await page.reload();
-  await expect(period).toHaveValue('month');
+  await expect(period).toHaveValue("mois");
   await expect(month).toHaveValue('2024-02');
   await expect(grid.getByRole('button', { name: /^2024-02-\d{2}:/ })).toHaveCount(29);
   expect(await persistedActivity(page)).toEqual(before);
 
-  await panel.getByRole('button', { name: 'This month', exact: true }).click();
+  await panel.getByRole('button', { name: "Ce mois-ci", exact: true }).click();
   await expect(month).toHaveValue('2027-01');
-  await period.selectOption('year');
+  await period.selectOption("an");
   await expect(panel.locator('.heatmap-cell')).toHaveCount(364);
   expect(await persistedActivity(page)).toEqual(before);
   await page.reload();
-  await expect(period).toHaveValue('year');
+  await expect(period).toHaveValue("an");
   await expect(panel.locator('.heatmap-cell')).toHaveCount(364);
   expect(await persistedActivity(page)).toEqual(before);
 });
@@ -171,18 +171,18 @@ test('activity controls still change in memory when saving the device view fails
   });
 
   const panel = page.locator('.activity-panel');
-  const period = panel.getByRole('combobox', { name: 'Activity period', exact: true });
-  await period.selectOption('month');
-  const month = panel.getByLabel('Activity month', { exact: true });
+  const period = panel.getByRole('combobox', { name: "Période d’activité", exact: true });
+  await period.selectOption("mois");
+  const month = panel.getByLabel("Mois d’activité", { exact: true });
   await expect(month).toHaveValue('2027-01');
   await month.fill('2024-02');
   await expect(month).toHaveValue('2024-02');
   await expect(
     panel.getByTestId('activity-month').getByRole('button', { name: /^2024-02-\d{2}:/ }),
   ).toHaveCount(29);
-  await panel.getByRole('button', { name: 'Previous month', exact: true }).click();
+  await panel.getByRole('button', { name: "Mois précédent", exact: true }).click();
   await expect(month).toHaveValue('2024-01');
-  await period.selectOption('year');
+  await period.selectOption("an");
   await expect(panel.locator('.heatmap-cell')).toHaveCount(364);
   expect(await page.evaluate((key) => localStorage.getItem(key), viewKey)).toBe(savedView);
   expect(await persistedActivity(page)).toEqual(before);
@@ -193,11 +193,11 @@ test('month totals and day details share the analytics subject and date filters'
 }) => {
   const fixture = await openFixture(page, 'analytics');
   const before = await persistedActivity(page);
-  await page.getByLabel('From', { exact: true }).fill('2024-02-01');
-  await page.getByLabel('To', { exact: true }).fill('2024-02-29');
+  await page.getByLabel("Du", { exact: true }).fill('2024-02-01');
+  await page.getByLabel("Au", { exact: true }).fill('2024-02-29');
   const panel = page.locator('.activity-panel');
-  await panel.getByRole('combobox', { name: 'Activity period', exact: true }).selectOption('month');
-  await panel.getByLabel('Activity month', { exact: true }).fill('2024-02');
+  await panel.getByRole('combobox', { name: "Période d’activité", exact: true }).selectOption("mois");
+  await panel.getByLabel("Mois d’activité", { exact: true }).fill('2024-02');
   const grid = panel.getByTestId('activity-month');
   await expect(panel.locator('.heatmap-footer strong').first()).toHaveText('3');
   await grid
@@ -209,10 +209,10 @@ test('month totals and day details share the analytics subject and date filters'
   let dialog = page.getByRole('dialog');
   await expect(dialog.locator('.mini-metrics strong')).toHaveText(['2', '1h 5m']);
   await expect(dialog.locator('.session-item')).toHaveCount(2);
-  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await dialog.getByRole('button', { name: "Fermer", exact: true }).click();
 
   await page
-    .getByRole('combobox', { name: 'Analytics subject', exact: true })
+    .getByRole('combobox', { name: "Matière des statistiques", exact: true })
     .selectOption(fixture.subjects[0].id);
   await expect(panel.locator('.heatmap-footer strong').first()).toHaveText('2');
   await grid
@@ -226,9 +226,9 @@ test('month totals and day details share the analytics subject and date filters'
   await expect(dialog.locator('.session-item')).toHaveCount(1);
   await expect(dialog.getByText('Leap day research', { exact: true })).toBeVisible();
   await expect(dialog.getByText('Other subject session', { exact: true })).toHaveCount(0);
-  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await dialog.getByRole('button', { name: "Fermer", exact: true }).click();
 
-  await page.getByLabel('From', { exact: true }).fill('2024-02-29');
+  await page.getByLabel("Du", { exact: true }).fill('2024-02-29');
   await expect(panel.locator('.heatmap-footer strong').first()).toHaveText('1');
   await expect(grid.getByRole('button', { name: /^2024-02-29: 1 completed/ })).toBeEnabled();
   expect(await persistedActivity(page)).toEqual(before);
@@ -238,12 +238,12 @@ test('month view fits a 320px viewport and keeps its day controls usable', async
   await page.setViewportSize({ width: 320, height: 900 });
   await openFixture(page);
   const panel = page.locator('.activity-panel');
-  await panel.getByRole('combobox', { name: 'Activity period', exact: true }).selectOption('month');
+  await panel.getByRole('combobox', { name: "Période d’activité", exact: true }).selectOption("mois");
   await expect(panel.getByTestId('activity-month')).toBeVisible();
-  await panel.getByRole('button', { name: 'Previous month', exact: true }).click();
-  await expect(panel.getByLabel('Activity month', { exact: true })).toHaveValue('2026-12');
-  await panel.getByRole('button', { name: 'This month', exact: true }).click();
-  await expect(panel.getByLabel('Activity month', { exact: true })).toHaveValue('2027-01');
+  await panel.getByRole('button', { name: "Mois précédent", exact: true }).click();
+  await expect(panel.getByLabel("Mois d’activité", { exact: true })).toHaveValue('2026-12');
+  await panel.getByRole('button', { name: "Ce mois-ci", exact: true }).click();
+  await expect(panel.getByLabel("Mois d’activité", { exact: true })).toHaveValue('2027-01');
   const widths = await page.evaluate(() => ({
     document: document.documentElement.scrollWidth,
     body: document.body.scrollWidth,

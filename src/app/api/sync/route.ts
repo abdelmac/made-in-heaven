@@ -89,6 +89,7 @@ export async function GET(request: Request) {
       if (version !== undefined && version !== snapshot.version)
         return NextResponse.json({ error: 'Cet espace a changé pendant le chargement.' }, { status: 409, headers: { 'Cache-Control': 'private, no-store' } });
       if (cursor > 0 && version === undefined) throw new HttpError(400, 'Une page suivante doit préciser sa version.');
+      if (cursor > Object.values(snapshot.data).filter(Array.isArray).reduce((total, items) => total + items.length, 0)) throw new HttpError(400, 'Page de synchronisation invalide.');
       return NextResponse.json({ ...snapshotPage(snapshot.data, cursor), version: snapshot.version }, { headers: { 'Cache-Control': 'private, no-store' } });
     }
     return NextResponse.json(await clientDocument(request, workspaceId, user.id), {

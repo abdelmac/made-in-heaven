@@ -22,6 +22,7 @@ import { useApp } from './app-context';
 import { Button, IconButton, Panel, Field, Dialog } from './ui';
 import { en } from '@/lib/i18n/en';
 import { billingCopy } from '@/lib/i18n/billing';
+import styles from './workspaces.module.css';
 import {
   DEFAULT_BILLING_POLICY,
   type BillingTier,
@@ -460,7 +461,7 @@ export function OrganizationPage() {
           {canManage && (
             <Panel title={en.organization.invitations} subtitle={en.organization.inviteHint}>
               <form
-                className="invite-form"
+                className={`invite-form ${styles.inviteForm}`}
                 onSubmit={async (e) => {
                   e.preventDefault();
                   const f = new FormData(e.currentTarget);
@@ -487,7 +488,7 @@ export function OrganizationPage() {
                     <option value="admin">{ui.workspaces.admin}</option>
                   )}
                 </select>
-                <label className="check-field">
+                <label className={styles.emailOption}>
                   <input
                     type="checkbox"
                     name="sendEmail"
