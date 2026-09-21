@@ -173,6 +173,10 @@ export function ActivityHeatmap({
     setSelection({ view, month: next });
     setSelectedDay(null);
   }
+  function changeView(next: ActivityView) {
+    setSelection({ view: next, month });
+    setSelectedDay(null);
+  }
   function dayButton(day: (typeof days)[number], inMonth = false) {
     const intensity = minuteMode
       ? day.minutes === 0
@@ -233,18 +237,18 @@ export function ActivityHeatmap({
       subtitle={view === 'month' ? activityRange.monthSubtitle : en.overview.activitySubtitle}
       action={
         <div className={styles.controls}>
-          <select
-            className="subtle-select"
-            aria-label={activityRange.period}
-            value={view}
-            onChange={(event) => {
-              setSelection({ view: event.target.value as ActivityView, month });
-              setSelectedDay(null);
-            }}
-          >
-            <option value="year">{activityRange.year}</option>
-            <option value="month">{activityRange.month}</option>
-          </select>
+          <div className={styles.viewSwitcher} role="group" aria-label={activityRange.period}>
+            <button type="button" aria-pressed={view === 'year'} onClick={() => changeView('year')}>
+              {activityRange.year}
+            </button>
+            <button
+              type="button"
+              aria-pressed={view === 'month'}
+              onClick={() => changeView('month')}
+            >
+              {activityRange.month}
+            </button>
+          </div>
           <select
             className="subtle-select"
             aria-label={ui.activity.heatmapMeasure}

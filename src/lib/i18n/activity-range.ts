@@ -1,7 +1,7 @@
 export const activityRange = {
   period: 'Période d’activité',
   year: '52 semaines',
-  month: 'Mois',
+  month: '1 mois',
   monthInput: 'Mois d’activité',
   previous: 'Mois précédent',
   next: 'Mois suivant',

@@ -42,7 +42,7 @@ The repository includes its dependency lockfile. Next.js and React use the compa
 6. Inspect the subject's history, global history, analytics, or a day in the 52-week activity grid. Planning and completed work remain separate.
 7. Use **Settings** for appearance, timer presets, calendar rules, widget ordering, named layouts, and portable JSON backups. Advanced features can be explored locally; server operations enforce the connected workspace's paid entitlements.
 
-The activity overview can show **52 weeks** or a single **Month**. Pick a month, use the previous/next controls, or return to this month. The selected view is remembered on this device for the current user/workspace. Totals and day details use the same filters and count completed focus only.
+The activity overview has two visible buttons, **52 semaines** and **1 mois**, to switch between the annual heatmap and a more readable monthly calendar with larger day cells. Pick a month, use the previous/next controls, or return to this month. The selected view is remembered on this device for the current user/workspace. Totals and day details use the same filters and count completed focus only.
 
 In **Planner**, drag a scheduled session or an unplanned task onto an hour slot. Moving a session preserves its duration and task context; overlapping plans are rejected. On touch screens or with a keyboard, select **Move** (or a task) and then choose a slot. Open a session to set a precise start time or duration; drops start on the hour.
 
