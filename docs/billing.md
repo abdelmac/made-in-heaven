@@ -1,5 +1,7 @@
 # Test-mode billing and entitlements
 
+The new September 21 installation at `https://solace-hikmagitz.vercel.app` has **no Stripe configuration**. Its new Supabase database has no imported subscriptions or customer records. The September 16 resource IDs and successful sandbox checks below belong only to the separate, unchanged `folia-ennearock` installation. Do not copy its credentials or assume this new site's checkout is active. See [installation-hikmagitz.md](installation-hikmagitz.md).
+
 Solace uses Stripe-hosted Checkout and the Customer Portal. This version deliberately rejects live secret keys and live events in every environment. No card details enter Solace. Without credentials, pricing shows an unavailable state and the separate local/demo application remains usable. Opening a successful checkout return URL never grants access.
 
 ## Selected first sandbox offering
@@ -16,11 +18,11 @@ The deployed pricing endpoint reports `configured: true`, `mode: "test"`, `curre
 
 ## Activate the hosted checkout
 
-The hosted application origin is `https://folia-ennearock.vercel.app`. In the Vercel project **folia-ennearock**, open Settings → Environment Variables and set the following in **Production**, then redeploy. Use the actual account/project values; do not commit secrets or paste them into a chat. These steps enable **test checkout**, including on the hosted application.
+For the new installation, the application origin is `https://solace-hikmagitz.vercel.app`. In the Vercel project **solace-hikmagitz**, open Settings → Environment Variables and set the following in **Production**, then redeploy. Use the actual account/project values and resources from the selected Stripe test account, not assumed copies of the historical IDs above. Do not commit secrets or paste them into a chat. These steps enable **test checkout**, including on the hosted application.
 
 | Variable                                                  | Required value                                                           |
 | --------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `NEXT_PUBLIC_APP_URL`                                     | `https://folia-ennearock.vercel.app`                                     |
+| `NEXT_PUBLIC_APP_URL`                                     | `https://solace-hikmagitz.vercel.app`                                    |
 | `NEXT_PUBLIC_SUPABASE_URL`                                | The connected Supabase project URL                                       |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`                    | That project's publishable key (or use `NEXT_PUBLIC_SUPABASE_ANON_KEY`)  |
 | `SUPABASE_SERVICE_ROLE_KEY`                               | Server-only key for the same migrated project                            |
@@ -31,7 +33,7 @@ The hosted application origin is `https://folia-ennearock.vercel.app`. In the Ve
 | `STRIPE_PRO_PORTAL_CONFIGURATION_ID`                      | Safe Pro customer portal configuration, `bpc_…`                          |
 | `STRIPE_TEAM_PORTAL_CONFIGURATION_ID`                     | Safe Team customer portal configuration, `bpc_…`                         |
 
-Register the Stripe webhook at **`https://folia-ennearock.vercel.app/api/billing/webhook`**. Set the events listed under Setup. The Stripe CLI's local signing secret will not verify deliveries from this hosted endpoint. API keys and webhook signing secrets are separate credentials. No Stripe publishable key is needed for this hosted redirect integration. [Stripe API keys](https://docs.stripe.com/keys)
+Register a separate Stripe webhook at **`https://solace-hikmagitz.vercel.app/api/billing/webhook`**. Set the events listed under Setup. Do not modify the old site's webhook. The Stripe CLI's local signing secret will not verify deliveries from this hosted endpoint. API keys and webhook signing secrets are separate credentials. No Stripe publishable key is needed for this hosted redirect integration. [Stripe API keys](https://docs.stripe.com/keys)
 
 At least one real configured recurring Price is needed; you may launch Pro without configuring Team. Choose amounts and currency in Stripe before activation. Folia does not invent a subscription price, annual discount, or paid checkout URL. Missing Supabase credentials, the webhook secret, or all Prices leave checkout unavailable. A missing portal disables checkout for its tier; a portal that fails the server's checks is rejected before creating a customer or Checkout session.
 

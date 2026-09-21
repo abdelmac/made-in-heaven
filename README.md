@@ -70,7 +70,7 @@ Stripe checkout verifies the configured Customer Portal supports cancellation, i
 
 Never put the service-role key or Stripe secret in a `NEXT_PUBLIC_` variable. `.env.local` is ignored by Git.
 
-`npm run build` first validates Supabase credential types and rejects server credentials in public settings before browser assets are generated. The hosted Solace app uses a dedicated Supabase project; password sign-in and cloud task persistence have been verified across two independent browser sessions. The EUR 1.00/month Stripe sandbox journey also passed: Checkout, signed webhook provisioning of Pro, duplicate-event handling, and portal cancellation with paid access retained through the period end. Email delivery remains unverified; see the [verification record](docs/verification.md).
+`npm run build` first validates Supabase credential types and rejects server credentials in public settings before browser assets are generated. The new Hikmagitz installation uses its own Supabase project; password sign-in and cloud task persistence have been verified across two independent browser sessions. Its Stripe integration is not configured. The older installation's EUR 1.00/month sandbox journey is retained separately in the [verification record](docs/verification.md). Email delivery remains unverified and the new project needs custom SMTP for public registration.
 
 ## Workspaces, permissions, and subscriptions
 
@@ -142,13 +142,15 @@ Observed executions and exact test results are recorded in [docs/verification.md
 
 ## Deployment and current limits
 
-The public deployment is [folia-ennearock.vercel.app](https://folia-ennearock.vercel.app), hosted in the `ennearock/folia-ennearock` Vercel project. Its dedicated Solace Supabase project and Stripe test billing are connected alongside the local/demo experience. The only configured paid offering is Pro at EUR 1.00/month in test mode; real payments remain disabled. `NEXT_PUBLIC_APP_URL` is configured as this exact production origin.
+The new public deployment is [solace-hikmagitz.vercel.app](https://solace-hikmagitz.vercel.app), hosted in `hikmagitzs-projects/solace-hikmagitz` and connected to the separate **Solace Hikmagitz** Supabase project (`zwgjauskorkpucuaqvgs`, Paris, Free plan). All ten migrations are applied. Stripe and invitation-email credentials are not configured on this installation; the connected workspace uses the Free tier and the paid audio catalog is empty. Authentication confirmation remains required; configure custom SMTP before opening public email registration. See [the installation record](docs/installation-hikmagitz.md).
+
+The earlier `ennearock/folia-ennearock` deployment, its Supabase database and its Stripe configuration were not modified or copied. Its historical checks below do not describe the new installation.
 
 To deploy this checkout again using the authorized Vercel account:
 
 ```bash
-npx vercel@59.19.0 link --yes --project folia-ennearock --scope ennearock
-npx vercel@59.19.0 deploy --prod --yes --scope ennearock --logs
+npx vercel@59.19.0 link --yes --project solace-hikmagitz --scope hikmagitzs-projects
+npx vercel@59.19.0 deploy --prod --yes --scope hikmagitzs-projects --logs
 ```
 
 The first deployment used the CLI because Vercel could not obtain write/admin access to the configured GitHub repository. A GitHub Actions workflow now runs the quality checks and can deploy successful main-branch builds after the Vercel secrets and enable flag are configured; follow [the automation guide](docs/development-automation.md). Its presence does not connect or configure the hosted accounts. `.vercelignore` excludes local environment files, generated builds, test artifacts, and local scratch files from deployment uploads; Vercel project linkage stays outside Git.

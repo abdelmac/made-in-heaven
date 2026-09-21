@@ -1,6 +1,20 @@
 # Verification record
 
-Latest local UI and database verification was performed on September 16, 2026. The separate hosted database and Stripe sandbox checks from earlier that day are retained below; they do not verify this new local version. The recorded hosted offering is Solace Pro at **EUR 1.00/month in test mode**.
+Latest hosted verification was performed on September 21, 2026 for the new, independent `solace-hikmagitz` installation. Earlier `folia-ennearock` records are retained below; its Stripe sandbox offering does not apply to the new site.
+
+## September 21: new Hikmagitz installation
+
+- Created the separate Vercel Hobby project `hikmagitzs-projects/solace-hikmagitz` and Supabase Free project **Solace Hikmagitz** (`zwgjauskorkpucuaqvgs`, Paris). No existing project, account data or payment configuration was modified or copied.
+- Applied all ten original migrations in separate transactions on PostgreSQL 17.6 and recorded their original versions, names and SQL. Final hosted read-only checks verified RLS on all **26 public application tables**, no anonymous SELECT grants, no direct authenticated INSERT/UPDATE/DELETE grants, and all **11 public service-only RPCs** denied to anon/authenticated with empty search paths. The `pro-audio` bucket is private and its restrictive client policy is present.
+- Configured a modern Supabase publishable key and a distinct server secret in Vercel Production, with the exact new site origin. Auth callback redirects are configured and email confirmation remains required. No secret was placed in a versioned file.
+- Production deployment **`dpl_t9Wj9Y9Tn7C3FsPCCFczMjFTq18p`** is `READY` at **<https://solace-hikmagitz.vercel.app>**. Its Node.js 22.x build passed the credential guard, Next.js production compilation and TypeScript checks.
+- Re-ran **218 unit/server tests** and **191 isolated PostgreSQL assertions** successfully. The separate SQL harness result does not substitute for hosted service checks.
+- **Five public production browser scenarios passed (19.9 seconds)** on the new site: first-use guidance, recurrence/calendar export, intentional audio playback, mobile timer access and automated accessibility. These use browser-local data, not fake cloud success.
+- **Authenticated hosted journey passed:** created a disposable, explicitly confirmed test account without sending email; signed in through the deployed interface; obtained a private Free workspace; saved a task; restored it in an independent second browser context; confirmed actual Free billing/audio entitlements and unavailable Checkout. This verifies password login and ordinary cloud synchronization, not signup email delivery.
+- Desktop and 390px screenshots were inspected. No browser exceptions or mobile page overflow occurred. The successful run deleted its account through the guarded application endpoint, then removed only its rate-limit records and verified cleanup. A preceding test-selector mismatch was corrected and its separate temporary account was also removed. Final hosted counts are **zero accounts and zero workspaces**; no email or payment was sent.
+- Scanned the public HTML and seven initial JavaScript assets: neither the actual server key nor the management token appeared, and no modern server-key pattern was found. This check does not cover every dynamic import or future build.
+
+**Remaining activation:** custom SMTP is required before treating public signup and password-recovery email as available. Supabase rejected custom email templates on the Free project using the default email provider, so those templates remain unchanged. Resend, Stripe, licensed Pro audio tracks and GitHub deployment automation are not configured on this installation. See [installation-hikmagitz.md](installation-hikmagitz.md) for exact targets and next steps. No paid plan was activated.
 
 ## September 16: French product update — local verification
 

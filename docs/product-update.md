@@ -5,6 +5,12 @@ explicites, l’export calendrier, un bilan personnel et des invitations par e-m
 configurables. Les identifiants de stockage Folia restent compatibles avec les
 données existantes.
 
+La nouvelle installation du 21 septembre est en ligne sur
+[solace-hikmagitz.vercel.app](https://solace-hikmagitz.vercel.app), avec une base
+Supabase séparée et les dix migrations appliquées. L’ancien site n’a pas été
+modifié. Les limites de configuration restantes sont consignées dans
+[installation-hikmagitz.md](installation-hikmagitz.md).
+
 ## Utilisation
 
 - **Français et Solace** : navigation, formulaires, messages courants, noms de
@@ -70,6 +76,8 @@ elle ne supprime pas les limites de mémoire, de quota local ou de traitement SQ
 5. Terminer les essais hébergés de confirmation/récupération de compte et les
    cycles Stripe encore non vérifiés dans [verification.md](verification.md).
 
-Ce dossier ne contient pas les identifiants serveur de ces fournisseurs. Les
-changements locaux ne configurent pas les comptes hébergés. Les paiements réels
-restent désactivés, et aucun e-mail n’est envoyé par les tests simulés.
+Ce dossier ne contient pas les identifiants serveur de ces fournisseurs. Pour la
+nouvelle installation, les clés Supabase sont configurées dans Vercel ; SMTP,
+Resend, Stripe, les pistes audio et l’automatisation des futurs déploiements
+restent à configurer. Les paiements réels restent désactivés, et aucun e-mail
+n’est envoyé par les tests simulés.
