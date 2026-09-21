@@ -4,6 +4,19 @@ The new September 21 installation at `https://solace-hikmagitz.vercel.app` has *
 
 Solace uses Stripe-hosted Checkout and the Customer Portal. This version deliberately rejects live secret keys and live events in every environment. No card details enter Solace. Without credentials, pricing shows an unavailable state and the separate local/demo application remains usable. Opening a successful checkout return URL never grants access.
 
+## Approved live prices — not activated
+
+On September 21, the owner approved the launch prices: **Free at EUR 0**, **Pro at EUR 3.99/month**, or **Pro at EUR 29.99/year** (one annual payment, approximately EUR 2.50/month). For later Stripe provisioning, the Pro amounts are respectively **399** and **2999** EUR minor units, with quantity one and recurring intervals `month` and `year`. Approval of these prices does not mean they have been created or activated in Stripe. Keep Team unavailable until its offering and hosted purchase journey are validated. Tax treatment and seller information also need confirmation before publication.
+
+This is an accessible launch positioning, not a profitability forecast. For comparison, [Todoist lists EUR 7/month or EUR 60/year](https://www.todoist.com/fr/help/todoist/billing/todoist-pro-pricing-update-in-2025-bxBvHZuJZ), while [TickTick lists USD 49.99/year](https://ticktick.com/upgrade). Prices were checked on September 21, 2026; these products and currencies are not directly equivalent.
+
+After the owner's price approval, the read-only live Stripe account check still returned **HTTP 401 / StripeAuthenticationError**, and the Vercel team API still reported `hobby`. No live resource, subscription, payment, or deployment was created. Replace the rejected credential privately; do not commit it or paste it into chat. Other launch prerequisites remain:
+
+- The current installation is on Vercel Hobby, which is [restricted to personal non-commercial use](https://vercel.com/docs/plans/hobby). Choose a commercially permitted hosting plan before selling; approval of the customer prices does not authorize a paid hosting upgrade.
+- Implement and verify explicit test/live separation in server validation, persisted billing state, SQL entitlements and UI notices. Do not merely remove the live-key rejection or reuse the old site's test subscriptions.
+- Configure and verify account confirmation/recovery e-mails, publish seller/support and policy information, and validate the new site's paid subscription lifecycle. Follow [Stripe's go-live checklist](https://docs.stripe.com/get-started/checklist/go-live).
+- Do not promote the unavailable hosted audio catalogue as a paid benefit; publish licensed content and verify it first, or remove the upgrade promise.
+
 ## Selected first sandbox offering
 
 On September 16, 2026, the product owner selected **Pro at EUR 1.00 per month**, starting with test checkout. Configure one product named **Solace Pro** and an active sandbox Price with `currency: eur`, `unit_amount: 100`, and `recurring.interval: month`. Use flat, licensed, per-unit billing at quantity one, with no trial. Set its actual provider-generated ID as `STRIPE_PRO_MONTH_PRICE_ID`.
@@ -37,7 +50,7 @@ Register a separate Stripe webhook at **`https://solace-hikmagitz.vercel.app/api
 
 At least one real configured recurring Price is needed; you may launch Pro without configuring Team. Choose amounts and currency in Stripe before activation. Folia does not invent a subscription price, annual discount, or paid checkout URL. Missing Supabase credentials, the webhook secret, or all Prices leave checkout unavailable. A missing portal disables checkout for its tier; a portal that fails the server's checks is rejected before creating a customer or Checkout session.
 
-After redeployment, visit `https://folia-ennearock.vercel.app/api/billing/prices`. Expect `configured: true`, `mode: "test"`, the exact Stripe amounts, and `checkoutAvailable: true` for each offered tier. This checks configuration and Price retrieval; it does **not** prove delivery of a signed webhook. Complete the owner journey below to verify payment, provisioning and cancellation. The billing page directs local users to sign in, lets owners select the matching workspace, and keeps Free colors and notes available while checkout is unconfigured.
+After redeployment, visit `https://solace-hikmagitz.vercel.app/api/billing/prices`. Expect `configured: true`, `mode: "test"`, the exact Stripe amounts, and `checkoutAvailable: true` for each offered tier. This checks configuration and Price retrieval; it does **not** prove delivery of a signed webhook. Complete the owner journey below to verify payment, provisioning and cancellation. The billing page directs local users to sign in, lets owners select the matching workspace, and keeps Free colors and notes available while checkout is unconfigured.
 
 Real payments require an activated Stripe account and a deliberately enabled, reviewed live-mode deployment. This build currently rejects live mode, so replacing `sk_test_…` with `sk_live_…` is insufficient. A future live-mode change must validate the mode of keys, Prices, portals, subscriptions, invoices and webhook events, and isolate existing test billing records from live entitlements. It also needs live products/Prices, live portal configurations, a live endpoint signing secret and the production origin. [Stripe go-live checklist](https://docs.stripe.com/get-started/checklist/go-live)
 
