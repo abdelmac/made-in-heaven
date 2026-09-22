@@ -1,6 +1,16 @@
 # Verification record
 
-Latest hosted verification was performed on September 21, 2026 for the new, independent `solace-hikmagitz` installation. Earlier `folia-ennearock` records are retained below; its Stripe sandbox offering does not apply to the new site.
+Latest hosted verification was performed on September 22, 2026 for the new, independent `solace-hikmagitz` installation. Earlier `folia-ennearock` records are retained below; its Stripe sandbox offering does not apply to the new site.
+
+## September 22: hosted database upgrade, payments still closed
+
+- Rechecked CLI identity/project linkage and the exact Supabase project `zwgjauskorkpucuaqvgs`. Vercel remains Hobby. Production has no Stripe variables, Supabase Auth still requires confirmation, custom SMTP is absent, and the owner confirmed the exposed Stripe key has not yet been replaced. No request used that Stripe key.
+- Applied only migration `0011_billing_environment.sql` in one transaction after checking the previous ten recorded SQL migrations against the checkout (normalizing line endings only). The transaction used a five-second lock timeout, verified all pre-existing billing row fields remained identical, and registered the migration with its source SQL. Existing users and productivity content were not modified.
+- Hosted postchecks passed: single `test/NULL` binding, RLS, client denial, service-only assertion/configuration privileges, denied direct service-role updates to the binding, expected NOT NULL/default columns, matching record modes and all four enabled protection triggers. Counts before/after the upgrade: **2 users, 2 workspaces, 0 subscriptions, 0 billing events**.
+- A real hosted smoke test passed on the unchanged application: disposable confirmed test user (no email), password sign-in, Free personal onboarding, task persistence and restoration in an independent browser, Free billing/audio entitlements, mobile width and no browser exceptions. Guarded account deletion succeeded; the temporary workspace and rate-limit records were removed and cleanup verified. No existing user was deleted.
+- Public HTML and seven initial JavaScript assets contained none of the tested private Supabase credentials. Anonymous access to account/workspaces/audio endpoints was refused. This is a targeted asset check, not an exhaustive secret audit.
+
+No new application deployment, Stripe configuration, live payment, SMTP activation, purchase or hosting-plan change was performed. Domain/budget, seller identity/documents and a replacement Stripe credential are still needed; Resend access was proposed but not confirmed. The record below describes the earlier local preparation, before this hosted SQL upgrade.
 
 ## September 22: launch preparation — local verification only
 

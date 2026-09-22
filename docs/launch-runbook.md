@@ -1,6 +1,6 @@
 # Préparer l’ouverture de Solace
 
-État au 22 septembre 2026 : préparation locale, **pas d’ouverture des paiements réels**. Les nouveaux contrôles et la migration `0011` ne sont pas encore déployés. Aucun abonnement, achat de domaine, forfait d’hébergement ou service e-mail n’a été souscrit pendant cette préparation.
+État au 22 septembre 2026 : **pas d’ouverture des paiements réels**. La migration `0011` est maintenant appliquée sur `zwgjauskorkpucuaqvgs`, avec liaison `test/NULL`, sans changement des deux comptes et deux espaces existants. Connexion, synchronisation entre deux navigateurs et droits Free ont été revérifiés avec un compte temporaire ensuite supprimé. Le nouveau code applicatif n’est pas encore publié. Aucun abonnement payant, achat de domaine, forfait d’hébergement ou service e-mail n’a été souscrit.
 
 Offre validée : **Free gratuit ; Pro 3,99 €/mois ou 29,99 €/an**, payé annuellement. Team reste fermé. Le catalogue audio hébergé est vide : ne pas le présenter comme un avantage disponible à l’achat.
 

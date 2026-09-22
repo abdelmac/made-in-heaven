@@ -12,9 +12,15 @@ modifiée.
 - Publication initiale : `dpl_t9Wj9Y9Tn7C3FsPCCFczMjFTq18p`, état `READY`.
 - Supabase : projet **Solace Hikmagitz**, référence `zwgjauskorkpucuaqvgs`,
   organisation `jdrkvtqfxktadfjdwqjo`, forfait Free, région Paris (`eu-west-3`).
-- PostgreSQL : 17.6. Les migrations `0001` à `0010` ont été appliquées dans
-  l’ordre, chacune dans une transaction. Leurs versions, noms et SQL d’origine
+- PostgreSQL : 17.6. Les migrations `0001` à `0011` ont été appliquées dans
+  l’ordre, chacune dans une transaction (`0011` le 22 septembre). Leurs versions, noms et SQL d’origine
   figurent dans `supabase_migrations.schema_migrations`.
+
+## Mise à niveau du 22 septembre
+
+La seule migration `0011_billing_environment.sql` a été ajoutée après comparaison des dix versions antérieures avec le dépôt. Les deux comptes et deux espaces existants sont conservés. La liaison est `test` avec compte Stripe `NULL` ; aucune variable Stripe n’est configurée dans Vercel Production. Les protections RLS, privilèges des rôles, colonnes de mode et déclencheurs ont été vérifiés sur la base hébergée.
+
+Un compte temporaire dédié a ensuite validé la connexion par mot de passe, la création de son espace Free, l’enregistrement d’une tâche et sa restauration dans un deuxième navigateur. Ce compte, son espace et ses traces de limitation d’appels ont été supprimés et la suppression vérifiée. Aucun e-mail ni paiement n’a été envoyé. Cela ne vérifie pas le SMTP, qui reste absent. Le code applicatif préparé pour le lancement n’a pas encore été redéployé.
 
 ## Configuration effectuée
 
