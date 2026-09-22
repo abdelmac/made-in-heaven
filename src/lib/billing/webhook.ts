@@ -1,5 +1,6 @@
 import type Stripe from 'stripe';
 import { objectId } from './reconcile';
+import { matchesBillingMode } from './config';
 
 export const BILLING_EVENT_TYPES = new Set([
   'checkout.session.completed',
@@ -30,7 +31,8 @@ export async function processBillingEvent(
   event: Stripe.Event,
   store: BillingEventStore,
 ): Promise<{ duplicate: boolean; ignored: boolean }> {
-  if (event.livemode) throw new Error('Live billing events are disabled.');
+  if (!matchesBillingMode(event) || event.account)
+    throw new Error('Live/test billing event or account scope does not match this deployment.');
   const receipt = await store.receive(event);
   if (receipt === 'processed') return { duplicate: true, ignored: false };
   if (!BILLING_EVENT_TYPES.has(event.type)) {

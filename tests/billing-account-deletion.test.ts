@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getStripe: vi.fn(),
   persistSubscription: vi.fn(),
   withBillingLock: vi.fn(),
+  verifyStripeAccount: vi.fn(),
 }));
 vi.mock('@/lib/server/auth', () => ({
   requireUser: mocks.requireUser,
@@ -19,7 +20,10 @@ vi.mock('@/lib/billing/server', () => ({
   persistSubscription: mocks.persistSubscription,
   withBillingLock: mocks.withBillingLock,
 }));
-vi.mock('@/lib/billing/stripe', () => ({ getStripe: mocks.getStripe }));
+vi.mock('@/lib/billing/stripe', () => ({
+  getStripe: mocks.getStripe,
+  verifyStripeAccount: mocks.verifyStripeAccount,
+}));
 
 import { DELETE as deleteAccount } from '../src/app/api/account/route';
 
@@ -31,7 +35,7 @@ const remove = vi.fn(async () => {
 });
 const subscriptions = vi.fn(async () => {
   events.push('verify');
-  return { data: [] as { status: string }[], has_more: false };
+  return { data: [] as { status: string; livemode: boolean }[], has_more: false };
 });
 const expire = vi.fn(async () => {
   events.push('expire');
@@ -96,7 +100,7 @@ beforeEach(() => {
     checkout: {
       sessions: {
         list: async function* () {
-          yield { id: 'cs_pending' };
+          yield { id: 'cs_pending', livemode: false };
         },
         expire,
       },
@@ -113,16 +117,20 @@ describe('account deletion protects incomplete billing flows', () => {
     expect(mocks.withBillingLock).toHaveBeenCalledWith(workspaceId, expect.any(Function));
   });
   it('refuses deletion if a completed checkout has a subscription whose webhook is still pending', async () => {
-    subscriptions.mockResolvedValue({ data: [{ status: 'active' }], has_more: false });
+    subscriptions.mockResolvedValue({
+      data: [{ status: 'active', livemode: false }],
+      has_more: false,
+    });
     const response = await deleteAccount(request());
     expect(response.status).toBe(409);
     expect(remove).not.toHaveBeenCalled();
     expect(events).toContain('unfence');
   });
   it('refuses deletion if checkout completes during the expiration window', async () => {
-    subscriptions
-      .mockResolvedValueOnce({ data: [], has_more: false })
-      .mockResolvedValueOnce({ data: [{ status: 'incomplete' }], has_more: false });
+    subscriptions.mockResolvedValueOnce({ data: [], has_more: false }).mockResolvedValueOnce({
+      data: [{ status: 'incomplete', livemode: false }],
+      has_more: false,
+    });
     const response = await deleteAccount(request());
     expect(response.status).toBe(409);
     expect(expire).toHaveBeenCalled();

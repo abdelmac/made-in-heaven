@@ -6,11 +6,13 @@ L’interface est maintenant en français. La nouvelle version ajoute un premier
 objectif guidé, les tâches et séances récurrentes, l’export calendrier `.ics`,
 un bilan personnel, les invitations par e-mail facultatives et un lecteur
 d’ambiances. Consultez [les fonctionnalités et conditions d’activation](docs/product-update.md).
-Les ajouts serveur nécessitent les migrations `0009` et `0010` avant déploiement.
+Les ajouts serveur nécessitent les migrations jusqu’à `0011` avant déploiement.
+La préparation de l’ouverture (Stripe isolé test/réel, e-mails et pages publiques)
+est décrite dans le [guide de lancement](docs/launch-runbook.md). Les ventes réelles restent fermées.
 
 The Solace identity uses a crescent-and-star vector mark with a serif wordmark. Shared geometry lives in `src/lib/brand.ts`; run `node scripts/generate-icons.mjs` to regenerate the favicon and Apple/PWA installation icons. The existing deployment address, internal Folia identifiers, backup format, and storage keys are retained for compatibility with saved work.
 
-This repository started empty. It now contains a Next.js App Router application, a useful local/demo experience, Supabase integrations and versioned PostgreSQL migrations, and Stripe **test-mode-only** billing. No external account or payment credentials are bundled. Local productivity works without them; sign-in, cloud sync, and checkout accurately show their configuration requirements.
+This repository started empty. It now contains a Next.js App Router application, a useful local/demo experience, Supabase integrations and versioned PostgreSQL migrations, and Stripe billing with **test/live isolation and live checkout closed by default**. Credentials belong only in private environment settings. A Stripe key found in the tracked example has been removed from the current file but remains in Git history and must be revoked; see the launch guide. Local productivity works without credentials; sign-in, cloud sync, and checkout show their configuration requirements.
 
 ## Run locally
 
@@ -82,8 +84,8 @@ See the [permission matrix and integrity model](docs/security.md) and [billing s
 
 ### Stripe test setup
 
-1. The selected first offering is **Solace Pro at EUR 1.00 per month**, in Stripe test mode. Create one recurring, licensed, per-unit Price at 100 minor units; leave yearly and Team offerings unset.
-2. Set the test secret, `STRIPE_PRO_MONTH_PRICE_ID`, webhook secret, and `STRIPE_PRO_PORTAL_CONFIGURATION_ID` in `.env.local` (or the deployed environment). Other tiers and intervals need their own configuration only when offered.
+1. The approved launch offering is **Solace Pro at EUR 3.99 per month or EUR 29.99 per year**. Create recurring, licensed, per-unit Prices at 399 and 2999 EUR minor units in a separate Stripe sandbox. Leave Team offerings unset. The older EUR 1 monthly price belongs only to the historical installation.
+2. Set the test secret, both Pro Price IDs, webhook secret, and Pro portal configuration in `.env.local` (or the test deployment). Use `STRIPE_BILLING_MODE=test` and a matching database/account binding; see the [launch runbook](docs/launch-runbook.md) before configuring migration `0011`.
 3. Start the server and forward verified events with the Stripe CLI:
 
 ```bash
@@ -93,7 +95,7 @@ stripe listen --forward-to localhost:3000/api/billing/webhook
 4. Use the CLI's printed signing secret for local testing, then initiate Checkout as the appropriate workspace owner. The return URL never grants a plan; verified invoice/subscription processing updates trusted server entitlements.
 5. Test renewal, failure, retry, downgrade, and cancellation using Stripe's test environment. Review the detailed commands and expected states in [docs/billing.md](docs/billing.md).
 
-Live Stripe keys and live events are intentionally rejected. No real cards were charged during implementation.
+Keys and resources of the wrong mode are rejected. Live mode additionally requires an explicit Stripe account and isolated database binding; new live checkout remains closed until the launch gate, seller information and operator attestations are complete. No real cards were charged during implementation. `npm run launch:check` lists local configuration gaps without contacting providers; add `-- --online` for explicit read-only Stripe/Supabase inspection.
 
 ## Persistence, conflicts, and offline use
 
@@ -142,7 +144,7 @@ Observed executions and exact test results are recorded in [docs/verification.md
 
 ## Deployment and current limits
 
-The new public deployment is [solace-hikmagitz.vercel.app](https://solace-hikmagitz.vercel.app), hosted in `hikmagitzs-projects/solace-hikmagitz` and connected to the separate **Solace Hikmagitz** Supabase project (`zwgjauskorkpucuaqvgs`, Paris, Free plan). All ten migrations are applied. Stripe and invitation-email credentials are not configured on this installation; the connected workspace uses the Free tier and the paid audio catalog is empty. Authentication confirmation remains required; configure custom SMTP before opening public email registration. See [the installation record](docs/installation-hikmagitz.md).
+The new public deployment is [solace-hikmagitz.vercel.app](https://solace-hikmagitz.vercel.app), hosted in `hikmagitzs-projects/solace-hikmagitz` and connected to the separate **Solace Hikmagitz** Supabase project (`zwgjauskorkpucuaqvgs`, Paris, Free plan). The first ten migrations are applied; the new `0011` launch migration is local only and must precede deployment of this revision. Stripe and invitation-email credentials are not configured on this installation; the connected workspace uses the Free tier and the paid audio catalog is empty. Authentication confirmation remains required; configure custom SMTP before opening public email registration. See [the installation record](docs/installation-hikmagitz.md) and [launch runbook](docs/launch-runbook.md).
 
 The earlier `ennearock/folia-ennearock` deployment, its Supabase database and its Stripe configuration were not modified or copied. Its historical checks below do not describe the new installation.
 

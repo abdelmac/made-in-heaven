@@ -141,7 +141,13 @@ describe('current Stripe reconciliation', () => {
       livemode: false,
       created: 1,
       items: {
-        data: [{ price: { id: 'price_pro' }, quantity: 1, current_period_end: 1_800_000_000 }],
+        data: [
+          {
+            price: { id: 'price_pro', livemode: false },
+            quantity: 1,
+            current_period_end: 1_800_000_000,
+          },
+        ],
       },
       trial_end: null,
       cancel_at_period_end: false,
@@ -165,7 +171,10 @@ describe('current Stripe reconciliation', () => {
     const mock = {
       subscriptions: {
         list: vi.fn(async () => ({
-          data: [{ status: 'active' }, { status: 'incomplete' }],
+          data: [
+            { status: 'active', livemode: false },
+            { status: 'incomplete', livemode: false },
+          ],
           has_more: false,
         })),
       },

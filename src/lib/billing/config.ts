@@ -2,6 +2,52 @@ export type BillingTier = 'free' | 'pro' | 'team';
 export type PaidTier = Exclude<BillingTier, 'free'>;
 export type BillingInterval = 'month' | 'year';
 export type WorkspaceKind = 'personal' | 'organization';
+export type BillingMode = 'test' | 'live';
+
+export function billingMode(env: Record<string, string | undefined> = process.env): BillingMode {
+  const value = env.STRIPE_BILLING_MODE ?? 'test';
+  if (value !== 'test' && value !== 'live') throw new Error('Invalid Stripe billing mode.');
+  return value;
+}
+
+export function stripeAccountId(
+  env: Record<string, string | undefined> = process.env,
+): string | null {
+  const value = env.STRIPE_ACCOUNT_ID;
+  if (!value && billingMode(env) === 'test') return null;
+  if (!value || !/^acct_[A-Za-z0-9]+$/.test(value))
+    throw new Error('The Stripe account must be explicitly configured for live billing.');
+  return value;
+}
+
+export function assertStripeSecret(
+  key: string,
+  env: Record<string, string | undefined> = process.env,
+): void {
+  const mode = billingMode(env);
+  if (!new RegExp(`^[sr]k_${mode}_[A-Za-z0-9_]+$`).test(key))
+    throw new Error(
+      `Solace billing requires a ${mode}-mode secret key for the configured environment.`,
+    );
+  stripeAccountId(env);
+}
+
+export function matchesBillingMode(
+  resource: { livemode?: boolean },
+  mode = billingMode(),
+): boolean {
+  return resource.livemode === (mode === 'live');
+}
+
+export function assertResourceMode(resource: { livemode?: boolean }, mode = billingMode()): void {
+  if (!matchesBillingMode(resource, mode))
+    throw new Error('Stripe resource mode does not match this deployment.');
+}
+
+export function assertSubscriptionEnvironment(record: { billing_mode?: string } | null): void {
+  if (record && (record.billing_mode ?? 'test') !== billingMode())
+    throw new Error('Stored subscription belongs to another billing environment.');
+}
 
 export function formatStripeAmount(amount: number, currency: string): string {
   const formatter = new Intl.NumberFormat('fr-FR', {

@@ -2,6 +2,18 @@
 
 Latest hosted verification was performed on September 21, 2026 for the new, independent `solace-hikmagitz` installation. Earlier `folia-ennearock` records are retained below; its Stripe sandbox offering does not apply to the new site.
 
+## September 22: launch preparation — local verification only
+
+- Prepared explicit test/live mode and account binding, migration `0011`, fail-closed workspace/API checks, safe webhook receipts, resource-mode validation and a separate new-checkout launch gate. Existing cancellation/invoices/webhook processing do not depend on that launch gate. Legacy test Checkout idempotency keys and metadata are preserved.
+- **359 unit/server tests passed across 33 files.** Both ordinary and fixture-configured Next.js production builds passed. TypeScript, ESLint, Prettier and the working-tree Stripe-secret check passed.
+- **275 isolated PostgreSQL assertions passed across 8 suites and 11 migrations**, including a real transactional upgrade of legacy test billing rows. This is local PGlite, not an applied hosted migration or concurrent PostgreSQL connection test.
+- **44 production browser tests passed**, including production PWA/offline behavior; 2 connected billing scenarios were skipped because that build had no public Supabase configuration. A separate production build with public fictitious Supabase values and empty server keys then passed **all 15 targeted billing/audio/public-information tests**, including those 2 connected scenarios and the 4 new mobile pages. These are **50 distinct successful browser scenarios across the two runs**, with 9 overlapping scenarios. Chrome was used locally; no real provider calls or transactions were part of these browser fixtures.
+- Added public `/legal`, `/privacy`, `/terms`, `/support` pages with honest draft notices and noindex until owner information is complete. No seller identity or legal contract was invented. Signup/recovery HTML templates passed local callback-link checks; no email was sent.
+- `npm run launch:check` was exercised in its offline mode and correctly returned incomplete local configuration. Its online mode is read-only by design but was **not executed with the exposed key**. It does not prove delivery of webhooks/mail or the hosted purchase lifecycle. CI includes the Stripe-secret guard and fixture-based connected billing tests; deployment gains an explicit migration-readiness attestation.
+- A real Stripe private key was discovered in tracked `.env.example` and its HEAD revision. The current example is cleaned; **the key must be revoked/rotated and the Git history remains untouched**. The new credential scan checks working project files, not historical commits or all secret types.
+
+No live catalogue, subscription, payment, SMTP configuration, hosted migration, deployment, domain purchase or paid hosting change was performed for this preparation. The new migration must precede deployment. The owner has no domain/mail service yet; seller documents, commercial hosting, key rotation, provider configuration and real hosted validation remain required. Follow [launch-runbook.md](launch-runbook.md).
+
 ## September 21: new Hikmagitz installation
 
 - Created the separate Vercel Hobby project `hikmagitzs-projects/solace-hikmagitz` and Supabase Free project **Solace Hikmagitz** (`zwgjauskorkpucuaqvgs`, Paris). No existing project, account data or payment configuration was modified or copied.

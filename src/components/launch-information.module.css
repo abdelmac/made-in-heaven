@@ -1,0 +1,162 @@
+.shell {
+  min-height: 100dvh;
+  padding: 0 24px 48px;
+  background: var(--background);
+  color: var(--text);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  font-size: 24px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.back,
+.navigation a,
+.documentLink {
+  color: var(--accent);
+  text-underline-offset: 4px;
+}
+
+.back,
+.navigation a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.shell a:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 5px;
+  border-radius: 3px;
+}
+
+.main {
+  max-width: 720px;
+  margin: 58px auto 0;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.eyebrow {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.main h1 {
+  margin: 10px 0 18px;
+  font-size: clamp(30px, 5vw, 42px);
+  line-height: 1.2;
+  letter-spacing: -0.04em;
+}
+
+.introduction {
+  color: var(--secondary-text);
+  font-size: 17px;
+}
+
+.notice {
+  margin-top: 30px;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-soft);
+}
+
+.notice p {
+  margin-top: 8px;
+}
+
+.section {
+  padding: 28px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.section h2 {
+  margin: 0 0 14px;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.section p + p {
+  margin-top: 12px;
+}
+
+.secondary {
+  color: var(--secondary-text);
+  font-size: 14px;
+}
+
+.documentLink {
+  display: inline-block;
+  padding: 5px 0;
+  font-weight: 650;
+}
+
+.details {
+  display: grid;
+  gap: 18px;
+}
+
+.details dt {
+  color: var(--secondary-text);
+  font-size: 14px;
+}
+
+.details dd {
+  margin: 3px 0 0;
+}
+
+.email {
+  font-weight: 650;
+  user-select: all;
+}
+
+.navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  padding-top: 22px;
+  font-size: 14px;
+}
+
+.navigation a[aria-current='page'] {
+  color: var(--text);
+  font-weight: 650;
+}
+
+@media (max-width: 480px) {
+  .shell {
+    padding: 0 18px 32px;
+  }
+
+  .header {
+    padding: 16px 0;
+  }
+
+  .back {
+    font-size: 13px;
+  }
+
+  .main {
+    margin-top: 36px;
+  }
+
+  .notice {
+    padding: 17px;
+  }
+}

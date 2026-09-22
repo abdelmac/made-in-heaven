@@ -1,6 +1,6 @@
 import 'server-only';
 import type Stripe from 'stripe';
-import { configuredPrices, type PaidTier } from './config';
+import { configuredPrices, matchesBillingMode, type PaidTier } from './config';
 import { getStripe } from './stripe';
 import { HttpError } from '@/lib/server/http';
 
@@ -21,7 +21,7 @@ export function assertPortalConfiguration(
   const { subscription_update: update, subscription_cancel: cancel } = configuration.features;
   if (
     !configuration.active ||
-    configuration.livemode ||
+    !matchesBillingMode(configuration) ||
     !cancel.enabled ||
     cancel.mode !== 'at_period_end' ||
     !configuration.features.payment_method_update.enabled ||

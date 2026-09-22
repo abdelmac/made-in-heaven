@@ -3,9 +3,27 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireWorkspace, durableRateLimit } from '@/lib/server/auth';
 import { assertSameOrigin, handleApiError, HttpError, readJson } from '@/lib/server/http';
-import { approvedAppOrigin, configuredPrices, tierForWorkspace } from '@/lib/billing/config';
-import { assertConfiguredPrice, billingConfigured, getStripe } from '@/lib/billing/stripe';
-import { billingDatabase, persistSubscription, withBillingLock } from '@/lib/billing/server';
+import {
+  approvedAppOrigin,
+  assertResourceMode,
+  assertSubscriptionEnvironment,
+  billingMode,
+  configuredPrices,
+  tierForWorkspace,
+} from '@/lib/billing/config';
+import {
+  assertConfiguredPrice,
+  billingConfigured,
+  getStripe,
+  verifyStripeAccount,
+} from '@/lib/billing/stripe';
+import {
+  assertBillingEnvironment,
+  billingDatabase,
+  persistSubscription,
+  withBillingLock,
+} from '@/lib/billing/server';
+import { checkoutLaunchReady } from '@/lib/billing/launch';
 import { hasBlockingSubscription } from '@/lib/billing/entitlements';
 import { getPortalConfiguration } from '@/lib/billing/portal';
 import { objectId, type SubscriptionRecord } from '@/lib/billing/reconcile';
@@ -30,6 +48,8 @@ export async function POST(request: Request) {
       throw new HttpError(400, 'Choose Pro for a personal workspace or Team for an organization.');
     if (!billingConfigured())
       throw new HttpError(503, 'Billing is not configured. Checkout is unavailable.');
+    if (!checkoutLaunchReady())
+      throw new HttpError(503, 'Les nouveaux abonnements ne sont pas encore ouverts.');
     const choice = configuredPrices().find(
       (candidate) => candidate.tier === body.tier && candidate.interval === body.interval,
     );
@@ -38,7 +58,16 @@ export async function POST(request: Request) {
     const price = await stripe.prices.retrieve(choice.priceId);
     assertConfiguredPrice(price, choice);
     await getPortalConfiguration(body.tier);
+    await assertBillingEnvironment();
+    await verifyStripeAccount();
     const origin = approvedAppOrigin();
+    // Preserve legacy sandbox idempotency keys AND request parameters so an
+    // interrupted pre-migration checkout can be retried without duplication.
+    const live = billingMode() === 'live';
+    const idempotencyPrefix = live ? 'folia:live' : 'folia';
+    const metadata: Record<string, string> = live
+      ? { folia_workspace_id: workspace.id, billing_mode: 'live' }
+      : { folia_workspace_id: workspace.id };
     const url = await withBillingLock(workspace.id, async (token) => {
       const db = billingDatabase();
       const { data, error } = await db
@@ -48,6 +77,7 @@ export async function POST(request: Request) {
         .maybeSingle();
       if (error) throw error;
       let existing = data as SubscriptionRecord | null;
+      assertSubscriptionEnvironment(existing);
       if (data?.deletion_pending)
         throw new HttpError(
           409,
@@ -59,19 +89,24 @@ export async function POST(request: Request) {
           {
             email: user.email,
             name: workspace.name,
-            metadata: { folia_workspace_id: workspace.id },
+            metadata,
           },
-          { idempotencyKey: `folia:customer:${workspace.id}` },
+          { idempotencyKey: `${idempotencyPrefix}:customer:${workspace.id}` },
         );
+        assertResourceMode(customer);
         customerId = customer.id;
         // Persist trusted association before any subscription can be created.
         await persistSubscription(workspace.id, token, { stripe_customer_id: customerId });
       }
+      const customer = await stripe.customers.retrieve(customerId);
+      if (customer.deleted) throw new HttpError(503, 'Le compte de facturation doit être vérifié.');
+      assertResourceMode(customer);
       const subscriptions = await stripe.subscriptions.list({
         customer: customerId,
         status: 'all',
         limit: 100,
       });
+      for (const subscription of subscriptions.data) assertResourceMode(subscription);
       if (
         subscriptions.has_more ||
         subscriptions.data.some((subscription) => hasBlockingSubscription(subscription.status))
@@ -84,6 +119,9 @@ export async function POST(request: Request) {
 
       if (existing?.checkout_session_id) {
         const previous = await stripe.checkout.sessions.retrieve(existing.checkout_session_id);
+        assertResourceMode(previous);
+        if (objectId(previous.customer) !== customerId)
+          throw new HttpError(503, 'Le paiement enregistré ne correspond pas à cet espace.');
         if (
           previous.status === 'open' &&
           previous.url &&
@@ -96,6 +134,7 @@ export async function POST(request: Request) {
           const completedSubscription = subscriptionId
             ? await stripe.subscriptions.retrieve(subscriptionId)
             : null;
+          if (completedSubscription) assertResourceMode(completedSubscription);
           if (!completedSubscription || hasBlockingSubscription(completedSubscription.status)) {
             throw new HttpError(409, 'Your checkout is being reconciled. Refresh billing shortly.');
           }
@@ -135,13 +174,14 @@ export async function POST(request: Request) {
           client_reference_id: workspace.id,
           payment_method_types: ['card'],
           line_items: [{ price: choice.priceId, quantity: 1 }],
-          subscription_data: { metadata: { folia_workspace_id: workspace.id } },
-          metadata: { folia_workspace_id: workspace.id },
+          subscription_data: { metadata },
+          metadata,
           success_url: `${origin}/?view=billing&checkout=success`,
           cancel_url: `${origin}/?view=billing&checkout=cancelled`,
         },
-        { idempotencyKey: `folia:checkout:${workspace.id}:${attemptId}` },
+        { idempotencyKey: `${idempotencyPrefix}:checkout:${workspace.id}:${attemptId}` },
       );
+      assertResourceMode(session);
       if (!session.url) throw new HttpError(503, 'Stripe did not provide a checkout destination.');
       await persistSubscription(workspace.id, token, { checkout_session_id: session.id });
       return session.url;

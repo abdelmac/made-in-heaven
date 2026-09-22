@@ -14,6 +14,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:browser": "playwright test",
+    "launch:check": "node --experimental-strip-types --conditions=react-server scripts/check-launch.mjs",
+    "security:secrets": "node scripts/check-secrets.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

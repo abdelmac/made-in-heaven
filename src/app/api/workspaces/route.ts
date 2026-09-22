@@ -10,7 +10,7 @@ import {
   HttpError,
   readJson,
 } from '@/lib/server/http';
-import { getWorkspaceEntitlements } from '@/lib/billing/server';
+import { assertBillingEnvironment, getWorkspaceEntitlements } from '@/lib/billing/server';
 import { invitationEmailConfigured, sendInvitationEmail } from '@/lib/server/invitation-mail';
 import {
   organizationDefaults,
@@ -113,6 +113,7 @@ export async function GET(request: Request) {
       );
     }
     const { supabase, user } = await requireUser();
+    await assertBillingEnvironment();
     const { error: onboardError } = await db.rpc('folia_onboard', { p_user: user.id });
     if (onboardError) throw databaseError(onboardError);
     const { data: memberships, error } = await supabase
@@ -155,6 +156,8 @@ export async function POST(request: Request) {
     const { user } = await requireUser();
     await durableRateLimit(user.id, 'workspace-management', 20, 60);
     const body = operationSchema.parse(await readJson(request, 10000));
+    // Management RPCs authorize internally and do not all call requireWorkspace.
+    await assertBillingEnvironment();
     const db = getAdminSupabase()!;
     if (body.action === 'settings') {
       const { data, error } = await db.rpc('folia_set_organization_settings', {

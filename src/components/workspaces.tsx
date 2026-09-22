@@ -654,9 +654,10 @@ type Invoice = {
 };
 type BillingState = {
   configured: boolean;
+  checkoutEnabled: boolean;
   message?: string;
   error?: string;
-  mode: string;
+  mode: 'test' | 'live' | null;
   prices: Price[];
   canManage?: boolean;
   portalAvailable?: boolean;
@@ -697,6 +698,7 @@ export function BillingPage() {
       return true;
     } catch (e) {
       if (version !== loadVersion.current) return false;
+      setBilling(null);
       setError(e instanceof Error ? e.message : String(e));
     }
   }, [store.user, store.workspaceId, billingScope]);
@@ -711,6 +713,17 @@ export function BillingPage() {
     };
   }, [load]);
   async function openBilling(kind: 'checkout' | 'portal', tier?: 'pro' | 'team') {
+    if (
+      kind === 'checkout' &&
+      (!billing?.configured ||
+        !billing.checkoutEnabled ||
+        !billing.mode ||
+        !billing.canManage ||
+        !billing.prices.some(
+          (price) => price.tier === tier && price.interval === interval && price.checkoutAvailable,
+        ))
+    )
+      return;
     setBusy(true);
     setError('');
     try {
@@ -741,6 +754,7 @@ export function BillingPage() {
     billing?.subscription &&
     !['none', 'canceled', 'incomplete_expired'].includes(billing.subscription.status)
   );
+  const launchClosed = !!(billing?.configured && billing.mode && !billing.checkoutEnabled);
   async function refreshBilling() {
     if (await load()) {
       if (store.user) await store.refreshAccount();
@@ -752,7 +766,11 @@ export function BillingPage() {
       <div className="billing-top">
         <span className="badge">
           <Shield size={13} />
-          {en.billing.test}
+          {billing?.mode === 'test'
+            ? en.billing.test
+            : billing?.mode === 'live'
+              ? billingCopy.liveMode
+              : billingCopy.unavailableAction}
         </span>
         <div className="segmented">
           {(['month', 'year'] as const).map((value) => (
@@ -785,6 +803,7 @@ export function BillingPage() {
       ) : (
         billing && !billing.configured && <p className="notice">{billingCopy.billingUnavailable}</p>
       )}
+      {launchClosed && <p className="notice">{billingCopy.launchClosed}</p>}
       {error && (
         <div className="error" role="alert">
           <p>{error}</p>
@@ -804,12 +823,19 @@ export function BillingPage() {
           const targetWorkspace = store.workspaces.find(
             (workspace) => workspace.kind === (tier === 'team' ? 'organization' : 'personal'),
           );
-          const readyToCheckout = !!(billing?.configured && price?.checkoutAvailable);
+          const readyToCheckout = !!(
+            billing?.configured &&
+            billing.checkoutEnabled &&
+            billing.mode &&
+            price?.checkoutAvailable
+          );
           const actionLabel =
             tier === 'free'
               ? billingCopy.customizeFree
               : !store.user
-                ? billingCopy.signIn
+                ? launchClosed
+                  ? en.account.signIn
+                  : billingCopy.signIn
                 : !correctScope
                   ? tier === 'team'
                     ? billingCopy.switchOrganization
@@ -817,7 +843,9 @@ export function BillingPage() {
                   : hasSubscription
                     ? en.billing.portal
                     : !readyToCheckout
-                      ? billingCopy.unavailableAction
+                      ? launchClosed
+                        ? billingCopy.launchClosedAction
+                        : billingCopy.unavailableAction
                       : tier === 'pro'
                         ? billingCopy.choosePro
                         : billingCopy.chooseTeam;
@@ -908,7 +936,16 @@ export function BillingPage() {
         {billingCopy.usageDefaults(DEFAULT_BILLING_POLICY.plans.free)}
       </p>
       <p className="helper centered">{billingCopy.scope}</p>
-      {billing?.configured && <p className="helper centered">{billingCopy.testHint}</p>}
+      {billing?.mode === 'test' && <p className="helper centered">{billingCopy.testHint}</p>}
+      {billing?.mode === 'live' && <p className="helper centered">{billingCopy.liveHint}</p>}
+      <nav className="helper centered" aria-label={billingCopy.legalNavigation}>
+        {billingCopy.legalLinks.map(({ href, label }, index) => (
+          <span key={href}>
+            {index > 0 && ' · '}
+            <a href={href}>{label}</a>
+          </span>
+        ))}
+      </nav>
       {store.user ? (
         <Panel title={ui.workspaces.workspaceBilling} subtitle={store.currentWorkspace?.name}>
           <div className="mini-metrics">
@@ -995,7 +1032,7 @@ export function BillingPage() {
         </Panel>
       ) : (
         <div className="billing-account">
-          <p>{billingCopy.signInHint}</p>
+          <p>{launchClosed ? billingCopy.accountHint : billingCopy.signInHint}</p>
           <Button variant="secondary" onClick={openAccount}>
             {en.account.signIn}
           </Button>

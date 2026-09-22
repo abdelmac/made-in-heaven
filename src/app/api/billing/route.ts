@@ -2,10 +2,21 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireWorkspace, durableRateLimit } from '@/lib/server/auth';
 import { handleApiError } from '@/lib/server/http';
-import { billingConfigured, getStripe, listConfiguredPrices } from '@/lib/billing/stripe';
+import {
+  billingConfigured,
+  getStripe,
+  listConfiguredPrices,
+  verifyStripeAccount,
+} from '@/lib/billing/stripe';
 import { billingDatabase, getWorkspaceEntitlements } from '@/lib/billing/server';
-import { tierForWorkspace } from '@/lib/billing/config';
+import {
+  assertResourceMode,
+  assertSubscriptionEnvironment,
+  billingMode,
+  tierForWorkspace,
+} from '@/lib/billing/config';
 import { portalConfigurationId } from '@/lib/billing/portal';
+import { checkoutLaunchReady } from '@/lib/billing/launch';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,6 +27,8 @@ export async function GET(request: Request) {
     const { role, user, workspace } = await requireWorkspace(workspaceId);
     await durableRateLimit(user.id, 'billing:read', 60);
     const configured = billingConfigured();
+    const checkoutEnabled = configured && checkoutLaunchReady();
+    if (configured) await verifyStripeAccount();
     const db = billingDatabase();
     const { data: subscription, error } = await db
       .from('workspace_subscriptions')
@@ -23,6 +36,7 @@ export async function GET(request: Request) {
       .eq('workspace_id', workspaceId)
       .maybeSingle();
     if (error) throw error;
+    assertSubscriptionEnvironment(subscription);
     const [entitlements, prices, invoices] = await Promise.all([
       getWorkspaceEntitlements(workspaceId),
       configured ? listConfiguredPrices() : Promise.resolve([]),
@@ -30,23 +44,27 @@ export async function GET(request: Request) {
         ? getStripe()!
             .invoices.list({ customer: subscription.stripe_customer_id, limit: 24 })
             .then((list) =>
-              list.data.map((invoice) => ({
-                id: invoice.id,
-                number: invoice.number,
-                status: invoice.status,
-                total: invoice.total,
-                currency: invoice.currency,
-                created: new Date(invoice.created * 1000).toISOString(),
-                hostedInvoiceUrl: invoice.hosted_invoice_url,
-                invoicePdf: invoice.invoice_pdf,
-              })),
+              list.data.map((invoice) => {
+                assertResourceMode(invoice);
+                return {
+                  id: invoice.id,
+                  number: invoice.number,
+                  status: invoice.status,
+                  total: invoice.total,
+                  currency: invoice.currency,
+                  created: new Date(invoice.created * 1000).toISOString(),
+                  hostedInvoiceUrl: invoice.hosted_invoice_url,
+                  invoicePdf: invoice.invoice_pdf,
+                };
+              }),
             )
         : Promise.resolve([]),
     ]);
     return NextResponse.json(
       {
         configured,
-        mode: 'test',
+        mode: billingMode(),
+        checkoutEnabled,
         canManage: role === 'owner',
         portalAvailable:
           configured &&
@@ -69,7 +87,7 @@ export async function GET(request: Request) {
         entitlements,
         prices: prices.map((price) => ({
           ...price,
-          checkoutAvailable: !!portalConfigurationId(price.tier),
+          checkoutAvailable: checkoutEnabled && !!portalConfigurationId(price.tier),
         })),
         invoices,
       },

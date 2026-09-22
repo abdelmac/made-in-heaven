@@ -19,17 +19,14 @@ type Preferences = { trackId: string; volume: number; loop: boolean; pauseOnBrea
 const defaults: Preferences = { trackId: '', volume: 0.25, loop: true, pauseOnBreak: true };
 
 export function FocusAudioPlayer() {
-  const { store, navigate } = useApp();
+  const { store } = useApp();
   const preview = !store.user;
   if (!store.ready) return null;
   if (!preview && !store.entitlements?.features.music)
     return (
       <aside className={styles.player} aria-label="Ambiances audio">
         <Headphones size={18} />
-        <span>Ambiances pour se concentrer</span>
-        <Button variant="ghost" onClick={() => navigate('billing')}>
-          Découvrir Pro
-        </Button>
+        <span>Le catalogue d’ambiances audio n’est pas encore disponible.</span>
       </aside>
     );
   return <Player key={`${store.userId}:${store.workspaceId}:${preview}`} preview={preview} />;

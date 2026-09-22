@@ -1,5 +1,6 @@
 import 'server-only';
 import { getAdminSupabase, getServerSupabase } from '@/lib/supabase/server';
+import { assertBillingEnvironment } from '@/lib/billing/server';
 import { HttpError, databaseError } from './http';
 
 export type Role = 'owner' | 'admin' | 'member' | 'viewer';
@@ -38,6 +39,9 @@ export async function requireWorkspace(workspaceId: string, options: { roles?: R
     .eq('id', workspaceId)
     .single();
   if (workspaceError || !workspace) throw new HttpError(403, 'This workspace is not available.');
+  // SQL-backed feature checks use the database binding. Verify the deployment
+  // matches it before sync/preferences or any other workspace operation runs.
+  await assertBillingEnvironment();
   return {
     supabase,
     user,

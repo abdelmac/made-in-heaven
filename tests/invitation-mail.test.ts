@@ -16,6 +16,7 @@ vi.mock('@/lib/server/auth', () => ({
 }));
 vi.mock('@/lib/supabase/server', () => ({ getAdminSupabase: () => ({ rpc: mocks.rpc }) }));
 vi.mock('@/lib/billing/server', () => ({
+  assertBillingEnvironment: vi.fn(async () => undefined),
   getWorkspaceEntitlements: mocks.getWorkspaceEntitlements,
 }));
 

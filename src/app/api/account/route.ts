@@ -10,7 +10,8 @@ import {
   readJson,
 } from '@/lib/server/http';
 import { billingDatabase, persistSubscription, withBillingLock } from '@/lib/billing/server';
-import { getStripe } from '@/lib/billing/stripe';
+import { getStripe, verifyStripeAccount } from '@/lib/billing/stripe';
+import { assertResourceMode, assertSubscriptionEnvironment } from '@/lib/billing/config';
 import { hasBlockingSubscription } from '@/lib/billing/entitlements';
 
 export async function GET() {
@@ -125,6 +126,7 @@ export async function DELETE(request: Request) {
           .eq('workspace_id', personalId)
           .maybeSingle();
         if (billingError) throw databaseError(billingError);
+        assertSubscriptionEnvironment(billing);
         // Persist a fence before external calls. New checkout stays blocked even
         // if this worker's lease expires while Auth is finishing account removal.
         await persistSubscription(personalId, token, { deletion_pending: true });
@@ -136,12 +138,14 @@ export async function DELETE(request: Request) {
                 503,
                 'Reconnect billing before deleting this account so pending checkout can be safely closed.',
               );
+            await verifyStripeAccount();
             const verifyNoSubscription = async () => {
               const subscriptions = await stripe.subscriptions.list({
                 customer: billing.stripe_customer_id,
                 status: 'all',
                 limit: 100,
               });
+              for (const subscription of subscriptions.data) assertResourceMode(subscription);
               if (
                 subscriptions.has_more ||
                 subscriptions.data.some((subscription) =>
@@ -159,6 +163,7 @@ export async function DELETE(request: Request) {
               status: 'open',
               limit: 100,
             })) {
+              assertResourceMode(session);
               await stripe.checkout.sessions.expire(session.id);
             }
             // A checkout may have completed between the first read and expiration.

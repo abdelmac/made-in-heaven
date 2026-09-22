@@ -42,6 +42,40 @@ try {
     .filter((name) => name.endsWith('.sql'))
     .sort()) {
     current = `supabase/migrations/${name}`;
+    if (name === '0011_billing_environment.sql') {
+      // Exercise the upgrade against pre-migration billing rows, then roll the
+      // entire fixture/migration back so all ordinary suites start empty.
+      await db.exec(`
+        begin;
+        select set_config('request.jwt.claim.role','service_role',true);
+        insert into auth.users(id,email,email_confirmed_at) values
+          ('abababab-abab-4bab-8bab-abababababab','legacy-billing@example.test',now());
+        select set_config('test.legacy_billing_workspace',public.folia_onboard('abababab-abab-4bab-8bab-abababababab')::text,true);
+        insert into public.workspace_subscriptions(workspace_id,stripe_customer_id,stripe_subscription_id,tier,paid_tier,status,paid_through,deletion_pending)
+          values(current_setting('test.legacy_billing_workspace')::uuid,'cus_legacy','sub_legacy','pro','pro','active',now()+interval '1 month',true);
+        insert into public.billing_events(event_id,event_type,status,processed_at)
+          values('evt_legacy_upgrade','invoice.paid','processed',now());
+      `);
+      await db.exec(await readSql(current), { onNotice });
+      const { rows } = await db.query(`select
+        (select mode='test' and stripe_account_id is null from public.billing_environment where id=true)
+        and (select billing_mode='test' and stripe_customer_id='cus_legacy' and stripe_subscription_id='sub_legacy' and deletion_pending
+          from public.workspace_subscriptions where workspace_id=current_setting('test.legacy_billing_workspace')::uuid)
+        and (select billing_mode='test' and status='processed' and processed_at is not null
+          from public.billing_events where event_id='evt_legacy_upgrade')
+        and public.workspace_entitlements(current_setting('test.legacy_billing_workspace')::uuid)->>'tier'='pro'
+        and (public.workspace_entitlements(current_setting('test.legacy_billing_workspace')::uuid)->'features')
+          @> '{"backgrounds":true,"flashcards":true,"music":true}'::jsonb
+        as preserved`);
+      if (rows[0]?.preserved !== true) {
+        throw new Error(
+          'Billing migration changed legacy test subscriptions, receipts or paid capabilities.',
+        );
+      }
+      assertions++;
+      console.log('PASS legacy billing upgrade preserves test coverage and durable receipts');
+      await db.exec('rollback;');
+    }
     await db.exec(await readSql(current), { onNotice });
     migrations++;
     console.log(`PASS migration ${name}`);

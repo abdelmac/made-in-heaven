@@ -31,6 +31,7 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - run: npm run security:secrets
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
@@ -43,6 +44,22 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Test the production build in Chromium
         run: npm run test:browser
+      - name: Build connected UI with public fixtures (no provider credentials)
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://billing-fixture.invalid
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_billing_fixture_no_remote_access
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ''
+          SUPABASE_SERVICE_ROLE_KEY: ''
+          STRIPE_SECRET_KEY: ''
+        run: npm run build
+      - name: Test connected billing with mocked providers
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://billing-fixture.invalid
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_billing_fixture_no_remote_access
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ''
+          SUPABASE_SERVICE_ROLE_KEY: ''
+          STRIPE_SECRET_KEY: ''
+        run: npx playwright test e2e/billing.spec.ts e2e/audio-preview.spec.ts --workers=1
       - name: Preserve failed browser traces
         if: failure()
         uses: actions/upload-artifact@v4
@@ -57,7 +74,7 @@ jobs:
   deploy:
     name: Deploy production
     needs: quality
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.VERCEL_DEPLOY_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.VERCEL_DEPLOY_ENABLED == 'true' && vars.SOLACE_BILLING_MIGRATION_0011_READY == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production

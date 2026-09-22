@@ -54,6 +54,13 @@ export const billingCopy = {
   billingUnavailable:
     'Les paiements ne sont pas encore disponibles. Vous pouvez continuer avec l’offre gratuite et personnaliser vos couleurs.',
   unavailableAction: 'Paiements indisponibles',
+  launchClosedAction: 'Abonnements bientôt disponibles',
+  launchClosed:
+    'Les nouveaux abonnements ne sont pas encore ouverts. Votre compte, vos données et la gestion des abonnements existants restent accessibles.',
+  accountHint: 'Connectez-vous pour retrouver votre compte et vos espaces.',
+  liveMode: 'Paiements réels',
+  liveHint:
+    'Un abonnement confirmé dans Stripe entraîne un paiement réel. Il se renouvelle automatiquement à la périodicité choisie, sauf résiliation depuis la gestion de votre abonnement.',
   intervalUnavailable: 'Cette périodicité n’est pas disponible.',
   portalUnavailable:
     'La gestion des abonnements est temporairement indisponible. Contactez le responsable de votre espace.',
@@ -78,6 +85,13 @@ export const billingCopy = {
   refresh: 'Actualiser l’offre',
   testHint:
     'Le paiement de test utilise les cartes de test Stripe et ne prélève pas d’argent réel.',
+  legalNavigation: 'Informations légales et assistance',
+  legalLinks: [
+    { href: '/legal', label: 'Mentions légales' },
+    { href: '/privacy', label: 'Confidentialité' },
+    { href: '/terms', label: 'Conditions de vente' },
+    { href: '/support', label: 'Assistance' },
+  ],
   usageDefaults: (limits: PlanLimits) =>
     `Limites gratuites par défaut : ${limits.subjects ?? 'un nombre illimité de'} matières, ${limits.tasks ?? 'un nombre illimité de'} tâches et ${limits.projects ?? 'un nombre illimité de'} projets. Le responsable du service peut ajuster ces limites.`,
   scope:

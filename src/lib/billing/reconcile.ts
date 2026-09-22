@@ -1,8 +1,17 @@
 import type Stripe from 'stripe';
-import { configuredPrices, tierForWorkspace, type PriceChoice, type WorkspaceKind } from './config';
+import {
+  assertResourceMode,
+  assertSubscriptionEnvironment,
+  configuredPrices,
+  matchesBillingMode,
+  tierForWorkspace,
+  type PriceChoice,
+  type WorkspaceKind,
+} from './config';
 import { hasBlockingSubscription } from './entitlements';
 
 export interface SubscriptionRecord {
+  billing_mode?: 'test' | 'live';
   workspace_id: string;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
@@ -38,7 +47,9 @@ export function recognizedSubscription(
         candidate.priceId === item.price.id && candidate.tier === tierForWorkspace(kind),
     );
   if (
-    subscription.livemode ||
+    !matchesBillingMode(subscription) ||
+    !item ||
+    !matchesBillingMode(item.price) ||
     subscription.items.data.length !== 1 ||
     item?.quantity !== 1 ||
     !choice
@@ -60,7 +71,7 @@ export function paidLinePeriodEnd(
       : objectId(parent?.invoice_item_details?.subscription);
   const priceId = objectId(line.pricing?.price_details?.price);
   if (
-    line.livemode ||
+    !matchesBillingMode(line) ||
     lineSubscription !== subscriptionId ||
     !priceId ||
     !allowedPriceIds.has(priceId) ||
@@ -78,6 +89,7 @@ export async function reconcileCustomer(
   kind: WorkspaceKind,
   choices = configuredPrices(),
 ): Promise<Record<string, unknown>> {
+  assertSubscriptionEnvironment(existing);
   if (!existing.stripe_customer_id)
     throw new Error('The workspace has no trusted Stripe customer.');
   const subscriptions = await stripe.subscriptions.list({
@@ -85,6 +97,7 @@ export async function reconcileCustomer(
     status: 'all',
     limit: 100,
   });
+  for (const subscription of subscriptions.data) assertResourceMode(subscription);
   if (subscriptions.has_more)
     throw new Error('Unexpected number of workspace subscriptions; manual review required.');
   const blocking = subscriptions.data.filter((subscription) =>
@@ -114,7 +127,7 @@ export async function reconcileCustomer(
     limit: 10,
   });
   for (const invoice of paidInvoices.data) {
-    if (invoice.livemode || invoice.status !== 'paid') continue;
+    if (!matchesBillingMode(invoice) || invoice.status !== 'paid') continue;
     // First 10 recent paid invoices cover current periods; prior paid coverage is
     // retained durably. Fetch all lines so prorations cannot hide the actual plan.
     for await (const line of stripe.invoices.listLineItems(invoice.id, { limit: 100 })) {

@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HttpError } from '../src/lib/server/http';
 
+vi.mock('server-only', () => ({}));
 const mocks = vi.hoisted(() => ({
   requireWorkspace: vi.fn(),
   durableRateLimit: vi.fn(),
@@ -9,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   billingConfigured: vi.fn(),
   getPortalConfiguration: vi.fn(),
   withBillingLock: vi.fn(),
+  assertBillingEnvironment: vi.fn(),
+  verifyStripeAccount: vi.fn(),
 }));
 vi.mock('@/lib/server/auth', () => ({
   requireWorkspace: mocks.requireWorkspace,
@@ -18,12 +21,14 @@ vi.mock('@/lib/billing/server', () => ({
   billingDatabase: mocks.billingDatabase,
   persistSubscription: vi.fn(),
   withBillingLock: mocks.withBillingLock,
+  assertBillingEnvironment: mocks.assertBillingEnvironment,
 }));
 vi.mock('@/lib/billing/portal', () => ({ getPortalConfiguration: mocks.getPortalConfiguration }));
 vi.mock('@/lib/billing/stripe', () => ({
   getStripe: mocks.getStripe,
   billingConfigured: mocks.billingConfigured,
   assertConfiguredPrice: vi.fn(),
+  verifyStripeAccount: mocks.verifyStripeAccount,
 }));
 
 import { POST as checkout } from '../src/app/api/billing/checkout/route';
@@ -38,11 +43,15 @@ const request = (path: string, body: unknown, origin = 'http://localhost:3000') 
   });
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
   vi.stubEnv('NEXT_PUBLIC_APP_URL', 'http://localhost:3000');
+  vi.stubEnv('STRIPE_BILLING_MODE', 'test');
+  vi.stubEnv('STRIPE_ACCOUNT_ID', undefined);
+  vi.stubEnv('STRIPE_LIVE_CHECKOUT_ENABLED', 'false');
   mocks.durableRateLimit.mockResolvedValue(undefined);
   mocks.billingConfigured.mockReturnValue(false);
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe('billing owner and request authorization', () => {
   it.each([
@@ -128,4 +137,107 @@ describe('billing owner and request authorization', () => {
     expect(mocks.withBillingLock).not.toHaveBeenCalled();
     expect(mocks.billingDatabase).not.toHaveBeenCalled();
   });
+  it.each([undefined, 'false', 'TRUE', '1'])(
+    'refuses closed live checkout (%s) before Stripe or billing records',
+    async (enabled) => {
+      vi.stubEnv('STRIPE_BILLING_MODE', 'live');
+      vi.stubEnv('STRIPE_ACCOUNT_ID', 'acct_authorization');
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://solace.fr');
+      vi.stubEnv('STRIPE_LIVE_CHECKOUT_ENABLED', enabled);
+      mocks.requireWorkspace.mockResolvedValue({
+        user: { id: 'owner' },
+        workspace: { id: workspaceId, kind: 'personal' },
+      });
+      mocks.billingConfigured.mockReturnValue(true);
+      const response = await checkout(
+        request('checkout', { workspaceId, tier: 'pro', interval: 'month' }, 'https://solace.fr'),
+      );
+      expect(response.status).toBe(503);
+      expect(await response.json()).toEqual({
+        error: 'Les nouveaux abonnements ne sont pas encore ouverts.',
+      });
+      expect(mocks.getStripe).not.toHaveBeenCalled();
+      expect(mocks.getPortalConfiguration).not.toHaveBeenCalled();
+      expect(mocks.verifyStripeAccount).not.toHaveBeenCalled();
+      expect(mocks.assertBillingEnvironment).not.toHaveBeenCalled();
+      expect(mocks.withBillingLock).not.toHaveBeenCalled();
+      expect(mocks.billingDatabase).not.toHaveBeenCalled();
+    },
+  );
+  it.each(['test', 'live'] as const)(
+    'keeps the existing %s customer portal available when new checkout is closed',
+    async (mode) => {
+      vi.stubEnv('STRIPE_BILLING_MODE', mode);
+      vi.stubEnv('STRIPE_ACCOUNT_ID', 'acct_authorization');
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://solace.fr');
+      mocks.requireWorkspace.mockResolvedValue({
+        user: { id: 'owner' },
+        workspace: { id: workspaceId, kind: 'personal' },
+      });
+      mocks.billingConfigured.mockReturnValue(true);
+      mocks.getPortalConfiguration.mockResolvedValue('bpc_management');
+      const query = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { stripe_customer_id: 'cus_existing', billing_mode: mode },
+          error: null,
+        }),
+      };
+      mocks.billingDatabase.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
+      const retrieve = vi.fn().mockResolvedValue({ id: 'cus_existing', livemode: mode === 'live' });
+      const create = vi
+        .fn()
+        .mockResolvedValue({ url: 'https://billing.stripe.com/p/session_management' });
+      mocks.getStripe.mockReturnValue({
+        customers: { retrieve },
+        billingPortal: { sessions: { create } },
+      });
+      const response = await portal(request('portal', { workspaceId }, 'https://solace.fr'));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        url: 'https://billing.stripe.com/p/session_management',
+      });
+      expect(mocks.assertBillingEnvironment).toHaveBeenCalledOnce();
+      expect(mocks.verifyStripeAccount).toHaveBeenCalledOnce();
+      expect(create).toHaveBeenCalledWith({
+        customer: 'cus_existing',
+        configuration: 'bpc_management',
+        return_url: 'https://solace.fr/?view=billing',
+      });
+    },
+  );
+  it.each([undefined, 'test'])(
+    'refuses a legacy or test customer (%s) in a live portal without contacting that customer',
+    async (storedMode) => {
+      vi.stubEnv('STRIPE_BILLING_MODE', 'live');
+      vi.stubEnv('STRIPE_ACCOUNT_ID', 'acct_authorization');
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://solace.fr');
+      mocks.requireWorkspace.mockResolvedValue({
+        user: { id: 'owner' },
+        workspace: { id: workspaceId, kind: 'personal' },
+      });
+      mocks.billingConfigured.mockReturnValue(true);
+      mocks.getPortalConfiguration.mockResolvedValue('bpc_management');
+      const query = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: { stripe_customer_id: 'cus_other', billing_mode: storedMode },
+          error: null,
+        }),
+      };
+      mocks.billingDatabase.mockReturnValue({ from: vi.fn().mockReturnValue(query) });
+      const retrieve = vi.fn();
+      const create = vi.fn();
+      mocks.getStripe.mockReturnValue({
+        customers: { retrieve },
+        billingPortal: { sessions: { create } },
+      });
+      const response = await portal(request('portal', { workspaceId }, 'https://solace.fr'));
+      expect(response.status).toBe(500);
+      expect(retrieve).not.toHaveBeenCalled();
+      expect(create).not.toHaveBeenCalled();
+    },
+  );
 });
