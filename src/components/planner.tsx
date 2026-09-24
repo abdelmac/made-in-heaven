@@ -1,7 +1,7 @@
 'use client';
 import { ui } from '@/lib/i18n/ui';
 
-import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -22,15 +22,22 @@ import { preparePlannedOccurrences, type RepeatOptions } from '@/lib/recurrence'
 import { exportCalendar } from '@/lib/calendar-export';
 import { RecurrenceFields } from './recurrence-fields';
 import {
-  weekDays,
   allocateToHourBuckets,
   visibleHours,
   plannerIntensity,
   zonedParts,
   zonedDateTime,
 } from '@/lib/calendar';
-import { dateKey, formatTime } from '@/lib/display';
+import { dateKey, formatTime, minutesLabel } from '@/lib/display';
 import { plannerCopy } from '@/lib/i18n/planner';
+import { calendarCopy } from '@/lib/i18n/planner-calendar';
+import {
+  plannerDateRange,
+  plannerDays,
+  shiftPlannerDate,
+  type PlannerView,
+} from '@/lib/planner-calendar';
+import { PlannerCalendar } from './planner-calendar';
 import {
   isPlannableTask,
   preparePlannerPlacement,
@@ -39,9 +46,18 @@ import {
 import styles from './planner.module.css';
 
 export function Planner({ full = false }: { full?: boolean }) {
-  const { store, openPlan, canEdit, notify } = useApp();
+  const { store, openPlan, openTask, canEdit, notify } = useApp();
   const { data } = store;
-  const [offset, setOffset] = useState(0);
+  const [chosenDate, setChosenDate] = useState<string | null>(null);
+  const [chosenView, setView] = useState<PlannerView>('week');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
+  const filtersId = useId();
+  const [quickPlan, setQuickPlan] = useState<{
+    taskId: string;
+    date: string;
+    workspaceId: string;
+  } | null>(null);
+  const view = full ? chosenView : 'week';
   const [subject, setSubject] = useState('');
   const [project, setProject] = useState('');
   const [task, setTask] = useState('');
@@ -57,6 +73,14 @@ export function Planner({ full = false }: { full?: boolean }) {
   const dragSource = useRef<PlannerSource | null>(null);
   const savingRef = useRef(false);
   const actorId = store.user?.id || LOCAL_USER_ID;
+  const memberIds = Array.from(
+    new Set([
+      ...data.plannedSessions.map((session) => session.userId),
+      ...data.tasks.flatMap((record) =>
+        record.dueDate && record.assigneeId ? [record.assigneeId] : [],
+      ),
+    ]),
+  );
   const selected = selection?.workspaceId === data.workspaceId && canEdit ? selection : null;
   const activeSource = dragging?.workspaceId === data.workspaceId ? dragging : selected;
   const sourceTitle = activeSource
@@ -75,8 +99,10 @@ export function Planner({ full = false }: { full?: boolean }) {
     document.addEventListener('keydown', cancel);
     return () => document.removeEventListener('keydown', cancel);
   }, []);
-  const days = weekDays(new Date(), data.preferences, offset);
   const today = dateKey(new Date(), data.preferences.timeZone);
+  const anchor = chosenDate || today;
+  const visibleRange = plannerDateRange(view, anchor, data.preferences.weekStartsOn);
+  const { days } = visibleRange;
   const sessions = data.plannedSessions.filter(
     (s) =>
       (!subject || s.subjectId === subject) &&
@@ -107,6 +133,39 @@ export function Planner({ full = false }: { full?: boolean }) {
       (!project || record.projectId === project) &&
       (!task || record.id === task),
   );
+  const dueTasks = data.tasks.filter(
+    (record) =>
+      record.dueDate &&
+      (!subject || record.subjectId === subject) &&
+      (!project || record.projectId === project) &&
+      (!task || record.id === task) &&
+      (!member || !record.assigneeId || record.assigneeId === member) &&
+      (!status || (status === 'completed' ? record.status === 'done' : record.status !== 'done')) &&
+      !data.subjects.find((item) => item.id === record.subjectId)?.archived &&
+      !data.projects.find((item) => item.id === record.projectId)?.archived,
+  );
+  const calendarDays = plannerDays(
+    days,
+    sessions,
+    dueTasks,
+    data.preferences.timeZone,
+    data.workspaceId,
+  );
+  const periodMinutes = calendarDays.reduce((sum, day) => sum + day.minutes, 0);
+  const periodDeadlines = calendarDays.reduce((sum, day) => sum + day.tasks.length, 0);
+  function changeView(next: PlannerView) {
+    endDrag();
+    setSelection(null);
+    setCell(null);
+    setView(next);
+  }
+  function navigatePeriod(direction: number) {
+    try {
+      setChosenDate(shiftPlannerDate(anchor, direction, view));
+    } catch (cause) {
+      notify(cause instanceof Error ? cause.message : 'Choisissez une période valide.');
+    }
+  }
   function source(kind: PlannerSource['kind'], recordId: string): PlannerSource {
     return { kind, id: recordId, workspaceId: data.workspaceId };
   }
@@ -207,46 +266,89 @@ export function Planner({ full = false }: { full?: boolean }) {
     day: 'numeric',
     timeZone: 'UTC',
   });
-  const range = `${monthFormat.format(new Date(days[0] + 'T12:00Z'))} – ${monthFormat.format(new Date(days[6] + 'T12:00Z'))}`;
+  const range =
+    view === 'month'
+      ? new Intl.DateTimeFormat('fr-FR', {
+          month: 'long',
+          year: 'numeric',
+          timeZone: 'UTC',
+        }).format(new Date(`${anchor}T12:00Z`))
+      : `${monthFormat.format(new Date(visibleRange.start + 'T12:00Z'))} – ${monthFormat.format(new Date(visibleRange.end + 'T12:00Z'))}`;
   return (
     <Panel
       className={`planner-panel ${full ? 'full-planner' : ''}`}
-      title={en.overview.planner}
-      subtitle={full ? en.planner.subtitle : en.overview.plannerSubtitle}
+      title={full ? calendarCopy.title : en.overview.planner}
+      subtitle={full ? calendarCopy.subtitle : en.overview.plannerSubtitle}
       action={
         <IconButton label={en.planner.add} disabled={!canEdit} onClick={() => openPlan()}>
           <Plus size={19} />
         </IconButton>
       }
     >
-      <div className="planner-toolbar">
+      <div className={`planner-toolbar ${full ? styles.calendarToolbar : ''}`}>
         <div className="row">
-          <IconButton label={en.planner.previous} onClick={() => setOffset((o) => o - 1)}>
+          <IconButton
+            label={view === 'month' ? calendarCopy.previousMonth : en.planner.previous}
+            onClick={() => navigatePeriod(-1)}
+          >
             <ChevronLeft size={16} />
           </IconButton>
-          <strong>{range}</strong>
-          <IconButton label={en.planner.next} onClick={() => setOffset((o) => o + 1)}>
+          {view === 'month' ? (
+            <input
+              type="month"
+              className={styles.monthPicker}
+              aria-label={calendarCopy.chooseMonth}
+              min="0001-01"
+              max="9999-12"
+              value={anchor.slice(0, 7)}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (/^\d{4}-(0[1-9]|1[0-2])$/.test(value) && value >= '0001-01')
+                  setChosenDate(`${value}-01`);
+              }}
+            />
+          ) : (
+            <strong aria-live="polite">{range}</strong>
+          )}
+          <IconButton
+            label={view === 'month' ? calendarCopy.nextMonth : en.planner.next}
+            onClick={() => navigatePeriod(1)}
+          >
             <ChevronRight size={16} />
           </IconButton>
         </div>
-        <Button variant="secondary" onClick={() => setOffset(0)}>
+        {full && (
+          <div className={styles.viewSwitcher} role="group" aria-label={calendarCopy.views}>
+            {(['week', 'month', 'agenda'] as const).map((item) => (
+              <button
+                type="button"
+                key={item}
+                aria-pressed={view === item}
+                onClick={() => changeView(item)}
+              >
+                {calendarCopy[item]}
+              </button>
+            ))}
+          </div>
+        )}
+        <Button variant="secondary" onClick={() => setChosenDate(null)}>
           {en.planner.today}
         </Button>
         {full && (
           <Button
             variant="secondary"
-            title="Exporter mes séances de la semaine affichée, avec les filtres actuels"
+            title={calendarCopy.exportTitle}
             onClick={() => {
               try {
                 const calendar = exportCalendar(sessions, {
                   workspaceId: data.workspaceId,
                   userId: actorId,
-                  startDay: days[0],
-                  endDay: days[6],
+                  startDay: visibleRange.start,
+                  endDay: visibleRange.end,
                   timeZone: data.preferences.timeZone,
                 });
                 if (!calendar.count) {
-                  notify('Aucune séance personnelle à exporter pour cette semaine et ces filtres.');
+                  notify(calendarCopy.noExport);
                   return;
                 }
                 const url = URL.createObjectURL(
@@ -254,7 +356,7 @@ export function Planner({ full = false }: { full?: boolean }) {
                 );
                 const link = document.createElement('a');
                 link.href = url;
-                link.download = `solace-planning-${days[0]}-${days[6]}.ics`;
+                link.download = `solace-planning-${visibleRange.start}-${visibleRange.end}.ics`;
                 document.body.appendChild(link);
                 link.click();
                 link.remove();
@@ -270,19 +372,35 @@ export function Planner({ full = false }: { full?: boolean }) {
             }}
           >
             <Download size={15} />
-            Exporter ma semaine (.ics)
+            {view === 'month' ? calendarCopy.exportMonth : calendarCopy.exportWeek}
           </Button>
         )}
       </div>
       {full && (
-        <p className="helper">
-          L’export inclut vos séances de la semaine affichée et respecte les filtres. Importez ce
-          fichier dans Google Calendar, Outlook ou Apple Calendrier ; les changements ultérieurs ne
-          sont pas synchronisés.
-        </p>
+        <details className={styles.exportHelp}>
+          <summary>{calendarCopy.exportAbout}</summary>
+          <p className="helper">{calendarCopy.exportHelp}</p>
+        </details>
       )}
       {full && (
-        <div className="filters">
+        <button
+          type="button"
+          className={styles.filterToggle}
+          aria-expanded={filtersExpanded}
+          aria-controls={filtersId}
+          onClick={() => setFiltersExpanded((expanded) => !expanded)}
+        >
+          {calendarCopy.filters}
+          {[subject, project, task, status].filter(Boolean).length
+            ? ` (${[subject, project, task, status].filter(Boolean).length})`
+            : ''}
+        </button>
+      )}
+      {full && (
+        <div
+          id={filtersId}
+          className={`filters ${!filtersExpanded ? styles.filtersCollapsed : ''}`}
+        >
           <select
             aria-label={en.tasks.subject}
             value={subject}
@@ -328,7 +446,7 @@ export function Planner({ full = false }: { full?: boolean }) {
             <option value="planned">{ui.planner.planned}</option>
             <option value="completed">{ui.planner.completed}</option>
           </select>
-          {new Set(data.plannedSessions.map((s) => s.userId)).size > 1 && (
+          {memberIds.some((userId) => userId !== actorId) && (
             <select
               aria-label={ui.planner.member}
               value={member}
@@ -336,8 +454,8 @@ export function Planner({ full = false }: { full?: boolean }) {
             >
               <option value={store.user?.id || LOCAL_USER_ID}>{ui.planner.mySchedule}</option>
               <option value="">{ui.planner.allPermittedMembers}</option>
-              {Array.from(new Set(data.plannedSessions.map((s) => s.userId)))
-                .filter((uid) => uid !== store.user?.id)
+              {memberIds
+                .filter((uid) => uid !== actorId)
                 .map((uid) => (
                   <option key={uid} value={uid}>
                     {uid.slice(0, 8)}
@@ -348,6 +466,22 @@ export function Planner({ full = false }: { full?: boolean }) {
         </div>
       )}
       {full && (
+        <div className={styles.periodSummary} aria-label="Résumé de la période affichée">
+          <div>
+            <strong>{minutesLabel(periodMinutes)}</strong>
+            <span>{calendarCopy.planned}</span>
+          </div>
+          <div>
+            <strong>{weekSessions.length}</strong>
+            <span>{calendarCopy.sessions}</span>
+          </div>
+          <div>
+            <strong>{periodDeadlines}</strong>
+            <span>{calendarCopy.deadlines}</span>
+          </div>
+        </div>
+      )}
+      {full && view === 'week' && (
         <div className={styles.sources}>
           {weekSessions.length > 0 && (
             <div>
@@ -436,7 +570,7 @@ export function Planner({ full = false }: { full?: boolean }) {
           )}
         </div>
       )}
-      {canEdit && (
+      {canEdit && view === 'week' && (
         <div className={`${styles.feedback} ${activeSource ? styles.selection : ''}`}>
           <p role="status" aria-live="polite">
             {saving
@@ -469,113 +603,182 @@ export function Planner({ full = false }: { full?: boolean }) {
           {placementFailed && feedback === plannerCopy.failed ? store.error || feedback : feedback}
         </p>
       )}
-      <div className={`grid-scroller ${activeSource ? styles.choosing : ''}`} aria-busy={saving}>
-        <div className="planner-grid" role="group" aria-label={`Planning hebdomadaire ${range}`}>
-          <div className="grid-corner">
-            <CalendarDays size={14} />
-          </div>
-          {days.map((day) => (
-            <div key={day} className={`day-heading ${day === today ? 'today' : ''}`}>
-              <span>
-                {new Intl.DateTimeFormat('fr-FR', { weekday: 'short', timeZone: 'UTC' }).format(
-                  new Date(day + 'T12:00Z'),
-                )}
-              </span>
-              <strong>{Number(day.slice(-2))}</strong>
-            </div>
-          ))}
-          {hours.map((hour) => (
-            <div className="planner-row" key={hour}>
-              <span className="hour-label">
-                {data.preferences.timeFormat === '24h'
-                  ? `${String(hour).padStart(2, '0')}:00`
-                  : `${hour % 12 || 12}${hour < 12 ? 'am' : 'pm'}`}
-              </span>
-              {days.map((day) => {
-                const bucket = buckets.get(`${day}:${hour}`);
-                const description = `${day}, ${hour}:00, ${Math.round(bucket?.minutes || 0)} minutes planifiées${bucket?.completed ? ', toutes terminées' : bucket?.partial ? ', partiellement terminées' : ''}${bucket?.sessions.length ? `, ${bucket.sessions.map((s) => s.title).join(', ')}` : ''}`;
-                return (
-                  <button
-                    key={day}
-                    type="button"
-                    className={`planner-cell intensity-${plannerIntensity(bucket?.minutes || 0)} ${day === today ? 'today-column' : ''} ${canEdit && bucket?.sessions.length === 1 ? styles.draggable : ''} ${dragging?.kind === 'plan' && bucket?.sessions.some((session) => session.id === dragging.id) ? styles.dragging : ''} ${dropPreview?.key === `${day}:${hour}` ? (dropPreview.error ? styles.dropInvalid : styles.dropTarget) : ''}`}
-                    data-planner-slot={`${day}:${hour}`}
-                    aria-label={description}
-                    title={description}
-                    draggable={canEdit && !saving && bucket?.sessions.length === 1}
-                    onDragStart={(event) => {
-                      if (bucket?.sessions.length === 1)
-                        startDrag(event, source('plan', bucket.sessions[0].id));
-                    }}
-                    onDragEnd={endDrag}
-                    onDragOver={(event) => {
-                      const item = dragSource.current;
-                      if (
-                        !canEdit ||
-                        savingRef.current ||
-                        !item ||
-                        item.workspaceId !== data.workspaceId
-                      )
-                        return;
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = item.kind === 'plan' ? 'move' : 'copy';
-                      previewSlot(item, day, hour);
-                    }}
-                    onDragLeave={(event) => {
-                      if (
-                        !(event.relatedTarget instanceof Node) ||
-                        !event.currentTarget.contains(event.relatedTarget)
-                      )
-                        setDropPreview(null);
-                    }}
-                    onDrop={(event) => {
-                      const item = dragSource.current;
-                      if (!item || !canEdit) return;
-                      event.preventDefault();
-                      void place(item, day, hour);
-                    }}
-                    onFocus={() => {
-                      if (selected) previewSlot(selected, day, hour);
-                    }}
-                    onBlur={() => setDropPreview(null)}
-                    onClick={() => {
-                      if (savingRef.current) return;
-                      if (selected) {
-                        void place(selected, day, hour);
-                        return;
-                      }
-                      if (bucket?.sessions.length === 1) openPlan(bucket.sessions[0].id);
-                      else if (bucket?.sessions.length) setCell(bucket.sessions);
-                      else if (canEdit) openPlan(undefined, day, hour);
-                    }}
-                  >
-                    {bucket?.completed ? (
-                      <Check size={13} />
-                    ) : bucket?.partial ? (
-                      <Minus size={13} />
-                    ) : (
-                      bucket && (
-                        <span>
-                          {Math.round(bucket.minutes)}
-                          <small>{ui.planner.m}</small>
-                        </span>
-                      )
+      {view === 'week' ? (
+        <>
+          <div
+            className={`grid-scroller ${activeSource ? styles.choosing : ''}`}
+            aria-busy={saving}
+          >
+            <div
+              className="planner-grid"
+              role="group"
+              aria-label={`Planning hebdomadaire ${range}`}
+            >
+              <div className="grid-corner">
+                <CalendarDays size={14} />
+              </div>
+              {days.map((day) => (
+                <div key={day} className={`day-heading ${day === today ? 'today' : ''}`}>
+                  <span>
+                    {new Intl.DateTimeFormat('fr-FR', { weekday: 'short', timeZone: 'UTC' }).format(
+                      new Date(day + 'T12:00Z'),
                     )}
-                  </button>
-                );
-              })}
+                  </span>
+                  <strong>{Number(day.slice(-2))}</strong>
+                </div>
+              ))}
+              {hours.map((hour) => (
+                <div className="planner-row" key={hour}>
+                  <span className="hour-label">
+                    {data.preferences.timeFormat === '24h'
+                      ? `${String(hour).padStart(2, '0')}:00`
+                      : `${hour % 12 || 12}${hour < 12 ? 'am' : 'pm'}`}
+                  </span>
+                  {days.map((day) => {
+                    const bucket = buckets.get(`${day}:${hour}`);
+                    const description = `${day}, ${hour}:00, ${Math.round(bucket?.minutes || 0)} minutes planifiées${bucket?.completed ? ', toutes terminées' : bucket?.partial ? ', partiellement terminées' : ''}${bucket?.sessions.length ? `, ${bucket.sessions.map((s) => s.title).join(', ')}` : ''}`;
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        className={`planner-cell intensity-${plannerIntensity(bucket?.minutes || 0)} ${day === today ? 'today-column' : ''} ${canEdit && bucket?.sessions.length === 1 ? styles.draggable : ''} ${dragging?.kind === 'plan' && bucket?.sessions.some((session) => session.id === dragging.id) ? styles.dragging : ''} ${dropPreview?.key === `${day}:${hour}` ? (dropPreview.error ? styles.dropInvalid : styles.dropTarget) : ''}`}
+                        data-planner-slot={`${day}:${hour}`}
+                        aria-label={description}
+                        title={description}
+                        draggable={canEdit && !saving && bucket?.sessions.length === 1}
+                        onDragStart={(event) => {
+                          if (bucket?.sessions.length === 1)
+                            startDrag(event, source('plan', bucket.sessions[0].id));
+                        }}
+                        onDragEnd={endDrag}
+                        onDragOver={(event) => {
+                          const item = dragSource.current;
+                          if (
+                            !canEdit ||
+                            savingRef.current ||
+                            !item ||
+                            item.workspaceId !== data.workspaceId
+                          )
+                            return;
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = item.kind === 'plan' ? 'move' : 'copy';
+                          previewSlot(item, day, hour);
+                        }}
+                        onDragLeave={(event) => {
+                          if (
+                            !(event.relatedTarget instanceof Node) ||
+                            !event.currentTarget.contains(event.relatedTarget)
+                          )
+                            setDropPreview(null);
+                        }}
+                        onDrop={(event) => {
+                          const item = dragSource.current;
+                          if (!item || !canEdit) return;
+                          event.preventDefault();
+                          void place(item, day, hour);
+                        }}
+                        onFocus={() => {
+                          if (selected) previewSlot(selected, day, hour);
+                        }}
+                        onBlur={() => setDropPreview(null)}
+                        onClick={() => {
+                          if (savingRef.current) return;
+                          if (selected) {
+                            void place(selected, day, hour);
+                            return;
+                          }
+                          if (bucket?.sessions.length === 1) openPlan(bucket.sessions[0].id);
+                          else if (bucket?.sessions.length) setCell(bucket.sessions);
+                          else if (canEdit) openPlan(undefined, day, hour);
+                        }}
+                      >
+                        {bucket?.completed ? (
+                          <Check size={13} />
+                        ) : bucket?.partial ? (
+                          <Minus size={13} />
+                        ) : (
+                          bucket && (
+                            <span>
+                              {Math.round(bucket.minutes)}
+                              <small>{ui.planner.m}</small>
+                            </span>
+                          )
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
-      <div className="planner-footer">
-        <span className="muted">{en.planner.legend}</span>
-        <Legend />
-      </div>
-      {full && (
-        <p className="helper">
-          {en.planner.empty} {ui.planner.copy} {data.preferences.timeZone}. {plannerCopy.snap}
-        </p>
+          </div>
+          {full && periodDeadlines > 0 && (
+            <section className={styles.weekDeadlines} aria-label="Échéances cette semaine">
+              <h3>Échéances cette semaine</h3>
+              <div className={styles.cardList}>
+                {calendarDays.flatMap((day) =>
+                  day.tasks.map((record) => (
+                    <button
+                      type="button"
+                      key={record.id}
+                      className={styles.calendarEntry}
+                      onClick={() => openTask(record.id)}
+                      data-week-due={record.id}
+                    >
+                      <span className={styles.entryBody}>
+                        <strong>{record.title}</strong>
+                        <small>
+                          {monthFormat.format(new Date(`${day.date}T12:00Z`))}
+                          {record.status === 'done'
+                            ? ` · ${calendarCopy.completed}`
+                            : day.date < today
+                              ? ` · ${calendarCopy.overdue}`
+                              : ''}
+                        </small>
+                      </span>
+                    </button>
+                  )),
+                )}
+              </div>
+            </section>
+          )}
+          <div className="planner-footer">
+            <span className="muted">{en.planner.legend}</span>
+            <Legend />
+          </div>
+          {full && (
+            <p className="helper">
+              {en.planner.empty} {ui.planner.copy} {data.preferences.timeZone}. {plannerCopy.snap}
+            </p>
+          )}
+        </>
+      ) : (
+        <PlannerCalendar
+          view={view}
+          days={calendarDays}
+          selectedDate={anchor}
+          leadingDays={visibleRange.leadingDays}
+          today={today}
+          preferences={data.preferences}
+          subjects={data.subjects}
+          canEdit={canEdit}
+          onSelect={setChosenDate}
+          onOpenPlan={openPlan}
+          onOpenTask={openTask}
+          onScheduleTask={(taskId, date) =>
+            setQuickPlan({ taskId, date, workspaceId: data.workspaceId })
+          }
+          onShowWeek={(date) => {
+            setChosenDate(date);
+            changeView('week');
+          }}
+        />
+      )}
+      {quickPlan?.workspaceId === data.workspaceId && (
+        <PlanEditor
+          initialDate={quickPlan.date}
+          initialTaskId={quickPlan.taskId}
+          onClose={() => setQuickPlan(null)}
+        />
       )}
       {cell && (
         <Dialog title={ui.planner.sessionsInThisHour} onClose={() => setCell(null)}>
@@ -619,21 +822,24 @@ export function PlanEditor({
   planId,
   initialDate,
   initialHour,
+  initialTaskId,
   onClose,
 }: {
   planId?: string;
   initialDate?: string;
   initialHour?: number;
+  initialTaskId?: string;
   onClose: () => void;
 }) {
   const { store, notify, canEdit } = useApp();
   const { data } = store;
   const original = data.plannedSessions.find((s) => s.id === planId);
+  const initialTask = data.tasks.find((record) => record.id === initialTaskId);
   const [deleting, setDeleting] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
-  const [subjectId, setSubject] = useState(original?.subjectId || '');
-  const [taskId, setTask] = useState(original?.taskId || '');
-  const [projectId, setProject] = useState(original?.projectId || '');
+  const [subjectId, setSubject] = useState(original?.subjectId || initialTask?.subjectId || '');
+  const [taskId, setTask] = useState(original?.taskId || initialTask?.id || '');
+  const [projectId, setProject] = useState(original?.projectId || initialTask?.projectId || '');
   const [error, setError] = useState('');
   const [repeat, setRepeat] = useState<RepeatOptions>({ frequency: 'none', count: 4 });
   const p = original ? zonedParts(original.startsAt, data.preferences.timeZone) : null;
@@ -707,7 +913,7 @@ export function PlanEditor({
             name="title"
             required
             maxLength={300}
-            defaultValue={original?.title || ''}
+            defaultValue={original?.title || initialTask?.title || ''}
             placeholder={ui.planner.aLittleFocusedWork}
             autoFocus
             data-autofocus
@@ -746,7 +952,9 @@ export function PlanEditor({
             min={1}
             max={180}
             required
-            defaultValue={original?.durationMinutes || 25}
+            defaultValue={
+              original?.durationMinutes || (initialTask ? data.preferences.focusMinutes : 25)
+            }
           />
         </Field>
         {(!original || duplicating) && <RecurrenceFields value={repeat} onChange={setRepeat} />}

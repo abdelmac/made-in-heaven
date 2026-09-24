@@ -248,6 +248,23 @@ export const backgroundSchema = z
   })
   .strict()
   .refine((value) => value.kind !== 'image' || value.image !== null, 'Choose a background image.');
+export const moodEntrySchema = z
+  .object({
+    date: date.refine((value) => value >= '0001-01-01', 'Choisissez une date à partir de l’an 1.'),
+    mood: z.number().int().min(1).max(5),
+    energy: z.number().int().min(1).max(5).nullable(),
+    note: z.string().max(280),
+    updatedAt: timestamp,
+  })
+  .strict();
+export type MoodEntry = z.infer<typeof moodEntrySchema>;
+export const moodEntriesSchema = z
+  .array(moodEntrySchema)
+  .max(730)
+  .refine(
+    (entries) => new Set(entries.map((entry) => entry.date)).size === entries.length,
+    'Une seule humeur peut être enregistrée par jour.',
+  );
 export const preferencesSchema = z
   .object({
     timeZone: z
@@ -294,6 +311,7 @@ export const preferencesSchema = z
       .array(z.object({ id: uuid, name: z.string().min(1).max(60), widgets }).strict())
       .max(30),
     heatmapMode: z.enum(['sessions', 'minutes']),
+    moodEntries: moodEntriesSchema.default([]),
   })
   .strict()
   .refine(
@@ -550,6 +568,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   widgets: [...widgetNames],
   savedLayouts: [],
   heatmapMode: 'sessions',
+  moodEntries: [],
 };
 export function emptyTimer(
   preferences: Preferences = DEFAULT_PREFERENCES,

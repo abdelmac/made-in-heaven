@@ -9,6 +9,7 @@ export const en = {
     tasks: 'Tâches',
     notes: 'Notes',
     flashcards: 'Cartes mémoire',
+    mood: 'Humeur',
     history: 'Historique',
     analytics: 'Statistiques',
     settings: 'Paramètres',
@@ -95,7 +96,7 @@ export const en = {
   },
   planner: {
     title: 'Faites place à ce qui compte.',
-    subtitle: 'Une semaine organisée avec soin.',
+    subtitle: 'Vos tâches, vos échéances et vos séances, au même endroit.',
     add: 'Planifier une séance',
     previous: 'Semaine précédente',
     next: 'Semaine suivante',

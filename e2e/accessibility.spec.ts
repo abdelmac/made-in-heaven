@@ -24,6 +24,8 @@ test('an active timer remains reachable from secondary pages on mobile', async (
 test('light, dark, mobile, and task dialogs meet automated accessibility checks', async ({
   page,
 }) => {
+  // Four full accessibility scans share this test's budget on slower browser hosts.
+  test.setTimeout(90_000);
   await page.goto('/');
   await expect(page.locator('.app-shell')).toBeVisible({ timeout: 15000 });
   for (const appearance of ['light', 'dark']) {

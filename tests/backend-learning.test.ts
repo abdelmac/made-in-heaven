@@ -149,7 +149,7 @@ describe('legacy cloud document compatibility', () => {
         new Request('http://localhost', { headers: { 'x-folia-document-version': '2' } }),
       ),
     ).toBe(true);
-    expect(serializeDocument(data, true)).toEqual(data);
+    expect(serializeDocument(data, true, true)).toEqual(data);
   });
   it('restores hidden learning events for validation while retaining raw events for stable retries', () => {
     const previous = fixture();

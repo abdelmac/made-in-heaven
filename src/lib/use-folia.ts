@@ -46,7 +46,7 @@ import {
 import { createBrowserSupabase } from './supabase/browser';
 import { findOverlap } from './calendar';
 import type { Entitlements } from './billing/entitlements';
-import { fetchWorkspaceSnapshot, makeDocumentPatch } from './sync-transfer';
+import { fetchWorkspaceSnapshot, makeDocumentPatch, syncCapabilityHeaders } from './sync-transfer';
 import { localizeError } from './i18n/errors';
 
 export type WorkspaceSummary = {
@@ -90,7 +90,7 @@ function unionRecords<T extends { id: string }>(remote: T[], local: T[]) {
 
 function fetchFoliaApi(input: string, init: RequestInit = {}) {
   const headers = new Headers(init.headers);
-  headers.set('X-Folia-Document-Version', '2');
+  for (const [name, value] of Object.entries(syncCapabilityHeaders)) headers.set(name, value);
   if (input.startsWith('/api/sync?') && (!init.method || init.method === 'GET')) {
     const workspace = new URL(input, window.location.origin).searchParams.get('workspaceId');
     if (workspace)

@@ -29,6 +29,10 @@ export const syncCollections = [
   'events',
 ] as const;
 type Collection = (typeof syncCollections)[number];
+export const syncCapabilityHeaders = {
+  'X-Folia-Document-Version': '2',
+  'X-Folia-Mood-Version': '1',
+} as const;
 type RecordData = { id: string; [key: string]: unknown };
 const entitySchemas = {
   subjects: subjectSchema,
@@ -199,7 +203,7 @@ export async function fetchWorkspaceSnapshot(workspaceId: string, fetcher: typeo
       if (version !== undefined) query.set('version', String(version));
       const response = await fetcher(`/api/sync?${query}`, {
         cache: 'no-store',
-        headers: { 'X-Folia-Document-Version': '2' },
+        headers: syncCapabilityHeaders,
       });
       const body = await response.json();
       if (response.status === 409) break;

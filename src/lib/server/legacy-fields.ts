@@ -2,6 +2,7 @@ import type { Preferences, WorkspaceData } from '@/lib/model';
 
 const learningKeys = ['noteSheets', 'flashcardDecks', 'flashcards'] as const;
 const preferenceKeys = ['accentColor', 'background'] as const;
+const preservedPreferenceKeys = [...preferenceKeys, 'moodEntries'] as const;
 export const learningEventTypes = new Set([
   'subject_completed',
   'subject_reopened',
@@ -23,11 +24,17 @@ export function supportsLearningDocument(request: Request): boolean {
   return request.headers.get('x-folia-document-version') === '2';
 }
 
+export function supportsMoodPreferences(request: Request): boolean {
+  return request.headers.get('x-folia-mood-version') === '1';
+}
+
 export function serializePreferences(
   preferences: Preferences,
   modern: boolean,
+  moods = false,
 ): Record<string, unknown> {
   const result = structuredClone(preferences) as Record<string, unknown>;
+  if (!moods) delete result.moodEntries;
   if (!modern) {
     for (const key of preferenceKeys) delete result[key];
     result.accent = legacyAccents[preferences.accent] || preferences.accent;
@@ -36,7 +43,11 @@ export function serializePreferences(
 }
 
 /** Previously deployed clients validate strict schemas, including enum values. */
-export function serializeDocument(data: WorkspaceData, modern: boolean): Record<string, unknown> {
+export function serializeDocument(
+  data: WorkspaceData,
+  modern: boolean,
+  moods = false,
+): Record<string, unknown> {
   const result = structuredClone(data) as unknown as Record<string, unknown>;
   if (!modern) {
     for (const key of learningKeys) delete result[key];
@@ -47,7 +58,18 @@ export function serializeDocument(data: WorkspaceData, modern: boolean): Record<
     });
     result.events = data.events.filter((event) => !learningEventTypes.has(event.type));
   }
-  result.preferences = serializePreferences(data.preferences, modern);
+  result.preferences = serializePreferences(data.preferences, modern, moods);
+  return result;
+}
+
+export function preserveLegacyPreferenceFields(
+  raw: unknown,
+  previous: Preferences | null,
+): unknown {
+  if (!record(raw)) return raw;
+  const result = { ...raw };
+  for (const key of preservedPreferenceKeys)
+    if (!(key in raw) && previous) result[key] = previous[key];
   return result;
 }
 
@@ -69,10 +91,10 @@ export function preserveLegacyDocumentFields(
     ];
   }
   if (record(raw.preferences)) {
-    result.preferences = { ...raw.preferences };
-    for (const key of preferenceKeys)
-      if (!(key in raw.preferences) && previous)
-        (result.preferences as Record<string, unknown>)[key] = previous.preferences[key];
+    result.preferences = preserveLegacyPreferenceFields(
+      raw.preferences,
+      previous?.preferences || null,
+    );
   }
   if (!('noteSheets' in raw) && Array.isArray(raw.subjects))
     result.subjects = raw.subjects.map((subject) => {
@@ -88,7 +110,7 @@ export function preferenceRpcPayload(
   raw: unknown,
 ): Record<string, unknown> {
   const result = { ...preferences } as Record<string, unknown>;
-  if (record(raw)) for (const key of preferenceKeys) if (!(key in raw)) delete result[key];
+  if (record(raw)) for (const key of preservedPreferenceKeys) if (!(key in raw)) delete result[key];
   return result;
 }
 

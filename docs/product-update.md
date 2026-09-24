@@ -13,6 +13,8 @@ modifié. Les limites de configuration restantes sont consignées dans
 
 ## Utilisation
 
+- **Humeur** : un point personnel par jour avec cinq niveaux d’humeur, une énergie facultative et une note courte. Le calendrier mensuel permet de relire, modifier ou supprimer une entrée ; l’accueil propose un point rapide. Le journal est privé pour chaque utilisateur/espace, sans activité ni temps de concentration inventés. Les sauvegardes suivent le mode local ou la synchronisation existante. Voir [le stockage et ses limites](mood-storage.md).
+- **Planning** : basculer entre **Semaine**, **Mois** et **Agenda**. Les échéances des tâches et les séances prévues apparaissent ensemble, avec un détail par jour et une action pour planifier une tâche. Les filtres, la navigation au clavier et les réglages de fuseau horaire sont conservés. Le glisser-déposer reste disponible en vue Semaine.
 - **Français et Solace** : navigation, formulaires, messages courants, noms de
   jours/mois, métadonnées et téléchargements sont en français. Le format de
   sauvegarde, les clés de stockage et les anciennes URL restent compatibles.
@@ -24,8 +26,8 @@ modifié. Les limites de configuration restantes sont consignées dans
   conservent leur heure locale lors des changements d’heure ; les heures
   inexistantes et chevauchements sont signalés avant création. Chaque occurrence
   se modifie et se supprime individuellement. Il n’y a pas de génération infinie.
-- **Calendrier** : « Exporter ma semaine (.ics) » dans le planning exporte les
-  séances personnelles de la semaine avec les filtres visibles. Importer ce
+- **Export calendrier** : « Exporter ma semaine (.ics) » ou « Exporter mon mois (.ics) » dans le planning exporte les
+  séances personnelles de la période affichée avec les filtres visibles. Importer ce
   fichier dans Google Calendar, Outlook ou Apple Calendar. Il s’agit d’un
   instantané : une modification ultérieure ne met pas le calendrier externe à jour.
 - **Bilan** : l’accueil compare les minutes réalisées et prévues, affiche les

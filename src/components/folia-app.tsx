@@ -32,6 +32,7 @@ import {
   ArrowRight,
   NotebookPen,
   Layers,
+  Smile,
 } from 'lucide-react';
 import { useFolia } from '@/lib/use-folia';
 import { en, type View } from '@/lib/i18n/en';
@@ -51,6 +52,8 @@ import { applyThemeColors, applyBackground, themeColors } from '@/lib/appearance
 import { GettingStarted } from './getting-started';
 import { WorkSummary } from './work-summary';
 import { FocusAudioPlayer } from './focus-audio-player';
+import { MoodOverview, MoodPage } from './mood';
+import { moodCopy } from '@/lib/i18n/mood';
 
 const navigation = [
   { id: 'overview', Icon: LayoutDashboard },
@@ -59,6 +62,7 @@ const navigation = [
   { id: 'tasks', Icon: CheckSquare },
   { id: 'notes', Icon: NotebookPen },
   { id: 'flashcards', Icon: Layers },
+  { id: 'mood', Icon: Smile },
   { id: 'history', Icon: History },
   { id: 'analytics', Icon: ChartNoAxesCombined },
 ] as const;
@@ -81,6 +85,7 @@ const pageCopy: Record<View, { title: string; subtitle: string }> = {
     subtitle: ui.foliaApp.buildADeckTurnACardAndComeBack,
   },
   history: en.history,
+  mood: moodCopy,
   analytics: en.analytics,
   settings: en.settings,
   organization: en.organization,
@@ -672,6 +677,7 @@ export function FoliaApp() {
                     onAction={() => navigate('settings')}
                   />
                 )}
+                <MoodOverview key={`mood:${store.userId}:${store.workspaceId}`} />
                 <WorkSummary />
               </>
             )}
@@ -680,6 +686,7 @@ export function FoliaApp() {
             {view === 'tasks' && <TasksPage />}
             {view === 'notes' && <NotesPage />}
             {view === 'flashcards' && <FlashcardsPage />}
+            {view === 'mood' && <MoodPage key={`${store.userId}:${store.workspaceId}`} />}
             {view === 'history' && <HistoryPage />}
             {view === 'analytics' && <AnalyticsPage />}
             {view === 'settings' && <SettingsPage key={`${store.userId}:${store.workspaceId}`} />}

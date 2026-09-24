@@ -8,6 +8,7 @@ import {
   preferenceRpcPayload,
   serializePreferences,
   supportsLearningDocument,
+  supportsMoodPreferences,
 } from '@/lib/server/legacy-fields';
 
 const uuid = z.string().uuid();
@@ -25,7 +26,7 @@ export async function PUT(request: Request) {
     const workspaceId = uuid.parse(new URL(request.url).searchParams.get('workspaceId'));
     const { user } = await requireWorkspace(workspaceId);
     await durableRateLimit(user.id, 'preferences', 90, 60);
-    const submitted = await readJson(request, 500_000);
+    const submitted = await readJson(request);
     const body = inputSchema.parse(submitted);
     const { data, error } = await getAdminSupabase()!.rpc('folia_save_preferences', {
       p_actor: user.id,
@@ -52,6 +53,7 @@ export async function PUT(request: Request) {
       preferences: serializePreferences(
         preferencesSchema.parse(data.preferences || body.preferences),
         supportsLearningDocument(request),
+        supportsMoodPreferences(request),
       ),
     });
   } catch (error) {

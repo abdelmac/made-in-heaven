@@ -191,6 +191,28 @@ describe('compact sync PATCH permission and version boundary', () => {
     expect((await PATCH(request(patch))).status).toBe(400);
     expect(state.rpc).not.toHaveBeenCalled();
   });
+
+  it('keeps omitted moods absent from legacy PATCH retries while validating against private history', async () => {
+    state.data!.preferences.moodEntries = [
+      {
+        date: '2026-09-13',
+        mood: 4,
+        energy: null,
+        note: 'Private',
+        updatedAt: '2026-09-13T18:00:00Z',
+      },
+    ];
+    const patch = changedTaskPatch();
+    delete (patch.metadata.preferences as Partial<typeof patch.metadata.preferences>).moodEntries;
+    const operationId = id();
+    expect((await PATCH(request(patch, 3, operationId))).status).toBe(200);
+    const first = structuredClone(state.rpc.mock.calls[0][1]);
+    expect(first.p_patch.metadata.preferences).not.toHaveProperty('moodEntries');
+    state.version = 5;
+    state.data!.preferences.moodEntries[0].note = 'Later private edit';
+    expect((await PATCH(request(patch, 3, operationId))).status).toBe(200);
+    expect(state.rpc.mock.calls[1][1]).toEqual(first);
+  });
 });
 
 describe('paged GET boundaries', () => {
@@ -213,5 +235,28 @@ describe('paged GET boundaries', () => {
     expect((await getPage('&cursor=999999&version=3')).status).toBe(400);
     vi.mocked(requireWorkspace).mockRejectedValueOnce(new HttpError(403, 'Accès refusé'));
     expect((await getPage('&cursor=0')).status).toBe(403);
+  });
+  it('omits mood metadata for existing paged clients and exposes only the requesting user preferences to capable clients', async () => {
+    state.data!.preferences.moodEntries = [
+      {
+        date: '2026-09-13',
+        mood: 4,
+        energy: 2,
+        note: 'Private',
+        updatedAt: '2026-09-13T18:00:00Z',
+      },
+    ];
+    expect((await (await getPage('&cursor=0')).json()).metadata.preferences).not.toHaveProperty(
+      'moodEntries',
+    );
+    const response = await GET(
+      new Request(
+        `http://localhost/api/sync?workspaceId=${state.data!.workspaceId}&transfer=paged&cursor=0`,
+        { headers: { 'X-Folia-Document-Version': '2', 'X-Folia-Mood-Version': '1' } },
+      ),
+    );
+    expect((await response.json()).metadata.preferences.moodEntries).toEqual(
+      state.data!.preferences.moodEntries,
+    );
   });
 });

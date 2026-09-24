@@ -236,6 +236,40 @@ describe('protected premium endpoints', () => {
       features: { teamAnalytics: true },
     });
   });
+  it('never includes private mood entries in Team analytics or workspace templates', async () => {
+    const data = fixture();
+    const filters = { workspaceId, from: '2026-10-25', to: '2026-10-25' };
+    const baseline = calculateAdvancedAnalytics(data, filters);
+    data.preferences.moodEntries = [
+      {
+        date: '2026-10-25',
+        mood: 2,
+        energy: 1,
+        note: 'PRIVATE_MOOD_NOTE_MUST_STAY_PRIVATE',
+        updatedAt: '2026-10-25T18:00:00Z',
+      },
+    ];
+    expect(calculateAdvancedAnalytics(data, filters)).toEqual(baseline);
+    mocks.read.mockResolvedValue(data);
+    const responses = [
+      await analytics(
+        new Request(
+          `http://localhost/api/analytics?workspaceId=${workspaceId}&from=2026-10-25&to=2026-10-25`,
+        ),
+      ),
+      await template(
+        new Request(
+          `http://localhost/api/templates?workspaceId=${workspaceId}&template=software-development`,
+        ),
+      ),
+    ];
+    for (const response of responses) {
+      expect(response.status).toBe(200);
+      const body = await response.text();
+      expect(body).not.toContain('moodEntries');
+      expect(body).not.toContain('PRIVATE_MOOD_NOTE_MUST_STAY_PRIVATE');
+    }
+  });
   it('rejects a filter referencing an unrelated workspace subject', async () => {
     expect(
       (

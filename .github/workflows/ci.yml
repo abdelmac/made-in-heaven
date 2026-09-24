@@ -74,7 +74,7 @@ jobs:
   deploy:
     name: Deploy production
     needs: quality
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.VERCEL_DEPLOY_ENABLED == 'true' && vars.SOLACE_BILLING_MIGRATION_0011_READY == 'true'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.VERCEL_DEPLOY_ENABLED == 'true' && vars.SOLACE_BILLING_MIGRATION_0011_READY == 'true' && vars.SOLACE_MOOD_MIGRATION_READY == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: production

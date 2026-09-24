@@ -92,4 +92,14 @@ describe('paged consistent snapshots', () => {
     await expect(fetchWorkspaceSnapshot(data.workspaceId, fetcher)).rejects.toThrow('incomplet');
     expect(() => snapshotPage(data, 100)).toThrow();
   });
+  it('requests mood capability when loading a workspace snapshot', async () => {
+    const data = createEmptyData();
+    const fetcher = vi.fn<typeof fetch>(async () =>
+      Response.json({ ...snapshotPage(data), version: 1 }),
+    );
+    await fetchWorkspaceSnapshot(data.workspaceId, fetcher);
+    const headers = new Headers(fetcher.mock.calls[0][1]?.headers);
+    expect(headers.get('X-Folia-Document-Version')).toBe('2');
+    expect(headers.get('X-Folia-Mood-Version')).toBe('1');
+  });
 });

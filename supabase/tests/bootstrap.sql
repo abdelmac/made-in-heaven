@@ -22,3 +22,4 @@ grant execute on function auth.uid(),auth.role() to anon,authenticated,service_r
 \i /workspace/migrations/0009_incremental_sync.sql
 \i /workspace/migrations/0010_pro_audio.sql
 \i /workspace/migrations/0011_billing_environment.sql
+\i /workspace/migrations/20260924215000_private_mood_preferences.sql

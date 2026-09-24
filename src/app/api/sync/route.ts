@@ -20,9 +20,13 @@ import { validateDocumentChange } from '@/lib/server/document';
 import { applyDocumentPatch, documentPatchSchema, snapshotPage } from '@/lib/sync-transfer';
 import {
   documentRpcPayload,
+  preferenceRpcPayload,
   preserveLegacyDocumentFields,
+  preserveLegacyPreferenceFields,
   serializeDocument,
+  serializePreferences,
   supportsLearningDocument,
+  supportsMoodPreferences,
 } from '@/lib/server/legacy-fields';
 
 const idSchema = z.string().uuid();
@@ -74,7 +78,14 @@ async function readDocument(workspaceId: string, userId: string) {
 
 async function clientDocument(request: Request, workspaceId: string, userId: string) {
   const snapshot = await readDocument(workspaceId, userId);
-  return { ...snapshot, data: serializeDocument(snapshot.data, supportsLearningDocument(request)) };
+  return {
+    ...snapshot,
+    data: serializeDocument(
+      snapshot.data,
+      supportsLearningDocument(request),
+      supportsMoodPreferences(request),
+    ),
+  };
 }
 
 export async function GET(request: Request) {
@@ -106,8 +117,19 @@ export async function GET(request: Request) {
           .reduce((total, items) => total + items.length, 0)
       )
         throw new HttpError(400, 'Page de synchronisation invalide.');
+      const page = snapshotPage(snapshot.data, cursor);
+      const metadata = page.metadata
+        ? {
+            ...page.metadata,
+            preferences: serializePreferences(
+              page.metadata.preferences,
+              true,
+              supportsMoodPreferences(request),
+            ),
+          }
+        : undefined;
       return NextResponse.json(
-        { ...snapshotPage(snapshot.data, cursor), version: snapshot.version },
+        { ...page, metadata, version: snapshot.version },
         { headers: { 'Cache-Control': 'private, no-store' } },
       );
     }
@@ -133,13 +155,33 @@ export async function PATCH(request: Request) {
     const workspaceId = idSchema.parse(new URL(request.url).searchParams.get('workspaceId'));
     const { user } = await requireWorkspace(workspaceId, { roles: ['owner', 'admin', 'member'] });
     await durableRateLimit(user.id, 'sync', 180, 60);
-    const body = patchBodySchema.parse(await readJson(request));
+    const submitted = await readJson(request);
+    const body = patchBodySchema.parse(submitted);
+    const rawPreferences = (submitted as { patch: { metadata: { preferences: unknown } } }).patch
+      .metadata.preferences;
+    // Preserve omissions in the immutable RPC payload; SQL fills them atomically.
+    const rpcPatch = {
+      ...body.patch,
+      metadata: {
+        ...body.patch.metadata,
+        preferences: preferenceRpcPayload(body.patch.metadata.preferences, rawPreferences),
+      },
+    };
     if (body.patch.metadata.workspaceId !== workspaceId)
       throw new HttpError(400, 'Le document appartient à un autre espace.');
     const current = await readDocument(workspaceId, user.id);
     const db = getAdminSupabase()!;
     if (current.version === body.expectedVersion) {
-      const next = applyDocumentPatch(current.data, body.patch);
+      const next = applyDocumentPatch(current.data, {
+        ...rpcPatch,
+        metadata: {
+          ...rpcPatch.metadata,
+          preferences: preserveLegacyPreferenceFields(
+            rpcPatch.metadata.preferences,
+            current.data.preferences,
+          ),
+        },
+      });
       const { data: members, error } = await db
         .from('workspace_memberships')
         .select('user_id')
@@ -156,7 +198,7 @@ export async function PATCH(request: Request) {
     const { data, error } = await db.rpc('folia_commit_patch', {
       p_actor: user.id,
       p_workspace: workspaceId,
-      p_patch: body.patch,
+      p_patch: rpcPatch,
       p_expected_version: body.expectedVersion,
       p_operation: body.operationId,
     });

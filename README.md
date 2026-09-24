@@ -6,7 +6,7 @@ L’interface est maintenant en français. La nouvelle version ajoute un premier
 objectif guidé, les tâches et séances récurrentes, l’export calendrier `.ics`,
 un bilan personnel, les invitations par e-mail facultatives et un lecteur
 d’ambiances. Consultez [les fonctionnalités et conditions d’activation](docs/product-update.md).
-Les ajouts serveur nécessitent les migrations jusqu’à `0011` avant déploiement.
+Les ajouts serveur nécessitent toutes les migrations, dont `20260924215000_private_mood_preferences.sql`, avant déploiement.
 La préparation de l’ouverture (Stripe isolé test/réel, e-mails et pages publiques)
 est décrite dans le [guide de lancement](docs/launch-runbook.md). Les ventes réelles restent fermées.
 
@@ -49,6 +49,10 @@ The activity overview has two visible buttons, **52 semaines** and **1 mois**, t
 In **Planner**, drag a scheduled session or an unplanned task onto an hour slot. Moving a session preserves its duration and task context; overlapping plans are rejected. On touch screens or with a keyboard, select **Move** (or a task) and then choose a slot. Open a session to set a precise start time or duration; drops start on the hour.
 
 ## Colors, backgrounds, notes, and flashcards
+
+**Humeur :** le suivi personnel propose un point quotidien (humeur, énergie facultative et note), un calendrier mensuel et la modification/suppression des entrées. Un raccourci est disponible sur la vue d’ensemble. Les entrées restent privées pour chaque utilisateur/espace, y compris dans une organisation et pour un membre lecteur. Elles n’ajoutent aucune activité accomplie. Le stockage reprend la synchronisation hors ligne et la gestion des conflits existantes ; voir [les limites et la compatibilité](docs/mood-storage.md).
+
+**Calendrier :** le planning propose les vues **Semaine**, **Mois** et **Agenda**, avec échéances des tâches, minutes prévues, navigation par date et détails quotidiens. Une tâche avec échéance peut être transformée en séance avec son contexte prérempli. Le glisser-déposer reste disponible en vue Semaine ; l’export `.ics` suit la période affichée.
 
 - **Free:** eight classic palettes, including blurple and charcoal, plus your own accent color. Palettes coordinate page, sidebar, surface, accent and secondary colors in light/dark mode. Custom accents are adjusted for readable text. Find these controls in **Settings → Appearance**.
 - **Pro / Team:** four gradient backgrounds or an uploaded JPG, PNG, or WebP, with dimming and blur. Background selections and custom theme edits preview immediately; use **Save background** or **Save theme** to keep them. Other preference changes preserve the preview, while leaving the editor restores saved choices. Images up to 8 MB are resized/compressed in the browser to at most 350,000 data-URL characters before storage. The background remains a private per-user preference; organization content never exposes another member's background image.
