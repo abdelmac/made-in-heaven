@@ -7,7 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Solace',
     description:
       'Votre espace serein pour vous concentrer, vous organiser et avancer à votre rythme.',
-    start_url: '/',
+    start_url: '/?view=overview',
     scope: '/',
     display: 'standalone',
     background_color: '#17181e',

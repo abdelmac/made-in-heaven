@@ -6,7 +6,10 @@ export async function GET(request: Request) {
   const code = url.searchParams.get('code');
   const tokenHash = url.searchParams.get('token_hash');
   const type = url.searchParams.get('type');
-  const next = url.searchParams.get('next') === '/?reset-password=1' ? '/?reset-password=1' : '/';
+  const next =
+    url.searchParams.get('next') === '/?reset-password=1'
+      ? '/?reset-password=1'
+      : '/?view=overview';
   const supabase = await getServerSupabase();
   if (supabase && tokenHash && (type === 'signup' || type === 'recovery' || type === 'email')) {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });

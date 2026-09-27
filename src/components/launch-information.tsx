@@ -73,12 +73,19 @@ export async function LaunchInformationPage({ page }: { page: InformationPage })
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
-        <Link href="/" className={styles.brand} aria-label="Solace, retour à l’application">
+        {/* Native navigation lets the shared root entry read its final workspace URL. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a
+          href="/?view=overview"
+          className={styles.brand}
+          aria-label="Solace, retour à l’application"
+        >
           Solace
-        </Link>
-        <Link href="/" className={styles.back}>
+        </a>
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a href="/?view=overview" className={styles.back}>
           Retour à l’application
-        </Link>
+        </a>
       </header>
       <main className={styles.main}>
         <p className={styles.eyebrow}>Informations et contact</p>

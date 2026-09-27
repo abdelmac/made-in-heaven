@@ -2,6 +2,16 @@
 
 Latest hosted verification was performed on September 22, 2026 for the new, independent `solace-hikmagitz` installation. Earlier `folia-ennearock` records are retained below; its Stripe sandbox offering does not apply to the new site.
 
+## September 27: public home page — local verification
+
+- Added a French public home page at `/`, with a simple 25-minute focus / 5-minute break timer, a three-step Pomodoro guide, workspace feature links and introductory questions. Public explanations are server-rendered and remain readable without JavaScript.
+- The practice timer uses elapsed deadlines, supports pause/resume/reset and restores from this tab's session storage after refresh. It works when browser storage is blocked. It does not create a local workspace, record focus sessions or alter an existing workspace timer.
+- Existing workspace query links, invitations, recovery, verification and checkout returns remain supported. The installed app opens `/?view=overview`; its identity stays unchanged. Workspace logos return to home, and public information pages return directly to the workspace.
+- **410 unit/server tests passed across 40 files.** Focused timer, routing, callback and public-page tests were rerun after final adjustments. Production build, TypeScript, ESLint and formatting passed. No database changes are required for this home page.
+- Browser coverage includes home navigation, paused/running timer recovery, explicit break start, blocked storage, static public HTML, active workspace timer preservation, accessibility and responsive widths of 320, 390, 768 and 1440 pixels. Desktop and mobile screenshots were inspected. Existing offline task/timer recovery, cache privacy and first-use workspace guidance also passed.
+
+This update has not been published. The deployment target ambiguity and prior mood migration requirement documented below remain unresolved; no hosted provider settings were changed.
+
 ## September 24: private mood tracker and calendar views — local verification
 
 - Added a private daily mood check-in, optional energy and short note, overview shortcut, monthly history, editing and confirmed deletion. Day boundaries use the workspace timezone; future entry creation is prevented. Entries are separate from shared events and completed focus statistics.

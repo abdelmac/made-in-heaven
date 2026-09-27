@@ -23,7 +23,9 @@ npm ci
 npm run dev
 ```
 
-Open [localhost:3000](http://localhost:3000). The clearly labeled demo contains sample subjects, tasks, and planned sessions; completed focus totals start at zero. **Start fresh** creates a separate empty local workspace. Productivity data is saved on this device; there is no automatic local-to-account upload.
+Open [localhost:3000](http://localhost:3000) for the public home page: an independent 25-minute focus / 5-minute break timer, a short Pomodoro guide, and an introduction to the workspace. This trial timer stays in the current browser tab across refreshes and does not create workspace data or count toward focus history. Choose **Ouvrir mon espace** or visit [the workspace](http://localhost:3000/?view=overview) to plan and record work. Existing `?view=…` links remain supported, and the installed app opens the workspace directly.
+
+The clearly labeled workspace demo contains sample subjects, tasks, and planned sessions; completed focus totals start at zero. **Start fresh** creates a separate empty local workspace. Productivity data is saved on this device; there is no automatic local-to-account upload.
 
 For the production build and service worker:
 

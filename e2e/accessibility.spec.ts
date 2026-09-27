@@ -3,7 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 
 test('an active timer remains reachable from secondary pages on mobile', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
+  await page.goto('/?view=overview');
   await expect(page.locator('.app-shell')).toBeVisible({ timeout: 15000 });
   await page.getByRole('button', { name: 'Commencer', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Mettre en pause', exact: true })).toBeVisible();
@@ -26,7 +26,7 @@ test('light, dark, mobile, and task dialogs meet automated accessibility checks'
 }) => {
   // Four full accessibility scans share this test's budget on slower browser hosts.
   test.setTimeout(90_000);
-  await page.goto('/');
+  await page.goto('/?view=overview');
   await expect(page.locator('.app-shell')).toBeVisible({ timeout: 15000 });
   for (const appearance of ['light', 'dark']) {
     if ((await page.locator('html').getAttribute('data-theme')) !== appearance) {

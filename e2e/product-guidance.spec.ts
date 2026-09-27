@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('French first-use flow creates one linked objective and exposes an honest personal summary', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/?view=overview');
   await expect(page.locator('html')).toHaveAttribute('lang', 'fr');
   await expect(page.locator('.app-shell')).toBeVisible();
   await page.locator('.demo-notice button').click();
@@ -25,7 +25,7 @@ test('French first-use flow creates one linked objective and exposes an honest p
   expect(data.plannedSessions).toHaveLength(1);
   expect(data.plannedSessions[0].taskId).toBe(data.tasks[0].id);
   expect(data.focusSessions).toHaveLength(0);
-  await page.goto('/');
+  await page.goto('/?view=overview');
   await expect(page.getByRole('heading', { name: 'Mon bilan', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Créer mon premier objectif' })).toHaveCount(0);
   await page

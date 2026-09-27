@@ -1,4 +1,6 @@
-import { FoliaApp } from '@/components/folia-app';
+import { HomePage } from '@/components/home-page';
+import { SiteEntry } from '@/components/site-entry';
+
 export default function Page() {
-  return <FoliaApp />;
+  return <SiteEntry home={<HomePage />} />;
 }

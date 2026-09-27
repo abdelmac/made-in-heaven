@@ -310,7 +310,11 @@ export function FoliaApp() {
       >
         <aside className="sidebar">
           <div className="sidebar-brand">
-            <Brand />
+            {/* Reload the shared root shell to leave the workspace for the public home page. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <a className="home-brand-link" href="/" aria-label="Solace — page d’accueil">
+              <Brand />
+            </a>
             <IconButton
               label={collapsed ? ui.foliaApp.expandSidebar : ui.foliaApp.collapseSidebar}
               onClick={() => setCollapsed(!collapsed)}
@@ -494,7 +498,10 @@ export function FoliaApp() {
             </div>
           </header>
           <div className="mobile-header">
-            <Brand />
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- Reload the shared root shell for home. */}
+            <a className="home-brand-link" href="/" aria-label="Solace — page d’accueil">
+              <Brand />
+            </a>
             <div className="row">
               <IconButton
                 label={ui.foliaApp.appearanceSettings}

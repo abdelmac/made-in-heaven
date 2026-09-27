@@ -13,12 +13,15 @@ for (const [route, title] of [
     await expect(page.getByRole('heading', { level: 1, name: title, exact: true })).toBeVisible();
     await expect(
       page.getByRole('link', { name: 'Retour à l’application', exact: true }),
-    ).toHaveAttribute('href', '/');
+    ).toHaveAttribute('href', '/?view=overview');
     const navigation = page.getByRole('navigation', { name: 'Informations sur Solace' });
     await expect(navigation.getByRole('link')).toHaveCount(4);
     await expect(navigation.locator('[aria-current="page"]')).toHaveAttribute('href', `/${route}`);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       320,
     );
+    await page.getByRole('link', { name: 'Retour à l’application', exact: true }).click();
+    await expect(page).toHaveURL(/\?view=overview$/);
+    await expect(page.locator('.app-shell')).toBeVisible();
   });
 }

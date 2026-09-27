@@ -9,7 +9,7 @@ test.skip(
 // Run against a production Next.js server. Development deliberately does not
 // register the service worker, because development assets change continuously.
 async function prepareOffline(page: Page) {
-  await page.goto('/');
+  await page.goto('/?view=overview');
   await expect(page.locator('.app-shell')).toBeVisible();
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready;

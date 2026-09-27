@@ -4,7 +4,7 @@ import { en } from '../src/lib/i18n/en';
 test('ambient preview plays deliberately, survives navigation, pauses for breaks and remembers controls', async ({
   page,
 }) => {
-  await page.goto('/');
+  await page.goto('/?view=overview');
   const player = page
     .locator('details')
     .filter({ has: page.locator('summary', { hasText: 'Ambiances audio' }) });

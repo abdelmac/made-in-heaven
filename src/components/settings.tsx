@@ -822,6 +822,7 @@ export function AccountPanel() {
         setMode('signIn');
         const url = new URL(window.location.href);
         url.searchParams.delete('reset-password');
+        if (!url.searchParams.has('view')) url.searchParams.set('view', 'overview');
         window.history.replaceState(null, '', url);
         await store.refreshAccount();
       } else {

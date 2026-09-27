@@ -28,7 +28,7 @@ describe('launch information pages', () => {
       const html = renderToStaticMarkup(await LaunchInformationPage({ page }));
       expect(html).toContain('Informations en préparation');
       expect(html).toContain('Cette page est provisoire');
-      expect(html).toContain('href="/"');
+      expect(html).toContain('href="/?view=overview"');
       expect(html).toContain('Retour à l’application');
       for (const route of ['legal', 'privacy', 'terms', 'support']) {
         expect(html).toContain(`href="/${route}"`);
