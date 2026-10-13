@@ -1,6 +1,16 @@
 # Verification record
 
-Latest hosted verification was performed on September 22, 2026 for the new, independent `solace-hikmagitz` installation. Earlier `folia-ennearock` records are retained below; its Stripe sandbox offering does not apply to the new site.
+Latest hosted verification was performed on October 5, 2026 for the independent `solace-hikmagitz` installation and its custom domain. The latest database audit remains September 22. Earlier `folia-ennearock` records are retained below; its Stripe sandbox offering does not apply to the new site.
+
+## October 5: custom-domain origin correction — hosted verification
+
+- Verified that `www.solace-pomodoro.com` serves `hikmagitzs-projects/solace-hikmagitz` and that the local Vercel link now points to that same project. The homepage, overview, mood page and settings loaded in a fresh signed-out browser without page errors; the earlier deployment-target ambiguity is resolved.
+- Reproduced `403 {"error":"Cette demande doit provenir de Solace."}` using the custom-domain origin. The same deliberately incomplete, unauthenticated request passed the origin check when sent with the old `https://solace-hikmagitz.vercel.app` origin. Production `NEXT_PUBLIC_APP_URL` still contained that old hostname.
+- Updated only that non-secret Production variable to `https://www.solace-pomodoro.com` and rebuilt the already-live deployment `dpl_8vK4fxF7ff1PmMdCkrfppR6VNQLD`. Replacement `dpl_EUfmpu5xrWUcfGrsGbB2SNB6Dt1C` reached Ready and was aliased to the custom domain. Application source and origin protection were unchanged.
+- After publication, the canonical-origin probe reached input validation (`400`, expected for a missing workspace ID). Old-host, unrelated-origin and missing-origin probes remained `403`, and an explicit cross-site request remained `403`. A valid-shaped workspace ID without a session returned `401`, confirming authentication is still required. None of these probes can write data.
+- A real browser request from the custom domain also passed the origin check. The public timer started and paused at `24:59`, and its workspace link opened the overview without page exceptions.
+
+This correction did not modify database records, migrations, account settings, billing or email providers. Authenticated saving and hosted mood migration readiness were not verified in this run. Earlier local-only publication statements below describe their dated checks, not the current hosting state.
 
 ## September 27: public home page — local verification
 

@@ -10,3 +10,6 @@ coverage/
 .local/
 .vercel/
 supabase/.temp/
+
+.vercel
+.env*

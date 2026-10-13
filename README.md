@@ -150,15 +150,17 @@ Observed executions and exact test results are recorded in [docs/verification.md
 
 ## Deployment and current limits
 
-The new public deployment is [solace-hikmagitz.vercel.app](https://solace-hikmagitz.vercel.app), hosted in `hikmagitzs-projects/solace-hikmagitz` and connected to the separate **Solace Hikmagitz** Supabase project (`zwgjauskorkpucuaqvgs`, Paris, Free plan). All eleven migrations are applied; `0011` was added on September 22 with the binding kept at `test/NULL` and the two existing accounts/workspaces preserved. The new launch application code has not yet been redeployed. Stripe and invitation-email credentials are not configured; the connected workspace uses Free and the paid audio catalog is empty. Authentication confirmation remains required; configure custom SMTP before opening public email registration. See [the installation record](docs/installation-hikmagitz.md) and [launch runbook](docs/launch-runbook.md).
+The public production site is [www.solace-pomodoro.com](https://www.solace-pomodoro.com), hosted in `hikmagitzs-projects/solace-hikmagitz` and connected to the separate **Solace Hikmagitz** Supabase project (`zwgjauskorkpucuaqvgs`, Paris, Free plan). The homepage and mood interface were verified live on October 5. Production `NEXT_PUBLIC_APP_URL` must be `https://www.solace-pomodoro.com`: keeping the old Vercel hostname causes the server's origin check to reject saves from the custom domain. Changes to this setting require a new deployment.
+
+The last database audit on September 22 confirmed migrations through `0011`, with the billing binding kept at `test/NULL` and existing accounts/workspaces preserved. The October 5 origin correction did not verify or apply the later mood migration, or retest authenticated cloud saves. Stripe and invitation-email credentials remain absent from the production configuration. See [the verification record](docs/verification.md), [installation record](docs/installation-hikmagitz.md) and [launch runbook](docs/launch-runbook.md) for the scope of hosted checks.
 
 The earlier `ennearock/folia-ennearock` deployment, its Supabase database and its Stripe configuration were not modified or copied. Its historical checks below do not describe the new installation.
 
 To deploy this checkout again using the authorized Vercel account:
 
 ```bash
-npx vercel@59.19.0 link --yes --project solace-hikmagitz --scope hikmagitzs-projects
-npx vercel@59.19.0 deploy --prod --yes --scope hikmagitzs-projects --logs
+npx vercel@59.25.4 link --yes --project solace-hikmagitz --scope hikmagitzs-projects
+npx vercel@59.25.4 deploy --prod --yes --scope hikmagitzs-projects --logs
 ```
 
 The first deployment used the CLI because Vercel could not obtain write/admin access to the configured GitHub repository. A GitHub Actions workflow now runs the quality checks and can deploy successful main-branch builds after the Vercel secrets and enable flag are configured; follow [the automation guide](docs/development-automation.md). Its presence does not connect or configure the hosted accounts. `.vercelignore` excludes local environment files, generated builds, test artifacts, and local scratch files from deployment uploads; Vercel project linkage stays outside Git.
