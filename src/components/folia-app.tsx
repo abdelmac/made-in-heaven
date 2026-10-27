@@ -54,6 +54,11 @@ import { WorkSummary } from './work-summary';
 import { FocusAudioPlayer } from './focus-audio-player';
 import { MoodOverview, MoodPage } from './mood';
 import { moodCopy } from '@/lib/i18n/mood';
+import { appFetch } from '@/lib/app-fetch';
+import { isMobileBuild } from '@/lib/mobile-platform';
+import { workspaceStorage } from '@/lib/workspace-storage';
+import { MobileLifecycle } from './mobile-lifecycle';
+import { NativeLinks } from './native-links';
 
 const navigation = [
   { id: 'overview', Icon: LayoutDashboard },
@@ -98,6 +103,7 @@ export function FoliaApp() {
   const [more, setMore] = useState(false);
   const [help, setHelp] = useState(false);
   const [account, setAccount] = useState(false);
+  const [accountRevision, setAccountRevision] = useState(0);
   const [timerSheet, setTimerSheet] = useState(false);
   const [reflectionSessionId, setReflectionSessionId] = useState<string | null>(null);
   const [noteEditor, setNoteEditor] = useState<{ sessionId: string; subjectId?: string } | null>(
@@ -188,7 +194,7 @@ export function FoliaApp() {
     apply();
     media.addEventListener('change', apply);
     try {
-      localStorage.setItem(
+      workspaceStorage.setItem(
         'folia.appearance',
         JSON.stringify({
           mode: p.appearance,
@@ -209,7 +215,7 @@ export function FoliaApp() {
     return () => media.removeEventListener('change', apply);
   }, [store.ready, store.data.preferences, store.workspaceId]);
   useEffect(() => {
-    if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
+    if (process.env.NODE_ENV === 'production' && !isMobileBuild() && 'serviceWorker' in navigator) {
       void navigator.serviceWorker
         .register('/sw.js')
         .catch(() => notify(ui.foliaApp.offlineInstallationIsUnavailableInThisBrowserYourWork));
@@ -259,7 +265,10 @@ export function FoliaApp() {
     openTask,
     openSubject,
     openPlan,
-    openAccount: () => setAccount(true),
+    openAccount: () => {
+      setAccountRevision((revision) => revision + 1);
+      setAccount(true);
+    },
   };
   const saveLabel =
     store.saveStatus === 'saved'
@@ -302,6 +311,8 @@ export function FoliaApp() {
     );
   return (
     <AppContext.Provider value={context}>
+      <MobileLifecycle />
+      <NativeLinks />
       <a className="skip-link" href="#main-content">
         {ui.foliaApp.skipToContent}
       </a>
@@ -766,7 +777,7 @@ export function FoliaApp() {
       )}
       {account && (
         <Dialog wide title={ui.foliaApp.yourFoliaAccount} onClose={() => setAccount(false)}>
-          <AccountPanel />
+          <AccountPanel key={accountRevision} />
         </Dialog>
       )}
       {more && (
@@ -831,7 +842,7 @@ export function FoliaApp() {
             <Button
               onClick={async () => {
                 try {
-                  const response = await fetch('/api/workspaces', {
+                  const response = await appFetch('/api/workspaces', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'acceptInvite', token: invite }),

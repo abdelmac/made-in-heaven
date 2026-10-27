@@ -111,11 +111,13 @@ test('a completed focus can produce a subject-linked reflection without a task',
     .click();
   await page.getByRole('spinbutton', { name: 'Concentration (minutes)', exact: true }).fill('1');
   await page.getByRole('button', { name: 'Enregistrer les modifications', exact: true }).click();
+  await expect.poll(async () => (await data(page)).preferences.focusMinutes).toBe(1);
   await open(page, 'subjects');
   const subjectCard = page
     .locator('.subject-card')
     .filter({ has: page.getByRole('button', { name: 'Design produit', exact: true }) });
   await subjectCard.getByRole('button', { name: 'Concentration', exact: true }).click();
+  await expect.poll(async () => (await data(page)).timer.status).toBe('running');
   await page.clock.fastForward(61_000);
   await expect
     .poll(

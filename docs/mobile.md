@@ -1,0 +1,214 @@
+# Solace mobile apps
+
+The mobile client reuses Solace’s React workspace and bundles it with Capacitor 8.
+Its pages, fonts and local workspace are available without downloading the website.
+The Next.js server and its database remain hosted separately.
+
+Both native projects use **`com.solace.pomodoro`** as the app identifier. The iOS
+project is `ios/App/App.xcodeproj`; the Android project is `android/`. The registered
+authentication callback is **`com.solace.pomodoro://auth/callback`**.
+
+## Build and preview commands
+
+Run these commands from the repository root after `npm ci`:
+
+| Command                  | Purpose                                                                  |
+| ------------------------ | ------------------------------------------------------------------------ |
+| `npm run mobile:dev`     | Start the mobile interface development server on port 5173.              |
+| `npm run mobile:build`   | Produce the bundled client in `mobile/dist`.                             |
+| `npm run mobile:preview` | Serve that built interface on port 4173 for browser inspection.          |
+| `npm run test:mobile`    | Run the separate browser suite against the built mobile interface.       |
+| `npm run mobile:sync`    | Rebuild the interface and sync native plugins/assets into both projects. |
+| `npm run mobile:doctor`  | Check the local Android toolchain and report iOS availability.           |
+| `npm run mobile:apk`     | Rebuild, sync and compile an Android debug APK.                          |
+| `npm run mobile:android` | Sync and open the Android project in Android Studio.                     |
+| `npm run mobile:ios`     | Sync and open the iOS project in Xcode on macOS.                         |
+| `npm run mobile:assets`  | Regenerate mobile Solace icons, launch images and timer sound.           |
+
+The browser preview checks layout and ordinary local interactions. It does not
+exercise native plugins, mobile session storage, notification delivery or native
+API authentication; use installed phone builds for those checks.
+
+The dedicated browser suite also contains a deterministic Capacitor bridge fixture
+with mocked preferences, secure storage, authentication and API responses. It
+checks the real bundled JavaScript’s native startup, isolated session storage,
+bearer requests and restoration after reload. These fixtures do not establish
+actual device encryption, native notification delivery or hosted account sync.
+The mocked sign-in scenario needs public Supabase configuration in the bundle and
+is skipped when that configuration is absent; all provider requests in that
+scenario are intercepted.
+
+## Android development on Windows
+
+Use JDK 21, Android SDK platform 36 and build-tools 36.0.0. An existing installation
+can be selected with `JAVA_HOME` and `ANDROID_HOME` or `ANDROID_SDK_ROOT` for the
+current terminal. Android Studio’s SDK Manager can install the required packages.
+The app supports **Android 8.0/API 26 and later**, with compile/target SDK 36.
+
+The repository also provides `scripts/setup-android-tools.ps1`. It downloads a
+portable JDK and the official Android command-line tools under
+`.local/mobile-tools`, verifies archive checksums and installs the SDK packages.
+Review and agree to the Android SDK license terms before using its
+`-AcceptLicenses` option:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/setup-android-tools.ps1 -AcceptLicenses
+npm run mobile:doctor
+npm run mobile:apk
+```
+
+The doctor and APK runner discover that portable JDK/SDK automatically. The runner
+sets paths only for its child processes; it does not change machine environment
+variables. Gradle caches and Android user files are placed under
+`.local/mobile-tools`. The SDK location written to `android/local.properties` is a
+local ignored file and must not be committed.
+
+Android's FileProvider exposes only app-private `Cache/exports/` for exports and
+the app's external-files `Pictures/` folder used by the standard camera chooser.
+It does not expose a cache root, external-files root, external-storage root or
+filesystem root. Device backup is disabled for the app's private workspace files.
+
+On success the APK is available at:
+
+- `android/app/build/outputs/apk/debug/app-debug.apk`
+- `.local/exports/solace-debug.apk`
+
+The script reports success only after Gradle produces the APK. This is a debug
+build for testing, not a signed Google Play release. A freshly synced build can
+be compiled again with `npm run mobile:apk -- --skip-sync`; omit that option after
+changing client code, configuration or plugins.
+The final October 27 debug APK compiled successfully and its package identifier,
+SDK levels and v2 debug signature were verified. Its size and checksum are in the
+[verification record](verification.md).
+
+Enable USB debugging on an Android test phone and use Android Studio’s device
+installer, or run `adb install -r .local/exports/solace-debug.apk` using the selected
+SDK’s `platform-tools/adb` executable. An emulator also needs a separately installed
+system image; the portable setup does not install one.
+
+## iOS development
+
+The iOS project uses Swift Package Manager. Compiling, running or archiving it
+requires macOS and Xcode 26 or later; Windows can prepare the source and bundled
+assets but cannot validate an iOS binary. On the Mac, install dependencies, run
+`npm run mobile:ios`, select your Apple developer team and a test device in Xcode,
+then build and run. Keep release signing keys and provisioning information out of Git.
+
+## Hosted backend and authentication
+
+The updated Next.js backend was deployed to `https://www.solace-pomodoro.com` and
+its native API transport checks passed on October 27. Deploy the same updated
+backend before targeting another environment with a connected native account. It
+includes exact native-origin CORS handling for `capacitor://localhost` on iOS and
+`https://localhost` on Android. Installed clients authenticate with their own
+verified bearer token; they do not reuse website cookies. Browser requests retain
+the existing same-origin checks and cookie authentication.
+Each mobile-facing API route owns its CORS response wrapper and explicit
+`OPTIONS` handler. Proxy is retained as defense in depth, but it is not the CORS
+or authentication security boundary: the initial Next.js/Vercel integration check
+showed that Proxy alone did not attach the required headers. The route-level
+integration tests exercise actual HTTP responses, including authorization errors.
+
+The default API origin is `https://www.solace-pomodoro.com`. To target a separate
+HTTPS staging backend, set `SOLACE_MOBILE_API_ORIGIN` before building; use a bare
+origin without a path, query or fragment. The mobile build only includes the
+explicitly selected public application/Supabase settings. Private server keys and
+payment secrets must stay on the hosted server.
+
+Configure the public Supabase URL and publishable key with the usual
+`NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` environment
+variables before building. An ignored `.local/mobile-public.json` may alternatively
+provide the `supabaseUrl` and `supabaseKey` fields; explicit environment variables
+take precedence. This file is for public client configuration only and must never
+contain a service-role key, database password or other server credential. When no
+public Supabase configuration is supplied, the client remains usable locally and
+its account sign-in form is unavailable.
+
+To reuse the current hosted project's public connection settings without
+downloading its server credentials into a local environment file, the following
+workflow was verified with Vercel CLI 59.25.4:
+
+```powershell
+npx.cmd vercel@59.25.4 env run -e production --project solace-hikmagitz --scope hikmagitzs-projects -- node scripts/capture-mobile-public.mjs
+npm run mobile:build
+npm run mobile:sync
+```
+
+The capture helper saves only the public Supabase URL and publishable/anon key in
+ignored `.local/mobile-public.json`. The mobile environment loader reuses the
+`invalidSupabaseVariables` credential guard before bundling; it rejects a secret
+or service-role key in either public key setting. Recreate the public configuration
+on another development machine because this file is not committed.
+
+In the matching Supabase project, add
+`com.solace.pomodoro://auth/callback` to **Authentication → URL Configuration →
+Redirect URLs**. Adding a native scheme to this codebase does not update the hosted
+allowlist. Use PKCE confirmation/recovery links; the native handler accepts the
+exact callback and exchanges a code or supported token hash rather than accepting
+arbitrary access-token fragments. Verify signup confirmation and password recovery
+on the same installation that started the flow. Keep the existing website callback
+available for website users.
+The hosted redirect allowlist was not changed during this implementation; its
+configuration and real-device email flows still need verification.
+The Supabase plugin was not connected and no Management API access was available,
+so this must be completed in the matching project's dashboard or through a
+connected management tool. Password sign-in, session persistence and callback
+validation have implementation/fixture coverage; actual installed-app account
+authentication and cloud saves have not been verified.
+
+Native refresh tokens are held in encrypted Android Keystore/iOS Keychain storage.
+Workspace documents, appearance and pending sync state use app-private native
+Preferences storage. They remain scoped by user and workspace. Native persistence
+does not import or upload a browser’s existing local workspace automatically.
+
+Native exports use a separate UUID folder for every handoff under the app-private
+`Cache/exports/` directory. Files remain available after the share sheet resolves
+because a receiving app can read the granted URI afterward. On app startup and
+before a later export, cleanup removes only validated export UUID directories
+older than 24 hours, using fresh filesystem metadata and skipping active handoffs.
+The original JSON/ICS filename is preserved inside its unique folder. This
+handoff behavior has regression coverage but has not been tested with recipients
+on a physical phone.
+
+## Device verification
+
+Before treating either platform as ready, test these behaviors on an installed app:
+
+1. Start a timer, lock the phone and background the app. Return after the deadline
+   and confirm one completed session with the expected context.
+2. Enable notifications explicitly in Settings. Confirm sound/silent preferences,
+   pause/reset cancellation and notification behavior after restarting the app.
+   Android exact-alarm access is optional and controlled in system settings;
+   without it the operating system may delay reminders.
+3. Create local work, close and reopen the app, then repeat in airplane mode.
+   Reconnect and verify the pending changes reach the correct account/workspace.
+4. Sign in, sign out, switch workspaces and complete valid/expired confirmation and
+   recovery links. Confirm another account cannot access the first account’s data.
+5. Export JSON/history/flashcards/ICS using the system share sheet, cancel a share,
+   import a backup and choose a background image. External resources and policy
+   pages should open in the system browser while workspace links stay in Solace.
+6. Test the on-screen keyboard, Android Back button, safe areas, larger text,
+   accessibility and both appearances on small and large phones.
+
+Focus audio currently uses foreground web audio. A background-audio service,
+lock-screen media controls and reliable playback while suspended are not part of
+this mobile implementation.
+
+The local verification record is in [verification.md](verification.md). Browser
+bridge fixtures test the bundled native branches using mocked plugins; an APK
+compile proves Android source/build integration. Neither replaces installed-device
+checks of notification delivery, OS suspension, encryption, file recipients or
+authenticated hosted saves. The iOS source and seven native plugins were generated
+and synced, but no Xcode compile or iOS device execution was performed on Windows.
+
+## Work after this mobile development step
+
+Native paid purchases are intentionally unavailable in this version. The mobile
+offer screen shows verified account access without sending people to Stripe
+Checkout or its customer portal. StoreKit/Google Play Billing, purchase restoration
+and verified store entitlement handling remain a separate implementation step.
+
+Store-ready account deletion, final privacy/support documents and disclosures,
+release signing, store screenshots, TestFlight/Play testing and review submission
+also remain separate launch work. Creating these native projects does not complete
+those steps or publish either app to a store.

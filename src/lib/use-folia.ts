@@ -48,6 +48,11 @@ import { findOverlap } from './calendar';
 import type { Entitlements } from './billing/entitlements';
 import { fetchWorkspaceSnapshot, makeDocumentPatch, syncCapabilityHeaders } from './sync-transfer';
 import { localizeError } from './i18n/errors';
+import { appFetch } from './app-fetch';
+import { isNativeApp } from './mobile-platform';
+import { requestNativeNotifications } from './native-notifications';
+import { exportTextFile } from './mobile-files';
+import { workspaceStorage } from './workspace-storage';
 
 export type WorkspaceSummary = {
   icon?: string;
@@ -96,7 +101,7 @@ function fetchFoliaApi(input: string, init: RequestInit = {}) {
     if (workspace)
       return fetchWorkspaceSnapshot(workspace).then((snapshot) => Response.json(snapshot));
   }
-  return fetch(input, { ...init, headers });
+  return appFetch(input, { ...init, headers });
 }
 
 export function useFolia() {
@@ -168,7 +173,7 @@ export function useFolia() {
         operation.kind !== 'preferences' &&
         new TextEncoder().encode(requestBody).length > 450_000
       ) {
-        const cached = localStorage.getItem(transferKey);
+        const cached = workspaceStorage.getItem(transferKey);
         const cachedBody = cached ? JSON.parse(cached) : null;
         if (
           cachedBody?.operationId === operation.id &&
@@ -197,7 +202,7 @@ export function useFolia() {
             expectedVersion: operation.expectedVersion,
             operationId: operation.id,
           });
-          localStorage.setItem(transferKey, requestBody);
+          workspaceStorage.setItem(transferKey, requestBody);
         }
         method = 'PATCH';
       }
@@ -244,7 +249,7 @@ export function useFolia() {
         );
       const committedVersion = body.committedVersion ?? body.version;
       serverVersion.current = committedVersion;
-      localStorage.setItem(
+      workspaceStorage.setItem(
         `${storageKey(currentWorkspace, account.id)}:serverVersion`,
         String(committedVersion),
       );
@@ -254,8 +259,8 @@ export function useFolia() {
           : undefined,
       );
       if (token !== generation.current) return;
-      if (method === 'PATCH' && localStorage.getItem(transferKey) === requestBody)
-        localStorage.removeItem(transferKey);
+      if (method === 'PATCH' && workspaceStorage.getItem(transferKey) === requestBody)
+        workspaceStorage.removeItem(transferKey);
       const pending = readPending(account.id, currentWorkspace);
       if (!pending) {
         setSaveStatus('saved');
@@ -290,7 +295,7 @@ export function useFolia() {
       try {
         const cached = loadLocal(key);
         localVersion.current = cached?.version || 0;
-        serverVersion.current = Number(localStorage.getItem(`${key}:serverVersion`) || 0);
+        serverVersion.current = Number(workspaceStorage.getItem(`${key}:serverVersion`) || 0);
         const initial =
           cached?.data ||
           (nextWorkspace === DEMO_WORKSPACE_ID && !account
@@ -302,7 +307,7 @@ export function useFolia() {
         }
         publish(initial);
         setReady(true);
-        localStorage.setItem(
+        workspaceStorage.setItem(
           account ? `${STORAGE_PREFIX}active:${account.id}` : LOCAL_POINTER,
           nextWorkspace,
         );
@@ -352,7 +357,7 @@ export function useFolia() {
           }
           const saved = saveLocal(key, remote, latest?.version || 0);
           localVersion.current = saved.version;
-          localStorage.setItem(`${key}:serverVersion`, String(body.version));
+          workspaceStorage.setItem(`${key}:serverVersion`, String(body.version));
           publish(remote);
         });
         if (token === generation.current)
@@ -374,19 +379,20 @@ export function useFolia() {
   const refreshAccount = useCallback(async () => {
     const supabase = createBrowserSupabase();
     if (!supabase) {
-      const active = localStorage.getItem(LOCAL_POINTER) || DEMO_WORKSPACE_ID;
+      const active = workspaceStorage.getItem(LOCAL_POINTER) || DEMO_WORKSPACE_ID;
       workspacesRef.current = [localWorkspace(active)];
       setWorkspaces(workspacesRef.current);
       await switchRef.current(active, null);
       return;
     }
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
       if (!sessionData.session) {
         if (accountRef.current) clearAccountCache(accountRef.current.id);
         accountRef.current = null;
         setUser(null);
-        const active = localStorage.getItem(LOCAL_POINTER) || DEMO_WORKSPACE_ID;
+        const active = workspaceStorage.getItem(LOCAL_POINTER) || DEMO_WORKSPACE_ID;
         workspacesRef.current = [localWorkspace(active)];
         setWorkspaces(workspacesRef.current);
         await switchRef.current(active, null);
@@ -397,7 +403,7 @@ export function useFolia() {
         email: sessionData.session.user.email,
       };
       if (!navigator.onLine) {
-        const cachedWorkspaces = localStorage.getItem(
+        const cachedWorkspaces = workspaceStorage.getItem(
           `${STORAGE_PREFIX}account:${sessionAccount.id}:workspaces`,
         );
         if (!cachedWorkspaces)
@@ -405,7 +411,7 @@ export function useFolia() {
             'Connect once to cache your permitted workspaces before using this account offline.',
           );
         const cached = JSON.parse(cachedWorkspaces) as WorkspaceSummary[];
-        const previous = localStorage.getItem(`${STORAGE_PREFIX}active:${sessionAccount.id}`);
+        const previous = workspaceStorage.getItem(`${STORAGE_PREFIX}active:${sessionAccount.id}`);
         const selected = cached.find((item) => item.id === previous) || cached[0];
         if (!selected) throw new Error('No cached workspace is available for this account.');
         accountRef.current = sessionAccount;
@@ -426,11 +432,11 @@ export function useFolia() {
       setUser(account);
       workspacesRef.current = body.workspaces;
       setWorkspaces(body.workspaces);
-      localStorage.setItem(
+      workspaceStorage.setItem(
         `${STORAGE_PREFIX}account:${account.id}:workspaces`,
         JSON.stringify(body.workspaces),
       );
-      const previous = localStorage.getItem(`${STORAGE_PREFIX}active:${account.id}`);
+      const previous = workspaceStorage.getItem(`${STORAGE_PREFIX}active:${account.id}`);
       const selected =
         body.workspaces.find((item: WorkspaceSummary) => item.id === previous) ||
         body.workspaces[0];
@@ -529,14 +535,14 @@ export function useFolia() {
                 key,
                 next,
                 localVersion.current,
-                localStorage,
+                workspaceStorage,
                 id(),
                 account
                   ? {
                       expectedVersion:
                         existing?.expectedVersion ??
                         Number(
-                          localStorage.getItem(`${key}:serverVersion`) || serverVersion.current,
+                          workspaceStorage.getItem(`${key}:serverVersion`) || serverVersion.current,
                         ),
                       createdAt: new Date().toISOString(),
                       kind: candidateKind,
@@ -591,7 +597,12 @@ export function useFolia() {
     void refreshAccount();
     const supabase = createBrowserSupabase();
     const subscription = supabase?.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED')
+      if (
+        event === 'SIGNED_IN' ||
+        event === 'SIGNED_OUT' ||
+        event === 'USER_UPDATED' ||
+        event === 'PASSWORD_RECOVERY'
+      )
         setTimeout(() => void refreshAccount(), 0);
     });
     const onStorage = (event: StorageEvent) => {
@@ -599,7 +610,7 @@ export function useFolia() {
       if ((event.key !== key && event.key !== `${key}:serverVersion`) || !event.newValue) return;
       try {
         if (accountRef.current)
-          serverVersion.current = Number(localStorage.getItem(`${key}:serverVersion`) || 0);
+          serverVersion.current = Number(workspaceStorage.getItem(`${key}:serverVersion`) || 0);
         if (conflictRef.current) return;
         const saved = loadLocal(key);
         if (saved && saved.version > localVersion.current) {
@@ -624,14 +635,20 @@ export function useFolia() {
       void syncRef.current();
     };
     const offline = () => setSaveStatus('offline');
+    const storageFailure = () => {
+      setError('La sauvegarde sur cet appareil a échoué. Gardez Solace ouvert et réessayez.');
+      setSaveStatus('failed');
+    };
     window.addEventListener('storage', onStorage);
     window.addEventListener('online', reconnect);
     window.addEventListener('offline', offline);
+    window.addEventListener('solace:storage-error', storageFailure);
     return () => {
       subscription?.data.subscription.unsubscribe();
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('online', reconnect);
       window.removeEventListener('offline', offline);
+      window.removeEventListener('solace:storage-error', storageFailure);
     };
   }, [publish, refreshAccount]);
 
@@ -651,7 +668,7 @@ export function useFolia() {
           .then((saved) => {
             if (!saved) return;
             const preferences = dataRef.current.preferences;
-            if (preferences.sound) {
+            if (preferences.sound && !(isNativeApp() && preferences.notifications)) {
               try {
                 const audio = new AudioContext();
                 const oscillator = audio.createOscillator();
@@ -669,6 +686,7 @@ export function useFolia() {
               }
             }
             if (
+              !isNativeApp() &&
               preferences.notifications &&
               'Notification' in window &&
               Notification.permission === 'granted'
@@ -742,7 +760,7 @@ export function useFolia() {
             const saved = saveLocal(key, remote, current?.version || 0);
             localVersion.current = saved.version;
             serverVersion.current = body.version;
-            localStorage.setItem(`${key}:serverVersion`, String(body.version));
+            workspaceStorage.setItem(`${key}:serverVersion`, String(body.version));
             publish(remote);
           });
           if (token === generation.current)
@@ -780,7 +798,7 @@ export function useFolia() {
             if (account)
               serverVersion.current =
                 readPending(account.id, workspaceRef.current)?.expectedVersion ??
-                Number(localStorage.getItem(`${key}:serverVersion`) || 0);
+                Number(workspaceStorage.getItem(`${key}:serverVersion`) || 0);
             publish(saved.data);
           });
           if (token !== generation.current) return;
@@ -859,13 +877,13 @@ export function useFolia() {
               ? current.version
               : account
                 ? (readPending(account.id, workspaceRef.current)?.expectedVersion ??
-                  Number(localStorage.getItem(`${key}:serverVersion`) || serverVersion.current))
+                  Number(workspaceStorage.getItem(`${key}:serverVersion`) || serverVersion.current))
                 : 0;
           const saved = saveLocal(
             key,
             next,
             loadLocal(key)?.version || 0,
-            localStorage,
+            workspaceStorage,
             id(),
             account && choice === 'local'
               ? {
@@ -878,8 +896,8 @@ export function useFolia() {
           localVersion.current = saved.version;
           if (account) {
             serverVersion.current = baseVersion;
-            localStorage.setItem(`${key}:serverVersion`, String(baseVersion));
-            localStorage.removeItem(pendingKey(account.id, workspaceRef.current));
+            workspaceStorage.setItem(`${key}:serverVersion`, String(baseVersion));
+            workspaceStorage.removeItem(pendingKey(account.id, workspaceRef.current));
           }
           publish(next);
         });
@@ -897,12 +915,11 @@ export function useFolia() {
 
   const exportData = useCallback(() => {
     const raw = serializeExport(conflictRef.current?.localData || dataRef.current);
-    const url = URL.createObjectURL(new Blob([raw], { type: 'application/json' }));
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `solace-${new Date().toISOString().slice(0, 10)}.json`;
-    anchor.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    void exportTextFile(
+      `solace-${new Date().toISOString().slice(0, 10)}.json`,
+      raw,
+      'application/json',
+    ).catch(() => setError('Le fichier n’a pas pu être exporté. Réessayez depuis les réglages.'));
     return raw;
   }, []);
   const inspectImport = useCallback((raw: string) => {
@@ -954,7 +971,7 @@ export function useFolia() {
     return true;
   }, [selectWorkspace]);
   const importLocalData = useCallback(async () => {
-    const localId = localStorage.getItem(LOCAL_POINTER) || DEMO_WORKSPACE_ID;
+    const localId = workspaceStorage.getItem(LOCAL_POINTER) || DEMO_WORKSPACE_ID;
     const cached = loadLocal(storageKey(localId));
     if (!cached) {
       setError('There is no local productivity data to import.');
@@ -963,6 +980,25 @@ export function useFolia() {
     return inspectImport(serializeExport(cached.data));
   }, [inspectImport]);
   const requestNotifications = useCallback(async () => {
+    if (isNativeApp()) {
+      try {
+        const result = await requestNativeNotifications();
+        if (!result.granted) {
+          setError(
+            result.message || 'Autorisez les notifications dans les réglages de votre appareil.',
+          );
+          return false;
+        }
+        const saved = await update((draft) => {
+          draft.preferences.notifications = true;
+        });
+        if (saved && result.message) setError(result.message);
+        return saved;
+      } catch {
+        setError('Les notifications ne sont pas disponibles. Le minuteur reste utilisable.');
+        return false;
+      }
+    }
     if (!('Notification' in window)) {
       setError(
         'This browser does not support notifications. You can use the completion sound instead.',

@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireWorkspace, durableRateLimit } from '@/lib/server/auth';
@@ -15,7 +16,7 @@ import { getPortalConfiguration } from '@/lib/billing/portal';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     assertSameOrigin(request);
     const { workspaceId } = z
@@ -52,3 +53,6 @@ export async function POST(request: Request) {
     return handleApiError(error);
   }
 }
+
+export const POST = withNativeApiCors(handlePOST);
+export const OPTIONS = nativeApiOptions;

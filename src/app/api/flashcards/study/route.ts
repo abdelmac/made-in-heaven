@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { assertWorkspaceFeature } from '@/lib/billing/server';
@@ -13,7 +14,7 @@ const studyDocumentSchema = z.object({
   flashcardDecks: z.array(flashcardDeckSchema).default([]),
   flashcards: z.array(flashcardSchema).default([]),
 });
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const query = querySchema.parse(Object.fromEntries(new URL(request.url).searchParams));
     const { supabase, user } = await requireWorkspace(query.workspaceId);
@@ -45,3 +46,6 @@ export async function GET(request: Request) {
     return handleApiError(error);
   }
 }
+
+export const GET = withNativeApiCors(handleGET);
+export const OPTIONS = nativeApiOptions;

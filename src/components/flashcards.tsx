@@ -1,4 +1,6 @@
 'use client';
+import { appFetch } from '@/lib/app-fetch';
+import { exportTextFile } from '@/lib/mobile-files';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { BookOpen, Download, Layers, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useApp } from './app-context';
@@ -226,7 +228,7 @@ function DeckReader({
     const controller = new AbortController();
     studyRequest.current = controller;
     try {
-      const response = await fetch(
+      const response = await appFetch(
         `/api/flashcards/study?workspaceId=${encodeURIComponent(store.workspaceId)}&deckId=${encodeURIComponent(deck.id)}`,
         { cache: 'no-store', signal: controller.signal },
       );
@@ -245,30 +247,27 @@ function DeckReader({
       if (!controller.signal.aborted) setLoading(false);
     }
   }
-  function exportDeck() {
-    const url = URL.createObjectURL(
-      new Blob(
-        [
-          JSON.stringify(
-            {
-              format: 'folia-flashcards',
-              schemaVersion: 1,
-              exportedAt: new Date().toISOString(),
-              deck,
-              cards,
-            },
-            null,
-            2,
-          ),
-        ],
-        { type: 'application/json' },
-      ),
-    );
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'solace-cartes-memoire.json';
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  async function exportDeck() {
+    try {
+      await exportTextFile(
+        'solace-cartes-memoire.json',
+        JSON.stringify(
+          {
+            format: 'folia-flashcards',
+            schemaVersion: 1,
+            exportedAt: new Date().toISOString(),
+            deck,
+            cards,
+          },
+          null,
+          2,
+        ),
+      );
+    } catch (cause) {
+      setError(
+        localizeError(cause instanceof Error ? cause.message : 'Impossible d’exporter les cartes.'),
+      );
+    }
   }
   return (
     <Dialog wide title={deck.title} onClose={onClose}>

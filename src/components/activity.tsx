@@ -1,4 +1,6 @@
 'use client';
+import { appFetch } from '@/lib/app-fetch';
+import { exportTextFile } from '@/lib/mobile-files';
 import { ui } from '@/lib/i18n/ui';
 import { localizeError } from '@/lib/i18n/errors';
 import { eventLabel } from '@/lib/i18n/dynamic';
@@ -425,7 +427,7 @@ export function ActivityHeatmap({
   );
 }
 export function HistoryPage() {
-  const { store, openTask } = useApp();
+  const { store, openTask, notify } = useApp();
   const { data } = store;
   const [search, setSearch] = useState('');
   const [subject, setSubject] = useState('');
@@ -455,24 +457,19 @@ export function HistoryPage() {
     .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
   const pages = Math.max(1, Math.ceil(events.length / 20));
   const current = Math.min(page, pages - 1);
-  function exportHistory() {
-    const url = URL.createObjectURL(
-      new Blob(
-        [
-          JSON.stringify(
-            { exportedAt: new Date().toISOString(), workspaceId: data.workspaceId, events },
-            null,
-            2,
-          ),
-        ],
-        { type: 'application/json' },
-      ),
-    );
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'solace-historique.json';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  async function exportHistory() {
+    try {
+      await exportTextFile(
+        'solace-historique.json',
+        JSON.stringify(
+          { exportedAt: new Date().toISOString(), workspaceId: data.workspaceId, events },
+          null,
+          2,
+        ),
+      );
+    } catch (cause) {
+      notify(cause instanceof Error ? cause.message : 'Impossible d’exporter l’historique.');
+    }
   }
   return (
     <>
@@ -745,7 +742,7 @@ export function AnalyticsPage() {
   useEffect(() => {
     if (!store.isCloud || !validRange) return;
     const controller = new AbortController();
-    void fetch(`/api/analytics?${queryString}`, { cache: 'no-store', signal: controller.signal })
+    void appFetch(`/api/analytics?${queryString}`, { cache: 'no-store', signal: controller.signal })
       .then(async (response) => {
         const body = await response.json();
         if (controller.signal.aborted) return;

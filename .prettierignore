@@ -6,3 +6,6 @@ playwright-report
 *.tsbuildinfo
 .local
 next-env.d.ts
+mobile/dist
+android
+ios

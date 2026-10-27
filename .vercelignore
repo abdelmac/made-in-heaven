@@ -9,3 +9,8 @@ test-results
 playwright-report
 coverage
 *.tsbuildinfo
+mobile
+android
+ios
+capacitor.config.ts
+vite.mobile.config.mts

@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { NextResponse } from 'next/server';
 import { analyticsFiltersSchema, calculateAdvancedAnalytics } from '@/lib/advanced-analytics';
 import { assertWorkspaceFeature } from '@/lib/billing/server';
@@ -6,7 +7,7 @@ import { databaseError, handleApiError, HttpError } from '@/lib/server/http';
 import { readPermittedProductivity } from '@/lib/server/productivity';
 import { getAdminSupabase } from '@/lib/supabase/server';
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const filters = analyticsFiltersSchema.parse(
       Object.fromEntries(new URL(request.url).searchParams),
@@ -80,3 +81,6 @@ export async function GET(request: Request) {
     return handleApiError(error);
   }
 }
+
+export const GET = withNativeApiCors(handleGET);
+export const OPTIONS = nativeApiOptions;

@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { NextResponse } from 'next/server';
 import { billingConfigured, listConfiguredPrices, verifyStripeAccount } from '@/lib/billing/stripe';
 import { portalConfigurationId } from '@/lib/billing/portal';
@@ -8,7 +9,7 @@ import { assertBillingEnvironment } from '@/lib/billing/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+async function handleGET() {
   try {
     const configured = billingConfigured();
     if (configured) {
@@ -43,3 +44,6 @@ export async function GET() {
     );
   }
 }
+
+export const GET = withNativeApiCors(handleGET);
+export const OPTIONS = nativeApiOptions;

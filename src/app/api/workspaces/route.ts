@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { createHash, randomBytes } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -59,7 +60,7 @@ const operationSchema = z.discriminatedUnion('action', [
     .strict(),
 ]);
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const workspaceId = new URL(request.url).searchParams.get('workspaceId');
     const db = getAdminSupabase();
@@ -150,7 +151,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     assertSameOrigin(request);
     const { user } = await requireUser();
@@ -222,3 +223,7 @@ export async function POST(request: Request) {
     return handleApiError(error);
   }
 }
+
+export const GET = withNativeApiCors(handleGET);
+export const POST = withNativeApiCors(handlePOST);
+export const OPTIONS = nativeApiOptions;

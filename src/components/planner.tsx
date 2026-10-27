@@ -1,4 +1,5 @@
 'use client';
+import { exportTextFile } from '@/lib/mobile-files';
 import { ui } from '@/lib/i18n/ui';
 
 import { useEffect, useId, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react';
@@ -338,7 +339,7 @@ export function Planner({ full = false }: { full?: boolean }) {
           <Button
             variant="secondary"
             title={calendarCopy.exportTitle}
-            onClick={() => {
+            onClick={async () => {
               try {
                 const calendar = exportCalendar(sessions, {
                   workspaceId: data.workspaceId,
@@ -351,16 +352,11 @@ export function Planner({ full = false }: { full?: boolean }) {
                   notify(calendarCopy.noExport);
                   return;
                 }
-                const url = URL.createObjectURL(
-                  new Blob([calendar.text], { type: 'text/calendar;charset=utf-8' }),
+                await exportTextFile(
+                  `solace-planning-${visibleRange.start}-${visibleRange.end}.ics`,
+                  calendar.text,
+                  'text/calendar;charset=utf-8',
                 );
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `solace-planning-${visibleRange.start}-${visibleRange.end}.ics`;
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                window.setTimeout(() => URL.revokeObjectURL(url), 1000);
                 notify(
                   `${calendar.count} séance(s) exportée(s). Importez le fichier dans votre calendrier.`,
                 );

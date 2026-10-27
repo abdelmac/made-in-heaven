@@ -10,6 +10,19 @@ coverage/
 .local/
 .vercel/
 supabase/.temp/
+mobile/dist/
+android/.gradle/
+android/.idea/
+android/local.properties
+android/**/build/
+ios/App/App/public/
+ios/App/App/capacitor.config.json
+ios/App/DerivedData/
+ios/App/CapApp-SPM/.build/
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
 
 .vercel
 .env*

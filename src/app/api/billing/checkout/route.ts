@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { randomUUID } from 'node:crypto';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -38,7 +39,7 @@ const bodySchema = z
   })
   .strict();
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   try {
     assertSameOrigin(request);
     const body = bodySchema.parse(await readJson(request, 4_096));
@@ -191,3 +192,6 @@ export async function POST(request: Request) {
     return handleApiError(error);
   }
 }
+
+export const POST = withNativeApiCors(handlePOST);
+export const OPTIONS = nativeApiOptions;

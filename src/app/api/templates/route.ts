@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireWorkspace, durableRateLimit } from '@/lib/server/auth';
@@ -8,7 +9,7 @@ import { SOFTWARE_DEVELOPMENT_TEMPLATE } from '@/lib/server/advanced-template';
 const querySchema = z
   .object({ workspaceId: z.string().uuid(), template: z.literal('software-development') })
   .strict();
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const query = querySchema.parse(Object.fromEntries(new URL(request.url).searchParams));
     const { user } = await requireWorkspace(query.workspaceId, {
@@ -24,3 +25,6 @@ export async function GET(request: Request) {
     return handleApiError(error);
   }
 }
+
+export const GET = withNativeApiCors(handleGET);
+export const OPTIONS = nativeApiOptions;

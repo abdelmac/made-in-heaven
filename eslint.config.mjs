@@ -14,5 +14,8 @@ export default defineConfig([
     'coverage/**',
     'public/sw.js',
     'next-env.d.ts',
+    'mobile/dist/**',
+    'android/**',
+    'ios/**',
   ]),
 ]);

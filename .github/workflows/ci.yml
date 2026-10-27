@@ -44,6 +44,16 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Test the production build in Chromium
         run: npm run test:browser
+      - name: Build the mobile client with public fixtures
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://mobile-fixture.invalid
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_mobile_fixture_no_remote_access
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ''
+          SUPABASE_SERVICE_ROLE_KEY: ''
+          STRIPE_SECRET_KEY: ''
+        run: npm run mobile:build
+      - name: Test the bundled mobile client and native bridge
+        run: npm run test:mobile
       - name: Build connected UI with public fixtures (no provider credentials)
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://billing-fixture.invalid

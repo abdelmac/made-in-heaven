@@ -16,6 +16,8 @@ This repository started empty. It now contains a Next.js App Router application,
 
 ## Run locally
 
+Solace also has bundled Capacitor Android and iOS projects. See the [mobile build guide](docs/mobile.md) for native authentication, local notifications, persistent storage, and device testing. Build the interface with `npm run mobile:sync`, check Android prerequisites with `npm run mobile:doctor`, and produce a test APK with `npm run mobile:apk`. The portable tools approved for this workstation live in ignored `.local/mobile-tools`; the APK is copied to `.local/exports/solace-debug.apk`. iOS compilation requires macOS and Xcode 26 or later. Native store purchases are a later step; the mobile build does not show web checkout actions.
+
 Use Node.js 22.13+ on the 22.x line, Node 24.x (verified here with 24.19), or a newer compatible LTS release, and npm.
 
 ```bash
@@ -160,7 +162,7 @@ To deploy this checkout again using the authorized Vercel account:
 
 ```bash
 npx vercel@59.25.4 link --yes --project solace-hikmagitz --scope hikmagitzs-projects
-npx vercel@59.25.4 deploy --prod --yes --scope hikmagitzs-projects --logs
+npx vercel@59.25.4 deploy --prod --yes --project prj_pgHSZQaH2JiJpZeuxbAtxfKeDXM2 --scope hikmagitzs-projects --logs
 ```
 
 The first deployment used the CLI because Vercel could not obtain write/admin access to the configured GitHub repository. A GitHub Actions workflow now runs the quality checks and can deploy successful main-branch builds after the Vercel secrets and enable flag are configured; follow [the automation guide](docs/development-automation.md). Its presence does not connect or configure the hosted accounts. `.vercelignore` excludes local environment files, generated builds, test artifacts, and local scratch files from deployment uploads; Vercel project linkage stays outside Git.

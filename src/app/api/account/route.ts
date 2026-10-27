@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireUser, durableRateLimit } from '@/lib/server/auth';
@@ -14,7 +15,7 @@ import { getStripe, verifyStripeAccount } from '@/lib/billing/stripe';
 import { assertResourceMode, assertSubscriptionEnvironment } from '@/lib/billing/config';
 import { hasBlockingSubscription } from '@/lib/billing/entitlements';
 
-export async function GET() {
+async function handleGET() {
   try {
     const { supabase, user } = await requireUser();
     const { data, error } = await supabase
@@ -39,7 +40,7 @@ export async function GET() {
   }
 }
 
-export async function PUT(request: Request) {
+async function handlePUT(request: Request) {
   try {
     assertSameOrigin(request);
     const { user } = await requireUser();
@@ -58,7 +59,7 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+async function handleDELETE(request: Request) {
   try {
     assertSameOrigin(request);
     const { supabase, user } = await requireUser();
@@ -199,3 +200,8 @@ export async function DELETE(request: Request) {
     return handleApiError(error);
   }
 }
+
+export const GET = withNativeApiCors(handleGET);
+export const PUT = withNativeApiCors(handlePUT);
+export const DELETE = withNativeApiCors(handleDELETE);
+export const OPTIONS = nativeApiOptions;

@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import {
@@ -88,7 +89,7 @@ async function clientDocument(request: Request, workspaceId: string, userId: str
   };
 }
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const params = new URL(request.url).searchParams;
     const workspaceId = idSchema.parse(params.get('workspaceId'));
@@ -149,7 +150,7 @@ const patchBodySchema = z
   })
   .strict();
 
-export async function PATCH(request: Request) {
+async function handlePATCH(request: Request) {
   try {
     assertSameOrigin(request);
     const workspaceId = idSchema.parse(new URL(request.url).searchParams.get('workspaceId'));
@@ -221,7 +222,7 @@ export async function PATCH(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+async function handlePUT(request: Request) {
   try {
     assertSameOrigin(request);
     const workspaceId = idSchema.parse(new URL(request.url).searchParams.get('workspaceId'));
@@ -290,3 +291,8 @@ export async function PUT(request: Request) {
     return handleApiError(error);
   }
 }
+
+export const GET = withNativeApiCors(handleGET);
+export const PATCH = withNativeApiCors(handlePATCH);
+export const PUT = withNativeApiCors(handlePUT);
+export const OPTIONS = nativeApiOptions;

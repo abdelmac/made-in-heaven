@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireWorkspace, durableRateLimit } from '@/lib/server/auth';
@@ -21,7 +22,7 @@ import { checkoutLaunchReady } from '@/lib/billing/launch';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const workspaceId = z.uuid().parse(new URL(request.url).searchParams.get('workspaceId'));
     const { role, user, workspace } = await requireWorkspace(workspaceId);
@@ -97,3 +98,6 @@ export async function GET(request: Request) {
     return handleApiError(error);
   }
 }
+
+export const GET = withNativeApiCors(handleGET);
+export const OPTIONS = nativeApiOptions;

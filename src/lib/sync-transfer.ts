@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { appFetch } from './app-fetch';
 import {
   workspaceDataSchema,
   subjectSchema,
@@ -190,7 +191,10 @@ export function snapshotPage(data: WorkspaceData, cursor = 0, maxBytes = 450_000
   };
 }
 
-export async function fetchWorkspaceSnapshot(workspaceId: string, fetcher: typeof fetch = fetch) {
+export async function fetchWorkspaceSnapshot(
+  workspaceId: string,
+  fetcher: typeof fetch = appFetch,
+) {
   for (let attempt = 0; attempt < 3; attempt++) {
     let cursor = 0,
       version: number | undefined,

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { en } from './i18n/en';
 import { eventLabel } from './i18n/dynamic';
+import { workspaceStorage } from './workspace-storage';
 import {
   emptyTimer,
   id,
@@ -48,7 +49,7 @@ export function storageKey(workspaceId: string, accountId?: string) {
 }
 export function loadLocal(
   key: string,
-  storage: Pick<Storage, 'getItem'> = localStorage,
+  storage: Pick<Storage, 'getItem'> = workspaceStorage,
 ): LocalEnvelope | null {
   const raw = storage.getItem(key);
   return raw ? envelopeSchema.parse(JSON.parse(raw)) : null;
@@ -57,7 +58,7 @@ export function saveLocal(
   key: string,
   data: WorkspaceData,
   expectedVersion: number,
-  storage: Pick<Storage, 'getItem' | 'setItem'> = localStorage,
+  storage: Pick<Storage, 'getItem' | 'setItem'> = workspaceStorage,
   operationId = id(),
   pending?: PendingMetadata,
 ): LocalEnvelope {
@@ -244,7 +245,7 @@ export function prepareImport(
     events: [...current.events, ...events],
   });
 }
-export function clearAccountCache(accountId: string, storage: Storage = localStorage) {
+export function clearAccountCache(accountId: string, storage: Storage = workspaceStorage) {
   const prefix = `${STORAGE_PREFIX}account:${accountId}:`;
   for (let index = storage.length - 1; index >= 0; index--) {
     const key = storage.key(index);
@@ -266,7 +267,7 @@ export function pendingKey(accountId: string, workspaceId: string) {
 export function readPending(
   accountId: string,
   workspaceId: string,
-  storage: Pick<Storage, 'getItem'> = localStorage,
+  storage: Pick<Storage, 'getItem'> = workspaceStorage,
 ): PendingOperation | null {
   const envelope = loadLocal(storageKey(workspaceId, accountId), storage);
   if (envelope?.pending)
@@ -297,7 +298,7 @@ export function acknowledgePending(
   workspaceId: string,
   operationId: string,
   serverVersion: number,
-  storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = localStorage,
+  storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> = workspaceStorage,
 ) {
   const key = storageKey(workspaceId, accountId);
   const envelope = loadLocal(key, storage);

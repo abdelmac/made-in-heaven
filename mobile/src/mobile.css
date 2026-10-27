@@ -1,0 +1,40 @@
+html {
+  overscroll-behavior: none;
+}
+
+body {
+  -webkit-text-size-adjust: 100%;
+}
+
+.mobile-header {
+  padding-top: max(14px, env(safe-area-inset-top));
+  min-height: calc(72px + env(safe-area-inset-top));
+}
+
+.bottom-navigation {
+  padding-bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.app-shell {
+  min-height: 100dvh;
+}
+
+.main-content {
+  padding-bottom: calc(105px + env(safe-area-inset-bottom));
+}
+
+dialog {
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px);
+}
+
+input,
+select,
+textarea {
+  font-size: max(16px, 1em);
+}
+
+@media (min-width: 901px) {
+  .main-content {
+    padding-bottom: max(32px, env(safe-area-inset-bottom));
+  }
+}

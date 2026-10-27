@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { durableRateLimit, requireWorkspace } from '@/lib/server/auth';
@@ -13,7 +14,7 @@ const querySchema = z
   .strict();
 const noStore = { 'Cache-Control': 'private, no-store' };
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   try {
     const query = querySchema.parse(Object.fromEntries(new URL(request.url).searchParams));
     const { user } = await requireWorkspace(query.workspaceId);
@@ -53,3 +54,6 @@ export async function GET(request: Request) {
     return response;
   }
 }
+
+export const GET = withNativeApiCors(handleGET);
+export const OPTIONS = nativeApiOptions;

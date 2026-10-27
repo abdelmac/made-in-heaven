@@ -1,3 +1,4 @@
+import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { preferencesSchema } from '@/lib/model';
@@ -20,7 +21,7 @@ const inputSchema = z
   })
   .strict();
 
-export async function PUT(request: Request) {
+async function handlePUT(request: Request) {
   try {
     assertSameOrigin(request);
     const workspaceId = uuid.parse(new URL(request.url).searchParams.get('workspaceId'));
@@ -60,3 +61,6 @@ export async function PUT(request: Request) {
     return handleApiError(error);
   }
 }
+
+export const PUT = withNativeApiCors(handlePUT);
+export const OPTIONS = nativeApiOptions;

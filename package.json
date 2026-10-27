@@ -12,14 +12,36 @@
     "start": "next start --hostname 0.0.0.0",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "mobile:dev": "vite --config vite.mobile.config.mts --host 127.0.0.1",
+    "mobile:build": "node scripts/build-mobile.mjs",
+    "mobile:preview": "vite preview --config vite.mobile.config.mts --host 127.0.0.1 --port 4173",
+    "mobile:sync": "npm run mobile:build && cap sync",
+    "mobile:android": "npm run mobile:sync && cap open android",
+    "mobile:ios": "npm run mobile:sync && cap open ios",
+    "mobile:doctor": "node scripts/check-mobile.mjs",
+    "mobile:apk": "node scripts/build-android.mjs",
+    "mobile:assets": "node scripts/generate-mobile-assets.mjs",
     "test": "vitest run",
     "test:browser": "playwright test",
     "launch:check": "node --experimental-strip-types --conditions=react-server scripts/check-launch.mjs",
     "security:secrets": "node scripts/check-secrets.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:mobile": "playwright test --config mobile/playwright.config.ts"
   },
   "dependencies": {
+    "@aparajita/capacitor-secure-storage": "8.0.1",
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/browser": "8.0.5",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/filesystem": "8.1.5",
+    "@capacitor/ios": "8.5.3",
+    "@capacitor/local-notifications": "8.3.1",
+    "@capacitor/preferences": "8.0.1",
+    "@capacitor/share": "8.0.3",
+    "@fontsource/dm-sans": "5.3.0",
+    "@fontsource/manrope": "5.3.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.116.0",
     "lucide-react": "^1.45.0",
@@ -31,16 +53,25 @@
     "stripe": "^22.6.2",
     "zod": "^4.6.2"
   },
+  "overrides": {
+    "xcode": {
+      "uuid": "11.1.1"
+    }
+  },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
+    "@capacitor/cli": "8.5.3",
+    "@next/env": "16.4.3",
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.4",
     "prettier": "^3.9.6",
     "typescript": "~5.9.3",
+    "vite": "8.3.5",
     "vitest": "^5.0.0"
   }
 }

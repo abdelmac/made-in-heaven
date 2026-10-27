@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { localizeError } from '@/lib/i18n/errors';
+import { isNativeApiOrigin, requestBearerToken } from './mobile-api';
 
 export class HttpError extends Error {
   constructor(
@@ -12,6 +13,10 @@ export class HttpError extends Error {
 }
 
 export function assertSameOrigin(request: Request) {
+  // A bundled app cannot share the website's origin or cookies. Its bearer token
+  // is verified by requireUser/getServerSupabase before any protected operation.
+  if (isNativeApiOrigin(request.headers.get('origin')) && requestBearerToken(request.headers))
+    return;
   const configured = process.env.NEXT_PUBLIC_APP_URL;
   const expected = configured ? new URL(configured).origin : new URL(request.url).origin;
   if (request.headers.get('origin') !== expected)

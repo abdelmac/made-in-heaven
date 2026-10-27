@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { workspaceStorage } from './workspace-storage';
 import {
   activityViewStorageKey,
   parseActivityViewPreference,
@@ -38,7 +39,7 @@ export function useActivityView(userId: string, workspaceId: string) {
   const getSnapshot = useCallback(() => {
     if (temporaryPreferences.has(key)) return temporaryPreferences.get(key)!;
     try {
-      return localStorage.getItem(key);
+      return workspaceStorage.getItem(key);
     } catch {
       return null;
     }
@@ -50,7 +51,7 @@ export function useActivityView(userId: string, workspaceId: string) {
       const raw = JSON.stringify({ version: 1, ...value });
       if (!parseActivityViewPreference(raw)) return;
       try {
-        localStorage.setItem(key, raw);
+        workspaceStorage.setItem(key, raw);
         temporaryPreferences.delete(key);
       } catch {
         temporaryPreferences.set(key, raw);

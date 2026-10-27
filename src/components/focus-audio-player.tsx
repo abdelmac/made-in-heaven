@@ -1,4 +1,6 @@
 'use client';
+import { appFetch } from '@/lib/app-fetch';
+import { workspaceStorage } from '@/lib/workspace-storage';
 
 import { useEffect, useRef, useState } from 'react';
 import { Headphones, Pause, Play, RefreshCw } from 'lucide-react';
@@ -55,7 +57,9 @@ function Player({ preview }: { preview: boolean }) {
     const pendingRequests = version;
     const timer = setTimeout(() => {
       try {
-        const saved: Partial<Preferences> = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        const saved: Partial<Preferences> = JSON.parse(
+          workspaceStorage.getItem(storageKey) || '{}',
+        );
         setPreferences({
           trackId: typeof saved.trackId === 'string' ? saved.trackId : '',
           volume:
@@ -84,7 +88,7 @@ function Player({ preview }: { preview: boolean }) {
   useEffect(() => {
     if (preview) return;
     const controller = new AbortController();
-    void fetch(`/api/audio?workspaceId=${encodeURIComponent(store.workspaceId)}`, {
+    void appFetch(`/api/audio?workspaceId=${encodeURIComponent(store.workspaceId)}`, {
       cache: 'no-store',
       signal: controller.signal,
     })
@@ -120,7 +124,7 @@ function Player({ preview }: { preview: boolean }) {
     const value = { ...preferences, ...next };
     setPreferences(value);
     try {
-      localStorage.setItem(storageKey, JSON.stringify(value));
+      workspaceStorage.setItem(storageKey, JSON.stringify(value));
     } catch {
       /* Optional local preferences. */
     }
@@ -146,7 +150,7 @@ function Player({ preview }: { preview: boolean }) {
           audio.src = blobRef.current;
         }
       } else {
-        const response = await fetch(
+        const response = await appFetch(
           `/api/audio?workspaceId=${encodeURIComponent(store.workspaceId)}&trackId=${encodeURIComponent(selected.id)}`,
           { cache: 'no-store', signal: AbortSignal.timeout(10_000) },
         );

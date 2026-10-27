@@ -34,6 +34,12 @@ import { createBrowserSupabase } from '@/lib/supabase/browser';
 import { clearAccountCache, STORAGE_PREFIX } from '@/lib/persistence';
 import { ClassicColors, BackgroundPanel } from './appearance';
 import { applyThemeColors } from '@/lib/appearance';
+import { appFetch } from '@/lib/app-fetch';
+import { authRedirectUrl } from '@/lib/mobile-platform';
+import { workspaceStorage } from '@/lib/workspace-storage';
+import { Capacitor } from '@capacitor/core';
+import { isNativeApp } from '@/lib/mobile-platform';
+import { openNativeExactAlarmSettings } from '@/lib/native-notifications';
 
 const settingsTabs = [
   { id: 'appearance', label: en.settings.appearance, Icon: Palette },
@@ -375,6 +381,18 @@ export function SettingsPage() {
                 {p.notifications && (
                   <Button variant="ghost" onClick={() => set('notifications', false)}>
                     {ui.settings.disableNotifications}
+                  </Button>
+                )}
+                {p.notifications && isNativeApp() && Capacitor.getPlatform() === 'android' && (
+                  <Button
+                    variant="ghost"
+                    onClick={() =>
+                      void openNativeExactAlarmSettings().catch(() =>
+                        notify('Impossible d’ouvrir les réglages des rappels sur cet appareil.'),
+                      )
+                    }
+                  >
+                    Réglages des rappels précis
                   </Button>
                 )}
               </div>
@@ -799,9 +817,8 @@ export function AccountPanel() {
     try {
       const email = String(form.get('email') || '').trim();
       const password = String(form.get('password') || '');
-      const callback = new URL('/auth/callback', window.location.origin);
-      const recovery = new URL(callback);
-      recovery.searchParams.set('next', '/?reset-password=1');
+      const callback = authRedirectUrl();
+      const recovery = authRedirectUrl(true);
       const result =
         mode === 'signIn'
           ? await client.auth.signInWithPassword({ email, password })
@@ -809,11 +826,11 @@ export function AccountPanel() {
             ? await client.auth.signUp({
                 email,
                 password,
-                options: { emailRedirectTo: callback.toString() },
+                options: { emailRedirectTo: callback },
               })
             : mode === 'password'
               ? await client.auth.updateUser({ password })
-              : await client.auth.resetPasswordForEmail(email, { redirectTo: recovery.toString() });
+              : await client.auth.resetPasswordForEmail(email, { redirectTo: recovery });
       if (result.error) throw result.error;
       if (mode === 'signUp') setMessage(en.account.verify);
       else if (mode === 'reset') setMessage(en.account.resetSent);
@@ -847,10 +864,10 @@ export function AccountPanel() {
     if (store.isCloud && store.user) {
       try {
         const prefix = `${STORAGE_PREFIX}account:${store.user.id}:`;
-        for (let index = 0; index < localStorage.length; index++) {
-          const key = localStorage.key(index);
+        for (let index = 0; index < workspaceStorage.length; index++) {
+          const key = workspaceStorage.key(index);
           if (!key?.startsWith(prefix)) continue;
-          const raw = localStorage.getItem(key);
+          const raw = workspaceStorage.getItem(key);
           if (raw && (key.endsWith(':pending') || JSON.parse(raw)?.pending)) {
             hasPending = true;
             break;
@@ -894,7 +911,7 @@ export function AccountPanel() {
     setBusy(true);
     setMessage('');
     try {
-      const response = await fetch('/api/account', {
+      const response = await appFetch('/api/account', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName: String(form.get('displayName') || '') }),
@@ -914,7 +931,7 @@ export function AccountPanel() {
     setMessage('');
     try {
       const accountId = store.user?.id;
-      const response = await fetch('/api/account', {
+      const response = await appFetch('/api/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ confirmation }),

@@ -1,4 +1,5 @@
 'use client';
+import { appFetch } from '@/lib/app-fetch';
 import { ui } from '@/lib/i18n/ui';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
@@ -54,7 +55,7 @@ function useAssignableMembers() {
   useEffect(() => {
     if (!shared) return;
     const controller = new AbortController();
-    void fetch(`/api/workspaces?workspaceId=${encodeURIComponent(store.workspaceId)}`, {
+    void appFetch(`/api/workspaces?workspaceId=${encodeURIComponent(store.workspaceId)}`, {
       cache: 'no-store',
       signal: controller.signal,
     })
@@ -454,7 +455,7 @@ export function TaskEditor({ taskId, onClose }: { taskId?: string; onClose: () =
       templateRequest.current = controller;
       setTemplateLoading(true);
       try {
-        const response = await fetch(
+        const response = await appFetch(
           `/api/templates?workspaceId=${encodeURIComponent(store.workspaceId)}&template=software-development`,
           { cache: 'no-store', signal: controller.signal },
         );

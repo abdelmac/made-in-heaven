@@ -1,5 +1,8 @@
 'use client';
 import { ui } from '@/lib/i18n/ui';
+import { appFetch } from '@/lib/app-fetch';
+import { appApiOrigin, isMobileBuild } from '@/lib/mobile-platform';
+import { openExternalUrl } from '@/lib/mobile-files';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -128,7 +131,7 @@ export function OrganizationPage() {
     if (!store.user) return;
     const version = ++loadVersion.current;
     try {
-      const response = await fetch(`/api/workspaces?workspaceId=${store.workspaceId}`, {
+      const response = await appFetch(`/api/workspaces?workspaceId=${store.workspaceId}`, {
         cache: 'no-store',
       });
       const data = await response.json();
@@ -153,7 +156,7 @@ export function OrganizationPage() {
     setBusy(true);
     setError('');
     try {
-      const response = await fetch('/api/workspaces', {
+      const response = await appFetch('/api/workspaces', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -688,7 +691,7 @@ export function BillingPage() {
       const path = store.user
         ? `/api/billing?workspaceId=${store.workspaceId}`
         : '/api/billing/prices';
-      const response = await fetch(path, { cache: 'no-store' });
+      const response = await appFetch(path, { cache: 'no-store' });
       const data = await response.json();
       if (!response.ok)
         throw new Error(data.error || 'Impossible de vérifier la disponibilité des forfaits.');
@@ -713,6 +716,10 @@ export function BillingPage() {
     };
   }, [load]);
   async function openBilling(kind: 'checkout' | 'portal', tier?: 'pro' | 'team') {
+    if (isMobileBuild()) {
+      setError('Les achats d’abonnement ne sont pas encore disponibles dans cette version mobile.');
+      return;
+    }
     if (
       kind === 'checkout' &&
       (!billing?.configured ||
@@ -727,7 +734,7 @@ export function BillingPage() {
     setBusy(true);
     setError('');
     try {
-      const response = await fetch(`/api/billing/${kind}`, {
+      const response = await appFetch(`/api/billing/${kind}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -760,6 +767,65 @@ export function BillingPage() {
       if (store.user) await store.refreshAccount();
       notify(ui.workspaces.billingStatusRefreshed);
     }
+  }
+  if (isMobileBuild()) {
+    const verifiedTier = billing?.entitlements?.tier || store.entitlements?.tier;
+    const planLabel = !store.isCloud
+      ? 'Espace local'
+      : verifiedTier
+        ? en.billing[verifiedTier]
+        : 'Vérification de votre offre…';
+    return (
+      <>
+        <Panel title="Votre offre" subtitle={store.currentWorkspace?.name}>
+          <span className="badge">{planLabel}</span>
+          <p className="notice">
+            Les achats d’abonnement ne sont pas encore disponibles dans cette version mobile.
+          </p>
+          <p className="helper">
+            {store.isCloud
+              ? 'Votre accès suit l’offre vérifiée de votre compte.'
+              : 'Vous pouvez organiser votre travail et vous concentrer dans votre espace local.'}
+          </p>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="page-actions">
+            <Button variant="secondary" onClick={() => navigate('settings')}>
+              Personnaliser mon espace
+            </Button>
+            {store.user ? (
+              <Button variant="secondary" onClick={() => void refreshBilling()}>
+                <RefreshCw size={15} /> Actualiser mon accès
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={openAccount}>
+                {en.account.signIn}
+              </Button>
+            )}
+          </div>
+        </Panel>
+        <nav className="helper centered" aria-label={billingCopy.legalNavigation}>
+          {billingCopy.legalLinks.map(({ href, label }) => (
+            <Button
+              key={href}
+              variant="ghost"
+              onClick={() => {
+                void openExternalUrl(new URL(href, appApiOrigin()).href).catch((cause) => {
+                  setError(
+                    cause instanceof Error ? cause.message : 'Impossible d’ouvrir cette page.',
+                  );
+                });
+              }}
+            >
+              {label}
+            </Button>
+          ))}
+        </nav>
+      </>
+    );
   }
   return (
     <>
