@@ -32,8 +32,12 @@ API authentication; use installed phone builds for those checks.
 The dedicated browser suite also contains a deterministic Capacitor bridge fixture
 with mocked preferences, secure storage, authentication and API responses. It
 checks the real bundled JavaScript’s native startup, isolated session storage,
-bearer requests and restoration after reload. These fixtures do not establish
-actual device encryption, native notification delivery or hosted account sync.
+bearer requests and restoration after reload. Authentication scenarios also cover
+signup with its persisted PKCE verifier, cold-start and repeated callbacks,
+password recovery while the account dialog is open, and rejection of expired
+codes or codes without this installation’s verifier. Provider responses are
+intercepted locally; these fixtures do not establish email delivery, actual
+device encryption, native notification delivery or hosted account sync.
 The mocked sign-in scenario needs public Supabase configuration in the bundle and
 is skipped when that configuration is absent; all provider requests in that
 scenario are intercepted.
@@ -148,13 +152,20 @@ exact callback and exchanges a code or supported token hash rather than acceptin
 arbitrary access-token fragments. Verify signup confirmation and password recovery
 on the same installation that started the flow. Keep the existing website callback
 available for website users.
-The hosted redirect allowlist was not changed during this implementation; its
-configuration and real-device email flows still need verification.
-The Supabase plugin was not connected and no Management API access was available,
-so this must be completed in the matching project's dashboard or through a
-connected management tool. Password sign-in, session persistence and callback
-validation have implementation/fixture coverage; actual installed-app account
-authentication and cloud saves have not been verified.
+The hosted redirect allowlist for **Solace Hikmagitz** (`zwgjauskorkpucuaqvgs`)
+was updated and read back on **October 28, 2026**. The exact mobile callback is
+allowed alongside the existing website redirect, with two entries in total.
+The CLI preview and verification confirmed only `auth.additional_redirect_urls`
+needed updating. Password sign-in and session restoration after a full app restart
+were later verified on the installed Android app, along with personal-workspace
+task creation, cloud readback and cleanup. An existing account's recovery email
+also opened the correct Android password form. The owner confirmed a successful
+different-password update and new sign-in; device inspection confirmed recovery
+mode cleared and the personal workspace synchronized. New-account signup
+confirmation is currently blocked by the built-in email sender's rate limit.
+Custom SMTP was confirmed disabled; the owner selected Resend, whose setup is
+documented in [auth-mail.md](auth-mail.md). The iOS account flow has not been
+run on a built app.
 
 Native refresh tokens are held in encrypted Android Keystore/iOS Keychain storage.
 Workspace documents, appearance and pending sync state use app-private native
@@ -171,6 +182,42 @@ handoff behavior has regression coverage but has not been tested with recipients
 on a physical phone.
 
 ## Device verification
+
+### Authentication on a test phone
+
+Use a separate test account and open email links on the same installation that
+requested them. Enable USB debugging on an Android test phone, approve the
+computer’s debugging prompt and install `.local/exports/solace-debug.apk` with
+`adb install -r .local/exports/solace-debug.apk`.
+
+1. Create the test account in Solace. Open its confirmation email on that phone
+   and confirm the link opens Solace with the intended account signed in.
+   Repeat with a fresh test account after closing Solace before opening the link
+   to check cold-start handling.
+2. Close and reopen the app, then sign out and sign in with the test password.
+   Confirm the account and workspace are restored.
+3. Request a password reset in Solace, leaving its account dialog open. Open the
+   recovery link on that phone. Confirm the new-password form appears, save a
+   replacement password and verify it can sign in after signing out.
+4. Reopen a redeemed confirmation/recovery link. Confirm a safe error appears
+   without exposing codes or tokens in the interface or navigation URL.
+5. Create a uniquely named task, wait for synchronization and confirm it appears
+   in another signed-in client for the same test workspace. Repeat after making
+   an offline change and reconnecting the phone.
+
+The October 28 automated run did not have an attached Android device or an
+installed emulator. Later that day, the verified debug APK was installed and
+opened on a Galaxy Note10 running Android 12 through authenticated wireless
+debugging. Native startup, password sign-in, session restoration after a full
+app restart and personal-workspace task saving/readback/cleanup were verified.
+A recovery email opened the password form on that installation. After an expected
+same-password rejection, the owner confirmed a different-password update and
+new sign-in; device inspection confirmed the signed-in, synchronized state and
+cleared recovery mode. A new account's confirmation email remains a separate
+phone check. The iOS equivalent requires a built app on an iPhone or simulator
+with macOS/Xcode.
+
+### Other device checks
 
 Before treating either platform as ready, test these behaviors on an installed app:
 

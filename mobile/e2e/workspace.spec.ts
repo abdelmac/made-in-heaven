@@ -56,8 +56,10 @@ test('timer recovery and offline task editing preserve local work', async ({ pag
   await page.clock.install({ time: new Date('2026-10-27T08:00:00Z') });
   await open(page);
   await page.getByRole('button', { name: en.timer.start, exact: true }).click();
+  await expect.poll(async () => (await data(page)).timer.status).toBe('running');
   await page.clock.fastForward(15_000);
   await page.getByRole('button', { name: en.timer.pause, exact: true }).click();
+  await expect.poll(async () => (await data(page)).timer.status).toBe('paused');
   const paused = (await data(page)).timer;
   expect(paused.status).toBe('paused');
   expect(paused.remainingMs).toBeLessThan(paused.durationMs);
