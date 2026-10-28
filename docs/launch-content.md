@@ -1,12 +1,19 @@
 # Informations publiques avant ouverture
 
-Les routes `/legal`, `/privacy`, `/terms` et `/support` publient les coordonnées et les liens fournis par le propriétaire de Solace. Aucun nom de vendeur, adresse, identifiant d’immatriculation, numéro de TVA ou texte contractuel n’est fourni par défaut.
+Les routes `/legal`, `/privacy`, `/terms` et `/support` publient les coordonnées et les liens fournis par le propriétaire de Solace. Aucun nom de vendeur, adresse, identifiant d’immatriculation ou numéro de TVA n’est fourni par défaut. `/privacy` présente une fiche de travail factuelle lorsque la politique complète n’est pas encore fournie. `/account-deletion` explique la suppression et ouvre le parcours authentifié dans le navigateur, sans réinstallation.
 
 Tant que les sept valeurs ci-dessous ne passent pas la validation, toutes ces pages affichent un avis provisoire et des métadonnées `noindex, nofollow`. Une valeur absente ou invalide n’est jamais publiée telle quelle. Les autres coordonnées valides restent visibles. Le remplissage des champs est une condition technique de lancement, pas une preuve d’identité, une vérification des documents ou une attestation de conformité.
 
 ## Valeurs à fournir
 
 Ces variables sont lues côté serveur au moment de la requête. Leur contenu est destiné à être public. Ne pas y placer de clé, de mot de passe, de lien signé ni de donnée confidentielle.
+
+Le nom public et le pays déclaré sont configurables séparément via
+`SOLACE_PUBLISHER_NAME` et `SOLACE_PUBLISHER_COUNTRY`. Ils apparaissent sur les
+pages publiques et la fiche de confidentialité. Ces champs facultatifs ne
+remplacent pas l’identité juridique du vendeur et ne lèvent aucun verrou de
+lancement commercial. Le pays déclaré ne définit pas automatiquement les pays
+de distribution ni le public visé.
 
 | Variable                     | Contenu à renseigner                                                                                   |
 | ---------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -22,7 +29,7 @@ Les URL de documents doivent être absolues en HTTPS, accessibles sans connexion
 
 ## Préparer les documents
 
-Le propriétaire doit fournir les textes correspondant à son activité et au fonctionnement réel du produit, puis en organiser la relecture adaptée à sa situation avant l’ouverture. Les pages de l’application servent de points d’accès à ces textes, elles n’en génèrent aucun. Faire figurer dans les documents les informations et modalités retenues par le propriétaire, notamment celles sur l’identité et le contact, l’utilisation du service, les données traitées et les offres vendues. Aucun régime juridique, délai de réponse du support ou engagement commercial n’est supposé par le code.
+Le propriétaire doit fournir les textes correspondant à son activité et au fonctionnement réel du produit, puis en organiser la relecture adaptée à sa situation avant l’ouverture. La fiche de travail de `/privacy` décrit les données, fonctions, prestataires et questions de conservation à finaliser ; elle ne constitue pas une politique juridique finalisée. Si un document externe complet est fourni, la page y renvoie sans lui ajouter cette fiche provisoire. Une URL pointant vers cette même page ne lève pas son statut provisoire et ne crée pas de lien circulaire. Faire figurer dans les documents les informations et modalités retenues par le propriétaire, notamment celles sur l’identité et le contact, l’utilisation du service, les données traitées et les offres vendues. Aucun régime juridique, délai de réponse du support ou engagement commercial n’est supposé par le code.
 
 Avant ouverture, contrôler manuellement que les trois liens conduisent bien aux bons textes publics, que les coordonnées affichées sont exactes et que le support reçoit les messages. Ne pas renseigner des valeurs fictives pour lever le verrou de lancement. Si un champ ne convient pas à la situation du vendeur, adapter explicitement les exigences du lancement après examen de cette situation.
 

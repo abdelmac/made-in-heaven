@@ -12,6 +12,7 @@ const config: CapacitorConfig = {
   },
   android: { allowMixedContent: false },
   plugins: {
+    NativePurchases: { autoFinishTransactions: false, debugLogging: false },
     LocalNotifications: {
       smallIcon: 'ic_stat_solace',
       iconColor: '#83ba92',

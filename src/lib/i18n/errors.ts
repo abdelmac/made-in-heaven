@@ -1,5 +1,29 @@
 /** Keep domain errors stable; translate only at the presentation boundary. */
 const messages: Record<string, string> = {
+  'Account deletion is temporarily unavailable. Please contact support.':
+    'La suppression du compte est temporairement indisponible. Contactez l’assistance.',
+  'Confirm your password before deleting your account.':
+    'Confirmez votre mot de passe avant de supprimer votre compte.',
+  'Confirm your password again before deleting your account.':
+    'Confirmez à nouveau votre mot de passe avant de supprimer votre compte.',
+  'Sessions could not be revoked. Sign in again and retry account deletion.':
+    'Les sessions n’ont pas pu être fermées. Reconnectez-vous puis réessayez la suppression.',
+  'Your account could not be deleted. Your sessions were signed out. Sign in again and retry; organization ownership or billing may need review.':
+    'Votre compte n’a pas été supprimé et vos sessions ont été fermées. Reconnectez-vous puis réessayez ; vérifiez si nécessaire la propriété de vos organisations et la facturation.',
+  'Billing ownership needs review before account deletion.':
+    'La facturation doit être vérifiée avant de supprimer ce compte. Contactez l’assistance.',
+  'Billing needs review before this account can be deleted. Please contact support.':
+    'La facturation de ce compte nécessite une vérification. Contactez l’assistance avant la suppression.',
+  'Checkout could not be verified. Retry account deletion.':
+    'Le paiement en attente n’a pas pu être vérifié. Réessayez la suppression.',
+  'Checkout is still completing. Retry account deletion shortly.':
+    'Un paiement est encore en cours de finalisation. Réessayez la suppression dans un instant.',
+  'Subscription cancellation is not confirmed. Retry account deletion.':
+    'La résiliation de l’abonnement n’est pas confirmée. Réessayez la suppression.',
+  'Billing is still changing. Retry account deletion shortly.':
+    'La facturation est encore en cours de mise à jour. Réessayez la suppression dans un instant.',
+  'Billing ownership could not be verified. Please contact support before deleting this account.':
+    'La facturation de ce compte n’a pas pu être vérifiée. Contactez l’assistance avant de le supprimer.',
   'Sign out and sign in again before deleting your account.':
     'Déconnectez-vous puis reconnectez-vous avant de supprimer votre compte.',
   'Transfer ownership of your organizations before deleting your account.':

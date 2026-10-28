@@ -40,6 +40,13 @@ import { workspaceStorage } from '@/lib/workspace-storage';
 import { Capacitor } from '@capacitor/core';
 import { isNativeApp } from '@/lib/mobile-platform';
 import { openNativeExactAlarmSettings } from '@/lib/native-notifications';
+import { nativePurchases } from '@/lib/native-purchases';
+import { AccountLegalConsent } from './account-legal-consent';
+import {
+  accountSignupMetadata,
+  isOnlineAccountAgeGroup,
+  type AccountAgeGroup,
+} from '@/lib/account-eligibility';
 
 const settingsTabs = [
   { id: 'appearance', label: en.settings.appearance, Icon: Palette },
@@ -789,7 +796,7 @@ export function SettingsPage() {
     </>
   );
 }
-export function AccountPanel() {
+export function AccountPanel({ deletionIntent = false }: { deletionIntent?: boolean }) {
   const { store, notify } = useApp();
   const [mode, setMode] = useState<'signIn' | 'signUp' | 'reset' | 'password'>(() =>
     typeof window !== 'undefined' &&
@@ -802,7 +809,11 @@ export function AccountPanel() {
   const [deleting, setDeleting] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const [confirmSignOut, setConfirmSignOut] = useState(false);
+  const [ageGroup, setAgeGroup] = useState<AccountAgeGroup | ''>('');
+  const [legalAccepted, setLegalAccepted] = useState(false);
   const configured = !!createBrowserSupabase();
+  const needsOnlineEligibility = mode === 'signIn' || mode === 'signUp';
+  const onlineAgeEligible = isOnlineAccountAgeGroup(ageGroup);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -812,6 +823,20 @@ export function AccountPanel() {
       return;
     }
     const form = new FormData(event.currentTarget);
+    if (needsOnlineEligibility && !onlineAgeEligible) {
+      setMessage(
+        'Choisissez votre tranche d’âge. Les comptes en ligne sont réservés aux personnes de 16 ans et plus ; les outils locaux restent disponibles sans compte.',
+      );
+      return;
+    }
+    const signupMetadata =
+      mode === 'signUp' ? accountSignupMetadata(ageGroup, legalAccepted) : null;
+    if (mode === 'signUp' && !signupMetadata) {
+      setMessage(
+        'Acceptez les conditions d’utilisation et prenez connaissance de la politique de confidentialité avant de créer un compte.',
+      );
+      return;
+    }
     setBusy(true);
     setMessage('');
     try {
@@ -826,7 +851,7 @@ export function AccountPanel() {
             ? await client.auth.signUp({
                 email,
                 password,
-                options: { emailRedirectTo: callback },
+                options: { emailRedirectTo: callback, data: signupMetadata! },
               })
             : mode === 'password'
               ? await client.auth.updateUser({ password })
@@ -844,6 +869,8 @@ export function AccountPanel() {
         await store.refreshAccount();
       } else {
         await store.refreshAccount();
+        setAgeGroup('');
+        setLegalAccepted(false);
         notify(ui.settings.signedInYourWorkspaceConnectionStatusAppearsBelow);
       }
     } catch (error) {
@@ -926,11 +953,28 @@ export function AccountPanel() {
     }
   }
 
-  async function deleteAccount() {
+  async function deleteAccount(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (confirmation !== 'DELETE' || busy) return;
+    const form = event.currentTarget;
+    const passwordInput = form.elements.namedItem('deletionPassword') as HTMLInputElement | null;
     setBusy(true);
     setMessage('');
     try {
       const accountId = store.user?.id;
+      const email = store.user?.email;
+      const client = createBrowserSupabase();
+      if (!email || !client || !passwordInput?.value) {
+        throw new Error('Confirm your password before deleting your account.');
+      }
+      // Reauthenticate the current session, rather than relying on a recent
+      // login in another browser. The API separately checks its signed AMR.
+      const reauthentication = await client.auth.signInWithPassword({
+        email,
+        password: passwordInput.value,
+      });
+      passwordInput.value = '';
+      if (reauthentication.error) throw reauthentication.error;
       const response = await appFetch('/api/account', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -938,18 +982,38 @@ export function AccountPanel() {
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error || 'Your account could not be deleted.');
-      if (accountId) clearAccountCache(accountId);
-      navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_PRIVATE_CACHES' });
-      // The server already removed the account and its session. Refresh local
-      // identity without requiring another successful remote sign-out.
-      await createBrowserSupabase()?.auth.signOut({ scope: 'local' });
-      await store.refreshAccount();
+      // Server deletion is final even if this device cannot finish every local
+      // cleanup step. Attempt all of them; never invite a second DELETE request.
+      let cleanupFailed = false;
+      const cleanupSteps = [
+        () => {
+          if (accountId) clearAccountCache(accountId);
+        },
+        () => navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_PRIVATE_CACHES' }),
+        async () => {
+          const result = await client.auth.signOut({ scope: 'local' });
+          if (result.error) throw result.error;
+        },
+        () => store.refreshAccount(),
+      ];
+      for (const cleanup of cleanupSteps) {
+        try {
+          await cleanup();
+        } catch {
+          cleanupFailed = true;
+        }
+      }
       setDeleting(false);
       setConfirmation('');
-      notify(ui.settings.yourAccountHasBeenDeleted);
+      notify(
+        cleanupFailed
+          ? 'Votre compte a été supprimé. Le nettoyage local est incomplet sur cet appareil : fermez l’application et effacez ses données locales avant de le partager.'
+          : ui.settings.yourAccountHasBeenDeleted,
+      );
     } catch (error) {
       setMessage(localizeError(error instanceof Error ? error.message : String(error)));
     } finally {
+      if (passwordInput) passwordInput.value = '';
       setBusy(false);
     }
   }
@@ -960,6 +1024,13 @@ export function AccountPanel() {
       subtitle={store.user?.email || en.account.localConsent}
     >
       {!configured && <p className="notice">{en.account.unavailable}</p>}
+      {deletionIntent && (
+        <p className="notice" role="status">
+          {store.user
+            ? 'Vous pouvez supprimer ce compte et ses données ci-dessous. Aucune suppression ne sera lancée sans votre confirmation.'
+            : 'Connectez-vous au compte Solace à supprimer. Vous pourrez ensuite consulter les conséquences et confirmer sa suppression ici.'}
+        </p>
+      )}
       {store.user && (
         <>
           <div className="account-summary">
@@ -971,6 +1042,7 @@ export function AccountPanel() {
               <span>{ui.settings.personalAndSharedWorkspacesStaySeparate}</span>
             </div>
           </div>
+          <AccountLegalConsent />
           <form className="inline-form" onSubmit={saveName}>
             <input
               name="displayName"
@@ -1028,6 +1100,8 @@ export function AccountPanel() {
                   onClick={() => {
                     setMode(value);
                     setMessage('');
+                    setAgeGroup('');
+                    setLegalAccepted(false);
                   }}
                   className={mode === value ? 'active' : ''}
                 >
@@ -1036,32 +1110,93 @@ export function AccountPanel() {
               ))}
             </div>
             <form onSubmit={submit}>
-              <Field label={en.account.email}>
-                <input
-                  type="email"
-                  name="email"
-                  required
-                  autoComplete="email"
-                  placeholder={ui.settings.youExampleCom}
-                />
-              </Field>
-              {mode !== 'reset' && (
-                <Field
-                  label={en.account.password}
-                  hint={mode === 'signUp' ? ui.settings.useAtLeast12Characters : undefined}
-                >
-                  <input
-                    type="password"
-                    name="password"
-                    required
-                    minLength={mode === 'signUp' ? 12 : 1}
-                    autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
-                  />
-                </Field>
+              {needsOnlineEligibility && (
+                <>
+                  <Field label="Votre tranche d’âge">
+                    <select
+                      name="ageGroup"
+                      value={ageGroup}
+                      required
+                      disabled={busy}
+                      onChange={(event) => {
+                        setAgeGroup(event.target.value as AccountAgeGroup | '');
+                        setLegalAccepted(false);
+                        setMessage('');
+                      }}
+                    >
+                      <option value="">Choisir une tranche d’âge</option>
+                      <option value="under16">Moins de 16 ans</option>
+                      <option value="16-17">16–17 ans</option>
+                      <option value="18+">18 ans et plus</option>
+                    </select>
+                  </Field>
+                  <p className="helper">
+                    Les outils locaux sont accessibles sans compte. Les comptes en ligne sont
+                    réservés aux personnes de 16 ans et plus. Aucune date de naissance n’est
+                    demandée.
+                  </p>
+                  {ageGroup === 'under16' && (
+                    <p className="notice" role="status">
+                      Le minuteur, les tâches et le planning restent disponibles sur cet appareil
+                      sans compte. Aucun compte en ligne ni achat ne sera lancé ici. Fermez cette
+                      fenêtre pour continuer à utiliser les outils locaux.
+                    </p>
+                  )}
+                </>
               )}
-              <Button type="submit" disabled={!configured || busy}>
-                {busy ? ui.settings.pleaseWait : en.account[mode]}
-              </Button>
+              {(!needsOnlineEligibility || onlineAgeEligible) && (
+                <>
+                  <Field label={en.account.email}>
+                    <input
+                      type="email"
+                      name="email"
+                      required
+                      autoComplete="email"
+                      placeholder={ui.settings.youExampleCom}
+                    />
+                  </Field>
+                  {mode !== 'reset' && (
+                    <Field
+                      label={en.account.password}
+                      hint={mode === 'signUp' ? ui.settings.useAtLeast12Characters : undefined}
+                    >
+                      <input
+                        type="password"
+                        name="password"
+                        required
+                        minLength={mode === 'signUp' ? 12 : 1}
+                        autoComplete={mode === 'signUp' ? 'new-password' : 'current-password'}
+                      />
+                    </Field>
+                  )}
+                  {mode === 'signUp' && (
+                    <label className="row">
+                      <input
+                        name="legalAccepted"
+                        type="checkbox"
+                        required
+                        checked={legalAccepted}
+                        disabled={busy}
+                        onChange={(event) => setLegalAccepted(event.target.checked)}
+                      />
+                      <span>
+                        J’accepte les{' '}
+                        <a href="/terms" target="_blank" rel="noopener noreferrer">
+                          conditions d’utilisation
+                        </a>{' '}
+                        et j’ai pris connaissance de la{' '}
+                        <a href="/privacy" target="_blank" rel="noopener noreferrer">
+                          politique de confidentialité
+                        </a>
+                        .
+                      </span>
+                    </label>
+                  )}
+                  <Button type="submit" disabled={!configured || busy}>
+                    {busy ? ui.settings.pleaseWait : en.account[mode]}
+                  </Button>
+                </>
+              )}
             </form>
           </>
         )
@@ -1073,7 +1208,15 @@ export function AccountPanel() {
           <p className="helper">
             {ui.settings.exportYourPersonalDataFirstTransferOrganizationOwnershipAnd}
           </p>
-          <Button variant="danger" disabled={busy} onClick={() => setDeleting(true)}>
+          <Button
+            variant="danger"
+            disabled={busy}
+            onClick={() => {
+              setMessage('');
+              setConfirmation('');
+              setDeleting(true);
+            }}
+          >
             {en.account.delete}
           </Button>
         </div>
@@ -1083,6 +1226,12 @@ export function AccountPanel() {
           {message}
         </p>
       )}
+      <nav className="helper row wrap" aria-label="Données et confidentialité">
+        <a href="/privacy">Confidentialité</a>
+        <a href="/account-deletion">Suppression du compte</a>
+        <a href="/support">Assistance</a>
+        <a href="/third-party-notices.txt">Licences tierces</a>
+      </nav>
       {confirmSignOut && (
         <Dialog
           title={ui.settings.keepYourUnsyncedWork}
@@ -1110,29 +1259,107 @@ export function AccountPanel() {
         <Dialog
           title={en.account.delete}
           onClose={() => {
-            if (!busy) setDeleting(false);
+            if (!busy) {
+              setDeleting(false);
+              setConfirmation('');
+              setMessage('');
+            }
           }}
         >
-          <p>{en.account.deleteHelp}</p>
-          <Field label={en.account.deleteConfirmation}>
-            <input
-              autoComplete="off"
-              value={confirmation}
-              onChange={(e) => setConfirmation(e.target.value)}
-            />
-          </Field>
-          <div className="form-actions">
-            <Button variant="secondary" disabled={busy} onClick={() => setDeleting(false)}>
-              {en.common.cancel}
-            </Button>
-            <Button
-              variant="danger"
-              disabled={confirmation !== 'DELETE' || busy}
-              onClick={deleteAccount}
+          <form onSubmit={deleteAccount}>
+            <p>{en.account.deleteHelp}</p>
+            <p className="helper">
+              Votre abonnement web personnel sera résilié immédiatement et l’accès Pro prendra fin.
+              La suppression ne déclenche pas de remboursement automatique. Exportez vos données
+              avant de continuer.
+            </p>
+            <p className="helper">
+              Un abonnement Apple ou Google doit être résilié dans la boutique pour arrêter ses
+              renouvellements : supprimer votre compte Solace ne le résilie pas automatiquement.
+              Vous pouvez supprimer ce compte immédiatement, même si cet abonnement est encore
+              actif. Vos droits légaux au remboursement restent applicables.
+            </p>
+            {isNativeApp() ? (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  void nativePurchases
+                    .manage()
+                    .catch(() =>
+                      setMessage(
+                        'Ouvrez les réglages des abonnements Apple ou Google pour gérer votre abonnement.',
+                      ),
+                    );
+                }}
+              >
+                Gérer les abonnements de la boutique
+              </Button>
+            ) : (
+              <p className="helper">
+                Gérer les abonnements :{' '}
+                <a
+                  href="https://apps.apple.com/account/subscriptions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Apple
+                </a>
+                {' · '}
+                <a
+                  href="https://play.google.com/store/account/subscriptions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Google Play
+                </a>
+                .
+              </p>
+            )}
+            <Field
+              label="Votre mot de passe actuel"
+              hint="Il vérifie votre identité avant la suppression définitive."
             >
-              {busy ? ui.settings.deleting : en.account.delete}
-            </Button>
-          </div>
+              <input
+                name="deletionPassword"
+                type="password"
+                autoComplete="current-password"
+                required
+                disabled={busy}
+              />
+            </Field>
+            <Field label={en.account.deleteConfirmation}>
+              <input
+                autoComplete="off"
+                value={confirmation}
+                onChange={(e) => setConfirmation(e.target.value)}
+                disabled={busy}
+              />
+            </Field>
+            {message && (
+              <p className="notice" role="alert">
+                {message}
+              </p>
+            )}
+            <div className="form-actions">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                onClick={() => {
+                  setDeleting(false);
+                  setConfirmation('');
+                  setMessage('');
+                }}
+              >
+                {en.common.cancel}
+              </Button>
+              <Button type="submit" variant="danger" disabled={confirmation !== 'DELETE' || busy}>
+                {busy ? ui.settings.deleting : en.account.delete}
+              </Button>
+            </div>
+          </form>
         </Dialog>
       )}
     </Panel>

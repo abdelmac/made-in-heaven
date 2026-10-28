@@ -260,7 +260,7 @@ export const en = {
     resetSent: 'Si un compte existe, un lien de réinitialisation a été envoyé.',
     delete: 'Supprimer le compte',
     deleteHelp:
-      'Supprimez définitivement votre compte et votre espace personnel. Transférez d’abord vos organisations et mettez fin aux abonnements actifs.',
+      'Supprimez définitivement votre compte et votre espace personnel. Transférez d’abord la propriété de vos organisations. Cette action est irréversible.',
     deleteConfirmation: 'Saisissez DELETE pour confirmer',
     localConsent:
       'Vos données locales restent sur cet appareil. Utilisez l’import dans votre espace connecté pour envoyer volontairement une sauvegarde vérifiée.',

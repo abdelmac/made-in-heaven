@@ -104,6 +104,9 @@ async function signInWithFixture(page: Page, tier: 'free' | 'pro') {
     .getByRole('button', { name: en.account.signIn, exact: true })
     .click();
   const account = page.getByRole('dialog', { name: 'Votre compte Solace' });
+  await account
+    .getByRole('combobox', { name: 'Votre tranche d’âge', exact: true })
+    .selectOption('18+');
   const submit = account.locator('button[type="submit"]');
   test.skip(
     await submit.isDisabled(),

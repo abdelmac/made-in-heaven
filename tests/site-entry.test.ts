@@ -3,7 +3,7 @@ import { opensWorkspace } from '../src/lib/site-entry';
 import manifest from '../src/app/manifest';
 
 describe('public home and workspace entry', () => {
-  it.each(['', '?utm_source=newsletter', '?theme=dark'])(
+  it.each(['', '?utm_source=newsletter', '?theme=dark', '?account=unknown'])(
     'keeps public visits on the home page (%s)',
     (search) => expect(opensWorkspace(search)).toBe(false),
   );
@@ -17,6 +17,7 @@ describe('public home and workspace entry', () => {
     '?reset-password=1',
     '?view=billing&checkout=success',
     '?checkout=cancelled',
+    '?account=delete',
   ])('preserves workspace and account deep links (%s)', (search) => {
     expect(opensWorkspace(search)).toBe(true);
   });

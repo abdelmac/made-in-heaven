@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
     workspaceId: '11111111-1111-4111-8111-111111111111',
     isCloud: false,
     entitlements: null as { tier: BillingTier } | null,
-    currentWorkspace: { name: 'Mon espace', kind: 'personal' },
+    currentWorkspace: { name: 'Mon espace', kind: 'personal', role: 'owner' },
     workspaces: [],
   },
 }));
@@ -20,6 +20,7 @@ vi.mock('../src/components/app-context', () => ({
 }));
 vi.mock('@/lib/mobile-platform', () => ({
   isMobileBuild: () => mocks.mobile,
+  isNativeApp: () => false,
   appApiOrigin: () => 'https://www.solace-pomodoro.com',
 }));
 vi.mock('@/lib/app-fetch', () => ({ appFetch: vi.fn() }));
@@ -34,11 +35,12 @@ afterEach(() => {
   mocks.store.entitlements = null;
 });
 
-describe('mobile billing presentation before store purchases are available', () => {
+describe('mobile billing presentation without a configured native store', () => {
   it('provides a useful local account screen without advertising web checkout or pricing', () => {
     const html = renderToStaticMarkup(createElement(BillingPage));
     expect(html).toContain('Espace local');
-    expect(html).toContain('achats d’abonnement ne sont pas encore disponibles');
+    expect(html).toContain('Votre espace local reste disponible sans abonnement');
+    expect(html).toContain('Se connecter');
     expect(html).toContain('Personnaliser mon espace');
     expect(html).not.toContain('pricing-card');
     expect(html).not.toContain('Gérer l’abonnement');
@@ -63,7 +65,7 @@ describe('mobile billing presentation before store purchases are available', () 
     mocks.store.user = { id: 'account-id' };
     mocks.store.isCloud = true;
     const html = renderToStaticMarkup(createElement(BillingPage));
-    expect(html).toContain('Vérification de votre offre');
+    expect(html).toContain('Vérification de votre accès');
     expect(html).not.toContain('>Free<');
     expect(html).not.toContain('>Gratuit<');
   });

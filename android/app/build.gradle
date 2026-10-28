@@ -1,5 +1,21 @@
 apply plugin: 'com.android.application'
 
+def solaceVersionCode = providers.gradleProperty('solaceVersionCode').getOrElse('1')
+def solaceVersionName = providers.gradleProperty('solaceVersionName').getOrElse('1.0')
+if (!(solaceVersionCode ==~ /[1-9][0-9]*/) || solaceVersionCode.toLong() > 2100000000L) {
+    throw new GradleException('solaceVersionCode must be an integer between 1 and 2100000000.')
+}
+if (!(solaceVersionName ==~ /[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:[-+][A-Za-z0-9.-]+)?/)) {
+    throw new GradleException('solaceVersionName must be a numeric release version.')
+}
+def solaceSignRelease = System.getenv('SOLACE_ANDROID_SIGN_RELEASE') == '1'
+def solaceSigning = ['STORE_FILE', 'STORE_PASSWORD', 'KEY_ALIAS', 'KEY_PASSWORD'].collectEntries { name ->
+    [(name): System.getenv("SOLACE_ANDROID_${name}")]
+}
+if (solaceSignRelease && (solaceSigning.values().any { !it } || !file(solaceSigning.STORE_FILE).isFile())) {
+    throw new GradleException('Release signing requires an existing upload keystore and all signing environment values.')
+}
+
 android {
     namespace = "com.solace.pomodoro"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +23,8 @@ android {
         applicationId "com.solace.pomodoro"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode solaceVersionCode.toInteger()
+        versionName solaceVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +32,20 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (solaceSignRelease) {
+            upload {
+                storeFile file(solaceSigning.STORE_FILE)
+                storePassword solaceSigning.STORE_PASSWORD
+                keyAlias solaceSigning.KEY_ALIAS
+                keyPassword solaceSigning.KEY_PASSWORD
+            }
+        }
+    }
     buildTypes {
         release {
+            debuggable false
+            if (solaceSignRelease) signingConfig signingConfigs.upload
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

@@ -18,7 +18,8 @@ let package = Package(
         .package(name: "CapacitorFilesystem", path: "../../../node_modules/@capacitor/filesystem"),
         .package(name: "CapacitorLocalNotifications", path: "../../../node_modules/@capacitor/local-notifications"),
         .package(name: "CapacitorPreferences", path: "../../../node_modules/@capacitor/preferences"),
-        .package(name: "CapacitorShare", path: "../../../node_modules/@capacitor/share")
+        .package(name: "CapacitorShare", path: "../../../node_modules/@capacitor/share"),
+        .package(name: "CapgoNativePurchases", path: "../../../node_modules/@capgo/native-purchases")
     ],
     targets: [
         .target(
@@ -32,7 +33,8 @@ let package = Package(
                 .product(name: "CapacitorFilesystem", package: "CapacitorFilesystem"),
                 .product(name: "CapacitorLocalNotifications", package: "CapacitorLocalNotifications"),
                 .product(name: "CapacitorPreferences", package: "CapacitorPreferences"),
-                .product(name: "CapacitorShare", package: "CapacitorShare")
+                .product(name: "CapacitorShare", package: "CapacitorShare"),
+                .product(name: "CapgoNativePurchases", package: "CapgoNativePurchases")
             ]
         )
     ]

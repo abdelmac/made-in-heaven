@@ -1,8 +1,8 @@
 'use client';
 import { ui } from '@/lib/i18n/ui';
 import { appFetch } from '@/lib/app-fetch';
-import { appApiOrigin, isMobileBuild } from '@/lib/mobile-platform';
-import { openExternalUrl } from '@/lib/mobile-files';
+import { isMobileBuild } from '@/lib/mobile-platform';
+import { NativeBillingPanel } from './native-billing';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
@@ -676,6 +676,10 @@ type BillingState = {
   invoices?: Invoice[];
 };
 export function BillingPage() {
+  return isMobileBuild() ? <NativeBillingPanel /> : <WebBillingPage />;
+}
+
+function WebBillingPage() {
   const { store, notify, navigate, openAccount } = useApp();
   const [interval, setInterval] = useState<BillingInterval>('month');
   const [loadedBilling, setBilling] = useState<{ value: BillingState; scope: string } | null>(null);
@@ -767,65 +771,6 @@ export function BillingPage() {
       if (store.user) await store.refreshAccount();
       notify(ui.workspaces.billingStatusRefreshed);
     }
-  }
-  if (isMobileBuild()) {
-    const verifiedTier = billing?.entitlements?.tier || store.entitlements?.tier;
-    const planLabel = !store.isCloud
-      ? 'Espace local'
-      : verifiedTier
-        ? en.billing[verifiedTier]
-        : 'Vérification de votre offre…';
-    return (
-      <>
-        <Panel title="Votre offre" subtitle={store.currentWorkspace?.name}>
-          <span className="badge">{planLabel}</span>
-          <p className="notice">
-            Les achats d’abonnement ne sont pas encore disponibles dans cette version mobile.
-          </p>
-          <p className="helper">
-            {store.isCloud
-              ? 'Votre accès suit l’offre vérifiée de votre compte.'
-              : 'Vous pouvez organiser votre travail et vous concentrer dans votre espace local.'}
-          </p>
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="page-actions">
-            <Button variant="secondary" onClick={() => navigate('settings')}>
-              Personnaliser mon espace
-            </Button>
-            {store.user ? (
-              <Button variant="secondary" onClick={() => void refreshBilling()}>
-                <RefreshCw size={15} /> Actualiser mon accès
-              </Button>
-            ) : (
-              <Button variant="secondary" onClick={openAccount}>
-                {en.account.signIn}
-              </Button>
-            )}
-          </div>
-        </Panel>
-        <nav className="helper centered" aria-label={billingCopy.legalNavigation}>
-          {billingCopy.legalLinks.map(({ href, label }) => (
-            <Button
-              key={href}
-              variant="ghost"
-              onClick={() => {
-                void openExternalUrl(new URL(href, appApiOrigin()).href).catch((cause) => {
-                  setError(
-                    cause instanceof Error ? cause.message : 'Impossible d’ouvrir cette page.',
-                  );
-                });
-              }}
-            >
-              {label}
-            </Button>
-          ))}
-        </nav>
-      </>
-    );
   }
   return (
     <>

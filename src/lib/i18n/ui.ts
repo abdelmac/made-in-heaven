@@ -164,7 +164,7 @@ export const ui = {
     requestANewResetLink: 'Demander un nouveau lien',
     youExampleCom: 'vous@exemple.fr',
     exportYourPersonalDataFirstTransferOrganizationOwnershipAnd:
-      'Exportez d’abord vos données personnelles. Transférez vos organisations et attendez la fin des abonnements avant de supprimer le compte. Reconnectez-vous si votre session a plus de dix minutes.',
+      'Exportez d’abord vos données personnelles et transférez la propriété de vos organisations. Votre abonnement web personnel sera résilié immédiatement lors de la suppression. Votre mot de passe sera demandé pour confirmer votre identité.',
     keepYourUnsyncedWork: 'Conservez votre travail non synchronisé',
     someAccountChangesMayNotHaveReachedTheServer:
       'Certaines modifications n’ont peut-être pas atteint le serveur. La déconnexion efface les données en cache et les changements en attente de tous les espaces du compte sur cet appareil.',

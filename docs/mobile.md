@@ -1,5 +1,7 @@
 # Solace mobile apps
 
+October 28 release handoff: native purchase/restore/manage flows and legal acceptance are implemented, all 15 database migrations are hosted, and signed Android 1.0.0/code1 AAB/APK files are verified locally. See [Android artifacts](android-release.md), [iOS Mac handoff](ios-release.md), [store readiness](store-readiness.md), and [remaining owner actions](publication-owner-actions.md). Store products and credentials, real sandbox purchases, final policy approval and store submission remain pending. Vercel Pro was prepared but the owner left the upgrade pending, so paid production sales remain closed. Historical preparation notes below do not supersede this status.
+
 The mobile client reuses Solace’s React workspace and bundles it with Capacitor 8.
 Its pages, fonts and local workspace are available without downloading the website.
 The Next.js server and its database remain hosted separately.
@@ -162,10 +164,13 @@ task creation, cloud readback and cleanup. An existing account's recovery email
 also opened the correct Android password form. The owner confirmed a successful
 different-password update and new sign-in; device inspection confirmed recovery
 mode cleared and the personal workspace synchronized. New-account signup
-confirmation is currently blocked by the built-in email sender's rate limit.
-Custom SMTP was confirmed disabled; the owner selected Resend, whose setup is
-documented in [auth-mail.md](auth-mail.md). The iOS account flow has not been
-run on a built app.
+confirmation initially hit the built-in email sender's rate limit. Resend SMTP
+has since been activated and independently verified at 30 emails per hour;
+protected Auth settings were preserved. The owner then reported receiving the
+signup email and opening it on the same Note10, which signed them in. Status-only
+inspection confirmed the signed-in personal cloud workspace before and after a
+full app restart. Details are in [auth-mail.md](auth-mail.md). The iOS account
+flow has not been run on a built app.
 
 Native refresh tokens are held in encrypted Android Keystore/iOS Keychain storage.
 Workspace documents, appearance and pending sync state use app-private native
@@ -213,9 +218,13 @@ app restart and personal-workspace task saving/readback/cleanup were verified.
 A recovery email opened the password form on that installation. After an expected
 same-password rejection, the owner confirmed a different-password update and
 new sign-in; device inspection confirmed the signed-in, synchronized state and
-cleared recovery mode. A new account's confirmation email remains a separate
-phone check. The iOS equivalent requires a built app on an iPhone or simulator
-with macOS/Xcode.
+cleared recovery mode. After configuring Resend SMTP, the owner also confirmed
+receiving and opening the signup email on the same phone, which signed them in.
+The signed-in personal cloud workspace was inspected before and after another
+full app restart. This checks session restoration after confirmation; opening
+the confirmation link while the app is stopped remains a separate test, as does
+password-reset delivery through Resend. The iOS equivalent requires a built app
+on an iPhone or simulator with macOS/Xcode.
 
 ### Other device checks
 
@@ -255,7 +264,14 @@ offer screen shows verified account access without sending people to Stripe
 Checkout or its customer portal. StoreKit/Google Play Billing, purchase restoration
 and verified store entitlement handling remain a separate implementation step.
 
-Store-ready account deletion, final privacy/support documents and disclosures,
-release signing, store screenshots, TestFlight/Play testing and review submission
-also remain separate launch work. Creating these native projects does not complete
-those steps or publish either app to a store.
+The next preparation step now includes a public `/account-deletion` page, a
+browser entry into the authenticated deletion flow, current-password verification,
+immediate cancellation of personal web subscriptions, and transactional cleanup
+of attributable shared content. Three native-bridge browser regressions passed;
+they use synthetic accounts and do not delete a real hosted account. The SQL
+migration and matching backend/public pages have not been deployed. The privacy
+draft and store-disclosure inventory are in [store-readiness.md](store-readiness.md).
+Publisher identity, a working support inbox, final retention/policy decisions and
+hosted/device deletion verification remain needed. Release signing, store
+screenshots, TestFlight/Play testing and review submission are also separate work.
+Creating these projects does not publish either app to a store.

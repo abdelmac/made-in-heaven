@@ -8,11 +8,26 @@ recovery-link handling. The owner also confirmed a successful password change
 and sign-in with the new password. New-account signup then returned
 `email rate limit exceeded`.
 
-A read-only hosted configuration check confirmed custom SMTP is disabled.
+A read-only hosted configuration check initially confirmed custom SMTP was disabled.
 Supabase's built-in mailer has a project-wide limit of two authentication emails
 per hour and restricts recipients to project-team addresses. Public signup needs
 a dedicated delivery setup. See the official [SMTP guide](https://supabase.com/docs/guides/auth/auth-smtp)
 and [rate limits](https://supabase.com/docs/guides/auth/rate-limits).
+
+The owner has now activated Resend SMTP using the local masked key-entry window.
+The apply result confirmed the credential was sent and protected Auth settings
+were unchanged. An independent read-only check confirmed SMTP is enabled, the
+nonsecret settings match the configuration below, and the sending limit is 30
+emails per hour.
+
+The owner then reported receiving the signup confirmation email and opening it
+on the same Galaxy Note10, which signed them into Solace. Status-only inspection
+confirmed the signed-in personal workspace and completed cloud synchronization.
+After a full app stop and cold relaunch, the same signed-in, synchronized state
+was verified again, with no account error or authentication secrets in the
+navigation state. Email contents, input values and session tokens were not read.
+The email delivery and link-opening result were owner-reported; device status
+and session restoration were independently observed.
 
 ## Resend prerequisites
 
@@ -37,12 +52,12 @@ The owner subsequently reported Resend Sending as **Verified**. Independent chec
 through Cloudflare and Google public resolvers confirmed the DKIM TXT and the
 sending CNAMEs: `rsend` points to `rsend-euw1.forge.rmta.net`, and `send` points to
 `send.forge.rmta.net`. A fresh local preview passed with zero production writes
-and protected Auth settings unchanged. SMTP activation still awaits the locally
-entered sending key; delivery has not yet been tested.
+and protected Auth settings unchanged. The subsequent SMTP activation,
+signup delivery result and device verification are recorded above.
 
-## Prepared Supabase configuration
+## Active Supabase configuration
 
-| Setting                    | Planned value                             |
+| Setting                    | Configured value                          |
 | -------------------------- | ----------------------------------------- |
 | Supabase project           | `zwgjauskorkpucuaqvgs` / Solace Hikmagitz |
 | SMTP host                  | `smtp.resend.com`                         |
@@ -68,7 +83,8 @@ Preview the exact nonsecret configuration first:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\.local\mobile-auth\setup-resend.ps1
 ```
 
-After the sending domain is verified, activate it with a local secure key prompt:
+For initial activation or a future credential update, use a local secure key prompt
+after verifying the sending domain. The current installation is already active:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\.local\mobile-auth\setup-resend.ps1 -Apply
@@ -95,9 +111,21 @@ bundle. Supabase stores the SMTP credential as part of its hosted Auth settings.
 The helper previews allowed settings, checks the update result and verifies
 nonsecret readback. It prints a nonsecret result in the local terminal.
 
-SMTP activation and successful delivery must be verified before treating this
-setup as complete. After activation, retry the pending signup on the phone. If
-the earlier attempt already created an unconfirmed account, resend its
-confirmation rather than creating another account. Open the confirmation email
-on that same installation and verify account/session restoration. Local preview success
-alone does not establish email delivery or Resend domain verification.
+Check the active nonsecret settings without entering a key or changing configuration:
+
+```powershell
+node .\.local\mobile-auth\configure-resend.mjs --verify
+```
+
+For future signup delivery checks, use an address that is not already confirmed.
+In the installed app, choose **Ouvrir le compte → Créer un compte**, submit once,
+and open the newest confirmation email on that same installation. Verify the
+signed-in workspace and session restoration after a restart. The app has no
+separate resend-confirmation button; repeating signup for an unconfirmed account
+requests a fresh confirmation with this installation's PKCE flow. A check-your-email
+notice alone does not establish delivery.
+
+This result covers signup on the installed Android debug build. Resend-backed
+password-reset delivery, a confirmation link opened while the app is stopped,
+and the iOS equivalent remain separate checks. The earlier successful password
+recovery test preceded the SMTP change.

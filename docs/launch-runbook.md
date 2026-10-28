@@ -2,7 +2,9 @@
 
 État au 22 septembre 2026 : **pas d’ouverture des paiements réels**. La migration `0011` est maintenant appliquée sur `zwgjauskorkpucuaqvgs`, avec liaison `test/NULL`, sans changement des deux comptes et deux espaces existants. Connexion, synchronisation entre deux navigateurs et droits Free ont été revérifiés avec un compte temporaire ensuite supprimé. Le nouveau code applicatif n’est pas encore publié. Aucun abonnement payant, achat de domaine, forfait d’hébergement ou service e-mail n’a été souscrit.
 
-Offre validée : **Free gratuit ; Pro 3,99 €/mois ou 29,99 €/an**, payé annuellement. Team reste fermé. Le catalogue audio hébergé est vide : ne pas le présenter comme un avantage disponible à l’achat.
+Offre actuelle choisie le 28 octobre 2026 : **Free gratuit ; Pro 1 €/mois, sans offre annuelle**. Cette décision remplace les anciennes propositions de prix. Apple et Google utilisent leurs achats natifs ; leur prix local doit être vérifié dans chaque boutique. Aucun prix Stripe existant ni abonnement client n’est modifié par ce document. Team reste fermé. Le catalogue audio hébergé doit être vérifié avant d’être présenté comme un avantage disponible.
+
+La préparation actuelle pour les boutiques et les actions opérateur figure dans [publication-owner-actions.md](publication-owner-actions.md). L’hébergement retenu est Vercel Pro : [préparation du passage Pro](vercel-pro-upgrade.md). Les notes du 22 septembre ci-dessus sont historiques ; elles ne décrivent pas l’état du dernier déploiement.
 
 ## 1. Remplacer la clé exposée — avant tout
 
@@ -31,8 +33,8 @@ Les attestations `SOLACE_COMMERCIAL_HOSTING_CONFIRMED`, `SOLACE_AUTH_EMAIL_VERIF
 
    Utiliser le véritable identifiant du compte. Pour une base historique test déjà occupée, garder la liaison initiale `(test, NULL)` et `STRIPE_ACCOUNT_ID` vide ; ne pas forcer son changement. La migration préserve les droits test existants dans leur environnement test.
 
-4. Dans Stripe, créer **Solace Pro** avec deux prix récurrents EUR, facturation à l’unité, quantité 1 : mois **399** centimes, année **2999** centimes, sans essai. Remplir les deux identifiants `STRIPE_PRO_*_PRICE_ID`. Laisser tous les identifiants Team vides.
-5. Créer un portail Pro avec historique des factures, mise à jour du moyen de paiement et résiliation en fin de période. Désactiver les changements de quantité. Les changements de prix peuvent rester désactivés ; s’ils sont proposés, limiter aux deux prix Pro et relire les prorations.
+4. Dans Stripe, créer **Solace Pro** avec un prix récurrent EUR, facturation à l’unité, quantité 1 : mois **100** centimes, sans essai. Remplir `STRIPE_PRO_MONTH_PRICE_ID` et laisser `STRIPE_PRO_YEAR_PRICE_ID` vide. Laisser tous les identifiants Team vides. Vérifier les prix existants avant toute modification ; ne pas modifier l’abonnement d’un client dans cette préparation.
+5. Créer un portail Pro avec historique des factures, mise à jour du moyen de paiement et résiliation en fin de période. Désactiver les changements de quantité. Les changements de prix peuvent rester désactivés ; s’ils sont proposés, limiter au prix Pro mensuel et relire les prorations.
 6. Créer un webhook snapshot **pour cette installation**, sur `/api/billing/webhook`, avec les 13 événements de [billing.md](billing.md#setup), sans Connect. Utiliser la version compatible SDK `2026-08-26.dahlia` et son propre secret de signature. Ne pas modifier le webhook de l’ancien site.
 7. Mettre les valeurs privées de `.env.example` dans l’environnement de recette : mode `test`, compte correspondant, clé test, prix, portail, webhook et Supabase du même projet. Garder toutes les attestations live fermées.
 
@@ -43,7 +45,7 @@ Les droits de clé doivent permettre les lectures utilisées et les opérations 
 ## 4. Vérifier le parcours hébergé en test
 
 - Inscription depuis une adresse externe, confirmation réelle reçue, connexion, récupération du mot de passe et nouveau mot de passe utilisable.
-- Compte Free → choix mensuel puis, avec un autre compte de recette, annuel ; total affiché conforme, paiement avec une carte de test Stripe.
+- Compte Free → choix mensuel ; total affiché conforme, paiement avec une carte de test Stripe.
 - Webhook signé `invoice.paid` effectivement reçu → Pro attribué dans la bonne base, puis visible sur un deuxième appareil. Un retour `?checkout=success` seul ne doit pas donner Pro.
 - Double clic/rechargement pendant Checkout : pas de deuxième abonnement ; échec initial de paiement : pas de Pro indu.
 - Portail : facture accessible, mise à jour de carte et résiliation en fin de période ; Pro conservé jusqu’au terme payé.

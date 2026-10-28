@@ -26,6 +26,7 @@ import {
 } from '@/lib/billing/server';
 import { checkoutLaunchReady } from '@/lib/billing/launch';
 import { hasBlockingSubscription } from '@/lib/billing/entitlements';
+import { assertNoNativeSubscription } from '@/lib/billing/native-server';
 import { getPortalConfiguration } from '@/lib/billing/portal';
 import { objectId, type SubscriptionRecord } from '@/lib/billing/reconcile';
 
@@ -70,6 +71,7 @@ async function handlePOST(request: Request) {
       ? { folia_workspace_id: workspace.id, billing_mode: 'live' }
       : { folia_workspace_id: workspace.id };
     const url = await withBillingLock(workspace.id, async (token) => {
+      await assertNoNativeSubscription(workspace.id);
       const db = billingDatabase();
       const { data, error } = await db
         .from('workspace_subscriptions')

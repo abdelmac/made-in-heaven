@@ -43,8 +43,15 @@ async function beginEmailFlow(page: Page, mode: 'signUp' | 'reset', email: strin
     .locator('.detail-tabs')
     .getByRole('button', { name: en.account[mode], exact: true })
     .click();
+  if (mode === 'signUp')
+    await dialog
+      .getByRole('combobox', { name: 'Votre tranche d’âge', exact: true })
+      .selectOption('18+');
   await dialog.getByLabel(en.account.email, { exact: true }).fill(email);
-  if (mode === 'signUp') await dialog.locator('input[name="password"]').fill('fixture-password-12');
+  if (mode === 'signUp') {
+    await dialog.locator('input[name="password"]').fill('fixture-password-12');
+    await dialog.getByRole('checkbox', { name: /J’accepte les/ }).check();
+  }
   await dialog.locator('button[type="submit"]').click();
   await expect(dialog.getByRole('status')).toHaveText(
     mode === 'signUp' ? en.account.verify : en.account.resetSent,
@@ -255,7 +262,9 @@ test('native callback without this installation PKCE verifier stays signed out',
   ).toBeVisible();
   expect(authRequests.filter((request) => request.path === '/auth/v1/token')).toHaveLength(0);
   const dialog = await openNativeAccount(page);
-  await expect(dialog.getByLabel(en.account.email, { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByRole('combobox', { name: 'Votre tranche d’âge', exact: true }),
+  ).toBeVisible();
   expect((await browserStorage(page)).secure).not.toContain('fixture-mobile-refresh');
   expect(page.url()).not.toContain('borrowed-code');
 });
@@ -296,6 +305,9 @@ test('native bridge uses secure session storage and bearer API requests across r
     .getByRole('button', { name: 'Ouvrir le compte', exact: true })
     .click();
   const dialog = page.getByRole('dialog', { name: 'Votre compte Solace', exact: true });
+  await dialog
+    .getByRole('combobox', { name: 'Votre tranche d’âge', exact: true })
+    .selectOption('18+');
   const submit = dialog.locator('button[type="submit"]');
   test.skip(
     await submit.isDisabled(),

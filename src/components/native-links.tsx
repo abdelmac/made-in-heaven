@@ -5,7 +5,14 @@ import { appApiOrigin, isNativeApp } from '@/lib/mobile-platform';
 import { openExternalUrl } from '@/lib/mobile-files';
 import { useApp } from './app-context';
 
-const publicPaths = new Set(['/legal', '/privacy', '/terms', '/support']);
+const publicPaths = new Set([
+  '/legal',
+  '/privacy',
+  '/terms',
+  '/support',
+  '/account-deletion',
+  '/third-party-notices.txt',
+]);
 
 export type NativeLinkAction =
   { kind: 'internal' } | { kind: 'external'; url: string } | { kind: 'blocked' };

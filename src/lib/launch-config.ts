@@ -2,6 +2,11 @@ import 'server-only';
 
 type LaunchEnvironment = Readonly<Record<string, string | undefined>>;
 
+export type PublisherInformation = {
+  displayName: string | null;
+  country: string | null;
+};
+
 export type LaunchInformation = {
   sellerName: string | null;
   sellerAddress: string | null;
@@ -93,6 +98,16 @@ function publicDocumentUrl(value: string | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+/** Optional public branding; never substitutes for verified seller identity. */
+export function getPublisherInformation(
+  env: LaunchEnvironment = process.env,
+): PublisherInformation {
+  return {
+    displayName: publicText(env.SOLACE_PUBLISHER_NAME, 200),
+    country: publicText(env.SOLACE_PUBLISHER_COUNTRY, 100),
+  };
 }
 
 /** Public launch information only; no credentials or provider settings are read here. */

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { createEmptyData } from '../../src/lib/model';
 import { DEFAULT_BILLING_POLICY, PLAN_FEATURES } from '../../src/lib/billing/config';
+import { en } from '../../src/lib/i18n/en';
 export { installNativeBridge, emitNativeAppUrl } from './fixtures/native-bridge';
 export type FixtureRequest = {
   url: string;
@@ -103,7 +104,16 @@ export async function installNativeAuthRoutes(page: Page, options: { samePasswor
     }
     if (url.pathname.startsWith('/api/')) {
       requests.push(recorded);
-      if (url.pathname === '/api/workspaces') {
+      if (url.pathname === '/api/account/consent' && request.method() === 'GET') {
+        await route.fulfill({
+          headers: cors,
+          json: {
+            eligible: false,
+            acceptance: null,
+            versions: { terms: '2026-10-28', privacy: '2026-10-28' },
+          },
+        });
+      } else if (url.pathname === '/api/workspaces') {
         await route.fulfill({
           headers: cors,
           json: {
@@ -153,11 +163,9 @@ export async function openNativeAccount(page: Page) {
     .click();
   const dialog = page.getByRole('dialog', { name: 'Votre compte Solace', exact: true });
   await expect(dialog).toBeVisible();
-  const submit = dialog.locator('button[type="submit"]');
-  if (await submit.count())
-    test.skip(
-      await submit.isDisabled(),
-      'The mobile bundle needs public Supabase configuration for the mocked native auth flows.',
-    );
+  test.skip(
+    (await dialog.getByText(en.account.unavailable, { exact: true }).count()) > 0,
+    'The mobile bundle needs public Supabase configuration for the mocked native auth flows.',
+  );
   return dialog;
 }

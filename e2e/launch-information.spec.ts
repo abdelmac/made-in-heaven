@@ -15,7 +15,20 @@ for (const [route, title] of [
       page.getByRole('link', { name: 'Retour à l’application', exact: true }),
     ).toHaveAttribute('href', '/?view=overview');
     const navigation = page.getByRole('navigation', { name: 'Informations sur Solace' });
-    await expect(navigation.getByRole('link')).toHaveCount(4);
+    await expect(navigation.getByRole('link')).toHaveCount(5);
+    await expect(
+      navigation.getByRole('link', { name: 'Suppression du compte', exact: true }),
+    ).toHaveAttribute('href', '/account-deletion');
+    if (route === 'privacy') {
+      const privacy = page.getByRole('article', { name: 'Données et fonctionnement de Solace' });
+      await expect(privacy).toBeVisible();
+      await expect(
+        privacy.getByRole('link', { name: 'page de suppression du compte', exact: true }),
+      ).toHaveAttribute('href', '/account-deletion');
+      await expect(
+        privacy.getByRole('heading', { name: 'Points à finaliser avant publication', exact: true }),
+      ).toBeVisible();
+    }
     await expect(navigation.locator('[aria-current="page"]')).toHaveAttribute('href', `/${route}`);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       320,

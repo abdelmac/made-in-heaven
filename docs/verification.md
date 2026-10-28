@@ -1,13 +1,61 @@
 # Verification record
 
-Latest hosted verification was performed on October 28, 2026 for the independent `solace-hikmagitz` installation. The latest application deployment verification remains October 27, and the latest database audit remains September 22. Earlier `folia-ennearock` records are retained below; its Stripe sandbox offering does not apply to the new site.
+Latest database and release verification was performed on October 28, 2026 for the independent `solace-hikmagitz` installation. Earlier records below are historical; the old `folia-ennearock` Stripe sandbox offering does not apply to this site.
 
-## October 28: signup email sending — setup pending
+## October 28: native purchases, legal acceptance and signed release
+
+- Final full application unit run: **779 tests in 64 files passed**, including signup-hook setup/readiness checks. Full format, ESLint, production Next.js build and TypeScript passed. Six production Chrome scenarios passed for the public documents, 320px layout, JavaScript-disabled deletion instructions and browser deletion entry.
+- The actual bundled mobile client passed **15 age/consent/auth/deletion browser scenarios** and **11 native-purchase scenarios** against intercepted providers. These cover explicit acceptance, under-16 local guidance, durable purchase reservations, pending/canceled/failed purchases, restore/retry, localized pricing and subscription management. They do not establish actual StoreKit/Play purchase correctness.
+- Isolated PostgreSQL 18.3/PGlite 0.5.8 passed **516 assertions across 15 migrations and 12 suites**, including 80 native billing, 51 legal-acceptance and 57 account-deletion assertions. No hosted account deletion or real billing cancellation was triggered.
+- Hosted project `zwgjauskorkpucuaqvgs` now has all 15 repository migrations. The mood validator, deletion scrub, native billing and legal acceptance migrations were applied and read back. Migration history was aligned with the repository timestamps without rerunning SQL. Capability versions are 1; native billing is bound to **sandbox**. All six new native/consent tables have RLS. Client RPC execution is denied, service RPC access is allowed, the service credential cannot change native billing mode, and only the Auth role can execute the signup hook.
+- Hosted security advisors report the intentional service-only RLS tables without client policies, the membership-guarded `workspace_entitlements` definer function, and disabled leaked-password protection. This is a reviewed result, not a blanket claim that every advisor is clear.
+- Built and verified signed Android **1.0.0/code1**, package `com.solace.pomodoro`, minimum API26, target API36, debugging disabled, Billing 9.1.0. AAB and APK use the same RSA4096 upload certificate. Actual hashes and paths are in [android-release.md](android-release.md). The owner's existing debug app was not replaced and no store upload occurred.
+- iOS source and assets now link all eight native plugins, including purchases. No iOS archive, device run or TestFlight upload was possible on Windows; [ios-release.md](ios-release.md) records the Mac handoff.
+- Vercel public publisher/support settings were saved for the existing project. The owner explicitly left the Pro upgrade pending; authenticated plan readback remains Hobby. Native production sales and Stripe live launch remain closed. Actual store products, server credentials, sandbox purchase/notification delivery and publisher policy review remain pending.
+
+Deployment **`dpl_5rZpwJ1FMNsFr1hbRhimSGbwBtkr`** completed READY and was aliased to **https://www.solace-pomodoro.com**. Its Linux production build and TypeScript passed. Read-only live HTTP checks confirmed all six public routes, the supplied publisher/support values, provisional/noindex policy status, exact signup target/version marker, published license notices, unauthenticated consent rejection (401), and `checkoutEnabled:false`. The same **six Chrome public/deletion checks passed against the actual domain**. No form submitted an email, deletion or payment.
+
+The signup policy hook was then enabled through the reviewed sparse helper. Preview contained exactly two hook fields and no secret declarations or replacement active hook. Apply confirmed one Auth update; independent `--verify` returned no differences and zero writes. The protected Auth snapshot, including SMTP and redirects, stayed unchanged. Live dry-browser checks confirmed neutral age selection, under-16 local guidance without identity fields and required terms acceptance, without submitting a signup. Five direct hosted pure-function cases accepted both eligible age bands and rejected missing, under-16 and unaccepted declarations. End-to-end signup/email through the newly enabled hook remains a separate owner-run test; no account or email was created by these checks.
+
+Google/Apple marketing icons and the Google Play feature graphic were generated from the existing Solace mark, inspected visually and checked for required dimensions. The iOS source icon's redundant alpha channel was removed without changing RGB pixels; signed Android artifact hashes remain unchanged. Real device screenshots and an iOS archive remain pending. Private keys, passwords, receipts and session contents are excluded from this record.
+
+## October 28: store privacy and deletion preparation — source verified
+
+- Added a public `/account-deletion` page with a browser-only entry at `/?account=delete`, including when the app has been uninstalled. It opens the account panel and requires sign-in, current-password verification and typed `DELETE`; no deletion is submitted merely by visiting the link. Privacy, support and deletion links are accessible from the account panel and public pages.
+- The API verifies the current session's password AMR, checks the database deletion capability, closes Checkout and cancels personal Stripe subscriptions under the billing fence, revokes sessions and hard-deletes the identity. Uncertain billing/capability/session conditions fail closed. Local cleanup failures after confirmed server deletion are reported separately from server failure.
+- Prepared the transactional `20261028214004_account_deletion_privacy.sql` migration and SQL regression suite. Author-attributable organization content and references are removed while unrelated members' content and collective organization resources are preserved. Document versions and journal authorship protection prevent stale content resurrection. **385 assertions across 13 migrations and 10 suites passed**, including **57 deletion assertions**, on isolated PostgreSQL 18.3/PGlite 0.5.8. Docker was unavailable, and no concurrent-connection or hosted deletion test was performed.
+- Final application validation: **588 unit/server tests across 53 files passed**, including **49 account-deletion server regressions**; production Next.js build/TypeScript and scoped ESLint passed. **Six Chrome production-browser scenarios** passed for public pages, 320px layout, JavaScript-disabled instructions and browser deletion entry. **Three native-bridge browser scenarios** passed for password rejection, fresh native credentials and cache cleanup, and local logout failure after successful server deletion. These use synthetic intercepted accounts and do not establish physical-device deletion or real Stripe cancellation.
+- Added a factual privacy draft and [store-disclosure inventory](store-readiness.md). The owner supplied a public support email, configured locally; receiving a support message remains untested. Publisher identity/country, audience, final policy/retention details and public legal documents are still needed. Documents remain provisional. No hosted migration, application deployment, live account deletion, payment cancellation or store submission was performed in this preparation step.
+
+The owner subsequently supplied display name **ennearock** and declared country
+**France**, and confirmed individual publication under that nickname. These are
+configured locally through optional public branding fields, separate from legal
+seller identity. Public pages display them while legal fields and launch gates
+remain incomplete. The focused follow-up passed **101 tests across five files**,
+TypeScript and scoped ESLint; this does not replace the earlier full-suite count
+or verify legal identity. The owner subsequently supplied **Machta Abdelkader**
+as the legal publisher name; it was configured locally and verified through the
+runtime configuration reader alongside the nickname, country and support email.
+Applicable public contact details and final policy/retention decisions remain
+required for final publication, and commercial readiness remains false.
+
+After the supplied legal name was configured, the privacy draft gained clear
+required/optional-data explanations and rights-request/CNIL complaint instructions.
+The remaining policy/provider decisions are consolidated in
+[privacy-review.md](privacy-review.md). The production build and **59 focused
+tests across three files** passed. A temporary local production preview returned
+HTTP 200 for `/legal` and `/privacy`; visible legal name, nickname, country,
+support email and provisional notice were all verified on both pages. The
+preview was stopped afterward. No hosting or store publication occurred.
+
+## October 28: Resend SMTP and Android signup verified
 
 - The new-account signup attempt on the phone displayed `email rate limit exceeded`; the signed-out signup form and rate-limit status were corroborated through status-only inspection.
 - A read-only CLI configuration comparison returned explicit **custom SMTP disabled**. The CLI prunes the numeric email rate when SMTP is disabled, so no numeric hosted limit was inferred from an absent field. Supabase documents a two-emails-per-hour project limit and team-only recipients for its built-in sender.
 - The owner selected Resend. No provider credential was present in the project environment, and no Resend or Namecheap connector was available. Public DNS identified Namecheap BasicDNS, existing root MX records and absent Resend DKIM/sending-SPF names. No SMTP setting, DNS record, paid plan or email resource was activated by these checks.
-- Provider domain verification and a locally supplied sending key are required before activation and a new signup delivery test. The prepared configuration and owner steps are in [auth-mail.md](auth-mail.md).
+- The owner subsequently verified Resend Sending. Independent public DNS checks confirmed the DKIM TXT and sending CNAME records. The owner activated SMTP using the local masked password dialog; the helper reported the credential sent, SMTP enabled, a 30-emails-per-hour limit, and protected Auth settings unchanged. No credential was pasted into chat or written into a project env file.
+- An independent read-only CLI verification confirmed SMTP enabled and email rate 30 using opposite-value comparisons, with zero changes needed for the approved nonsecret settings and zero production writes during that check. The active configuration and owner steps are in [auth-mail.md](auth-mail.md).
+- The owner then reported that the signup email arrived and opening its confirmation link on the same Note10 signed them into Solace. Status-only inspection independently confirmed the signed-in personal workspace, completed cloud synchronization, no account error and navigation without authentication secrets. A full app stop and cold relaunch returned `Status: ok`; the same signed-in, synchronized state was verified again afterward. Email contents, passwords and session tokens were not inspected. Resend-backed password-reset delivery, cold-start confirmation links and iOS flows remain separate checks.
 
 ## October 28: Galaxy Note10 installation — device verification
 
@@ -17,7 +65,7 @@ Latest hosted verification was performed on October 28, 2026 for the independent
 - The owner signed in directly on the phone. The signed-in account summary was verified again after a full app stop and cold relaunch, with the personal cloud workspace restored. Inspection returns booleans and device/runtime metadata, without reading input values or session storage.
 - A uniquely named task was created only in the verified personal workspace. Its live save returned **HTTP 200**, and a fresh cloud read after reload returned **HTTP 200** with that task present. Deleting only that test task returned **HTTP 200**; another fresh read returned **HTTP 200** and confirmed it stayed absent. Creation/deletion activity entries remain by design. No existing task was selected for deletion.
 - The owner used an existing Solace account. A recovery email opened the password form in the same installed Android app; its verified recovery-mode marker and secret-free navigation state were observed. The provider rejected reuse of the current password as expected, leaving the form available for another attempt. The owner then confirmed the password-updated notice and a successful sign-in with a different new password. A subsequent device inspection confirmed recovery mode had cleared, the account was signed in, the personal workspace was synchronized, and the earlier validation message was absent. Password values were not read; the brief success notice itself was owner-reported rather than captured by the timed observer.
-- New-account signup confirmation is a separate remaining phone check. No admin API key or disposable hosted account was used for the existing-account checks.
+- The later Resend signup delivery and confirmation result, including session restoration after a full app restart, are recorded above. No admin API key or agent-created disposable hosted account was used for these phone checks.
 
 ## October 28: mobile sign-in — development verification
 
@@ -25,7 +73,7 @@ Latest hosted verification was performed on October 28, 2026 for the independent
 - **11 distinct mobile browser scenarios passed with zero skips**, including **seven native-bridge scenarios**. The full 11-case run passed 10 cases and exposed an existing timer test reading persistence before its asynchronous pause transaction completed. After adding waits for persisted running/paused state, all four workspace scenarios passed on the targeted rerun. The new retry scenario also passed independently. The existing password sign-in/session restoration and local persistence cases remain covered. The fixture simulates native storage and link events; it does not verify device encryption, email delivery or the OS opening a link.
 - **59 focused unit/server tests passed across four files**, covering native authentication, mobile client/server transport and website callbacks. TypeScript, focused ESLint and formatting checks passed. These changes add verification coverage; the application source and compiled APK were not changed.
 - All **four real HTTP native API checks passed against production** for the iOS and Android origins, rejection of invalid authentication and foreign preflights, and preservation of browser origin checks. These requests were unauthenticated or deliberately invalid and did not save account content.
-- No Android device was attached during this automated run, and no emulator/system image was installed. The later Note10 installation, session restoration and cloud-save checks are recorded above. A focused phone checklist is documented in [mobile.md](mobile.md#authentication-on-a-test-phone). Signup confirmation/recovery remains a separate physical-device check.
+- No Android device was attached during this automated run, and no emulator/system image was installed. The later Note10 installation, session restoration, cloud-save, signup and recovery results are recorded above. A focused phone checklist is documented in [mobile.md](mobile.md#authentication-on-a-test-phone).
 - Automatic approval review rejected revealing project secret API keys for a proposed disposable-account hosted test because that access was not specifically authorized and was considered unnecessary for the requested sign-in checks. No secret was retrieved and no hosted test account was created. No email was sent.
 
 ## October 28: mobile Auth redirect allowlist — hosted verification

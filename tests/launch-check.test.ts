@@ -10,7 +10,7 @@ const sandbox = () => ({
   STRIPE_SECRET_KEY: 'rk_test_unit_fixture',
   STRIPE_WEBHOOK_SECRET: 'whsec_fixture',
   STRIPE_PRO_MONTH_PRICE_ID: 'price_month',
-  STRIPE_PRO_YEAR_PRICE_ID: 'price_year',
+  STRIPE_PRO_YEAR_PRICE_ID: '',
   STRIPE_PRO_PORTAL_CONFIGURATION_ID: 'bpc_portal',
   NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
   NEXT_PUBLIC_SUPABASE_URL: 'https://unit.supabase.co',
@@ -25,7 +25,8 @@ describe('read-only launch checklist', () => {
   it.each([
     { STRIPE_BILLING_MODE: 'production' },
     { STRIPE_SECRET_KEY: 'rk_live_unit_fixture' },
-    { STRIPE_PRO_YEAR_PRICE_ID: '' },
+    { STRIPE_PRO_MONTH_PRICE_ID: '' },
+    { STRIPE_PRO_YEAR_PRICE_ID: 'price_year' },
     { STRIPE_PRO_YEAR_PRICE_ID: 'price_month' },
     { STRIPE_TEAM_MONTH_PRICE_ID: 'price_team' },
     { STRIPE_WEBHOOK_SECRET: '' },

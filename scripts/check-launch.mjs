@@ -49,9 +49,9 @@ export function launchChecks(env) {
   check('Secret de signature webhook présent', () =>
     /^whsec_[A-Za-z0-9]+$/.test(env.STRIPE_WEBHOOK_SECRET ?? ''),
   );
-  check('Deux tarifs Pro distincts, Team désactivé pour ce lancement', () => {
+  check('Un tarif Pro mensuel, annuel et Team désactivés pour ce lancement', () => {
     const prices = configuredPrices(env);
-    return prices.length === 2 && prices.every((price) => price.tier === 'pro');
+    return prices.length === 1 && prices[0].tier === 'pro' && prices[0].interval === 'month';
   });
   check('Configuration de portail Pro présente', () =>
     /^bpc_[A-Za-z0-9]+$/.test(env.STRIPE_PRO_PORTAL_CONFIGURATION_ID ?? ''),
@@ -96,10 +96,7 @@ export async function onlineChecks(env) {
       (!live || (account.charges_enabled && account.payouts_enabled))
     );
   });
-  for (const [interval, amount] of [
-    ['month', 399],
-    ['year', 2999],
-  ]) {
+  for (const [interval, amount] of [['month', 100]]) {
     await check(`Tarif Pro ${interval} : EUR ${amount} centimes, actif et bon mode`, async () => {
       const id = env[`STRIPE_PRO_${interval.toUpperCase()}_PRICE_ID`];
       if (!id) return false;
@@ -126,7 +123,7 @@ export async function onlineChecks(env) {
       const portal = await stripe.billingPortal.configurations.retrieve(id);
       const features = portal.features;
       const updates = features.subscription_update;
-      const allowed = new Set([env.STRIPE_PRO_MONTH_PRICE_ID, env.STRIPE_PRO_YEAR_PRICE_ID]);
+      const allowed = new Set([env.STRIPE_PRO_MONTH_PRICE_ID]);
       return (
         portal.active &&
         portal.livemode === live &&

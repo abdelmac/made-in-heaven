@@ -29,7 +29,11 @@ function image({ size = 1024, foreground = false, round = false, splash = false 
 
 async function png(path, source, size) {
   await mkdir(dirname(path), { recursive: true });
-  await sharp(source).resize(size, size).png().toFile(path);
+  const output = sharp(source).resize(size, size);
+  // The primary App Store icon must be RGB, even when an RGBA source is fully
+  // opaque. Keep alpha only where the artwork actually uses transparency.
+  if ((await sharp(source).stats()).isOpaque) output.removeAlpha();
+  await output.png().toFile(path);
 }
 
 // Original synthesized two-note bell; no third-party recording or music rights.

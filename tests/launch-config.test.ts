@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('server-only', () => ({}));
-import { getLaunchInformation, launchInformationReady } from '../src/lib/launch-config';
+import {
+  getLaunchInformation,
+  getPublisherInformation,
+  launchInformationReady,
+} from '../src/lib/launch-config';
 
 // Synthetic data for format validation only; never used as public application defaults.
 const configured = () => ({
@@ -17,6 +21,27 @@ const configured = () => ({
 afterEach(() => vi.unstubAllEnvs());
 
 describe('public launch information', () => {
+  it('keeps display branding separate from legal seller identity and launch readiness', () => {
+    const env = {
+      SOLACE_PUBLISHER_NAME: 'Lumen',
+      SOLACE_PUBLISHER_COUNTRY: 'France',
+      SOLACE_SUPPORT_EMAIL: 'assistance@boreal.fr',
+    };
+    expect(getPublisherInformation(env)).toEqual({ displayName: 'Lumen', country: 'France' });
+    expect(getLaunchInformation(env).sellerName).toBeNull();
+    expect(launchInformationReady(env)).toBe(false);
+  });
+
+  it('exposes only validated public branding, with absent values remaining unset', () => {
+    expect(getPublisherInformation({})).toEqual({ displayName: null, country: null });
+    expect(
+      getPublisherInformation({
+        SOLACE_PUBLISHER_NAME: '<script>unsafe</script>',
+        SOLACE_PUBLISHER_COUNTRY: 'TODO',
+        PRIVATE_VALUE: 'must-not-appear',
+      }),
+    ).toEqual({ displayName: null, country: null });
+  });
   it('requires every public field before marking the information ready', () => {
     expect(launchInformationReady({})).toBe(false);
     expect(launchInformationReady(configured())).toBe(true);

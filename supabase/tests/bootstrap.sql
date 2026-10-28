@@ -3,10 +3,11 @@ do $$ begin
   if not exists(select 1 from pg_roles where rolname='anon') then create role anon nologin; end if;
   if not exists(select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
   if not exists(select 1 from pg_roles where rolname='service_role') then create role service_role nologin bypassrls; end if;
+  if not exists(select 1 from pg_roles where rolname='supabase_auth_admin') then create role supabase_auth_admin nologin; end if;
 end $$;
 create schema extensions;
 create schema auth;
-create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz);
+create table auth.users(id uuid primary key, email text, email_confirmed_at timestamptz, raw_user_meta_data jsonb default '{}'::jsonb);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$;
 create function auth.role() returns text language sql stable as $$ select nullif(current_setting('request.jwt.claim.role',true),'') $$;
 grant usage on schema public,auth,extensions to anon,authenticated,service_role;
@@ -23,3 +24,6 @@ grant execute on function auth.uid(),auth.role() to anon,authenticated,service_r
 \i /workspace/migrations/0010_pro_audio.sql
 \i /workspace/migrations/0011_billing_environment.sql
 \i /workspace/migrations/20260924215000_private_mood_preferences.sql
+\i /workspace/migrations/20261028214004_account_deletion_privacy.sql
+\i /workspace/migrations/20261028221504_native_store_billing.sql
+\i /workspace/migrations/20261028222222_account_legal_acceptance.sql

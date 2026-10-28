@@ -16,12 +16,20 @@ describe('installed app link routing', () => {
   );
 
   it.each([ios, android])('opens public documents at the hosted app in %s', (location) => {
-    for (const path of ['/privacy', '/terms', '/legal', '/support']) {
+    for (const path of ['/privacy', '/terms', '/legal', '/support', '/account-deletion']) {
       expect(resolveNativeLink(path, location, origin)).toEqual({
         kind: 'external',
         url: `${origin}${path}`,
       });
     }
+  });
+
+  it.each([ios, android])('preserves account deletion navigation in %s', (location) => {
+    expect(resolveNativeLink('/?account=delete', location, origin)).toEqual({ kind: 'internal' });
+    expect(resolveNativeLink('/account-deletion#retained-data-heading', location, origin)).toEqual({
+      kind: 'external',
+      url: `${origin}/account-deletion#retained-data-heading`,
+    });
   });
 
   it('opens external HTTPS resources while preserving file export URLs', () => {

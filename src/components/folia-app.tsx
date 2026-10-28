@@ -59,6 +59,7 @@ import { isMobileBuild } from '@/lib/mobile-platform';
 import { workspaceStorage } from '@/lib/workspace-storage';
 import { MobileLifecycle } from './mobile-lifecycle';
 import { NativeLinks } from './native-links';
+import { NativeBillingRecovery } from './native-billing';
 
 const navigation = [
   { id: 'overview', Icon: LayoutDashboard },
@@ -103,6 +104,7 @@ export function FoliaApp() {
   const [more, setMore] = useState(false);
   const [help, setHelp] = useState(false);
   const [account, setAccount] = useState(false);
+  const [accountDeletionRequested, setAccountDeletionRequested] = useState(false);
   const [accountRevision, setAccountRevision] = useState(0);
   const [timerSheet, setTimerSheet] = useState(false);
   const [reflectionSessionId, setReflectionSessionId] = useState<string | null>(null);
@@ -155,6 +157,16 @@ export function FoliaApp() {
       if (params.has('reset-password')) {
         setAccount(true);
         notify(ui.foliaApp.chooseANewPasswordUsingYourRecoverySession);
+      }
+      if (params.get('account') === 'delete') {
+        setAccountDeletionRequested(true);
+        setAccount(true);
+        // Consume the intent while keeping an ordinary workspace URL. Merely
+        // opening this link never submits a deletion or its confirmation.
+        const url = new URL(window.location.href);
+        url.searchParams.delete('account');
+        if (!url.searchParams.has('view')) url.searchParams.set('view', 'overview');
+        window.history.replaceState(null, '', url);
       }
     }, 0);
     return () => clearTimeout(timer);
@@ -312,6 +324,7 @@ export function FoliaApp() {
   return (
     <AppContext.Provider value={context}>
       <MobileLifecycle />
+      <NativeBillingRecovery />
       <NativeLinks />
       <a className="skip-link" href="#main-content">
         {ui.foliaApp.skipToContent}
@@ -777,7 +790,7 @@ export function FoliaApp() {
       )}
       {account && (
         <Dialog wide title={ui.foliaApp.yourFoliaAccount} onClose={() => setAccount(false)}>
-          <AccountPanel key={accountRevision} />
+          <AccountPanel key={accountRevision} deletionIntent={accountDeletionRequested} />
         </Dialog>
       )}
       {more && (
