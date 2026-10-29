@@ -37,11 +37,13 @@ class VerifyBundle {
             }
             var manifest = XmlNode.parseFrom(bundle.getInputStream(bundle.getJarEntry("base/manifest/AndroidManifest.xml"))).getElement();
             String packageName = attribute(manifest, "package");
-            require(packageName.equals("com.solace.pomodoro"), "Unexpected Android application ID.");
+            require(packageName.equals("com.solacepomodoro.myapp"), "Unexpected Android application ID.");
             require(attribute(manifest, "versionCode").equals(args[1]), "Unexpected bundle version code.");
             require(attribute(manifest, "versionName").equals(args[2]), "Unexpected bundle version name.");
             String minSdk = "", targetSdk = "";
             String billingVersion = "";
+            String launcherActivity = "";
+            int authCallbacks = 0;
             List<String> permissions = new ArrayList<>();
             for (XmlNode node : manifest.getChildList()) {
                 if (!node.hasElement()) continue;
@@ -59,9 +61,35 @@ class VerifyBundle {
                         if (child.hasElement() && child.getElement().getName().equals("meta-data") && attribute(child.getElement(), "name").equals("com.google.android.play.billingclient.version")) {
                             billingVersion = attribute(child.getElement(), "value");
                         }
+                        if (!child.hasElement() || !child.getElement().getName().equals("activity")) continue;
+                        var activity = child.getElement();
+                        for (XmlNode filterNode : activity.getChildList()) {
+                            if (!filterNode.hasElement() || !filterNode.getElement().getName().equals("intent-filter")) continue;
+                            boolean mainAction = false, launcherCategory = false;
+                            for (XmlNode intentNode : filterNode.getElement().getChildList()) {
+                                if (!intentNode.hasElement()) continue;
+                                var intent = intentNode.getElement();
+                                if (intent.getName().equals("action") && attribute(intent, "name").equals("android.intent.action.MAIN")) mainAction = true;
+                                if (intent.getName().equals("category") && attribute(intent, "name").equals("android.intent.category.LAUNCHER")) launcherCategory = true;
+                                if (intent.getName().equals("data")) {
+                                    String scheme = attribute(intent, "scheme");
+                                    require(!scheme.equals("com.solace.pomodoro"), "New Android app must not claim the previous app's authentication scheme.");
+                                    if (scheme.equals("com.solacepomodoro.myapp")) {
+                                        require(attribute(intent, "host").equals("auth") && attribute(intent, "path").equals("/callback"), "Unexpected Android authentication callback.");
+                                        authCallbacks++;
+                                    }
+                                }
+                            }
+                            if (mainAction && launcherCategory) {
+                                require(attribute(activity, "name").equals("com.solace.pomodoro.MainActivity"), "Launcher must retain the existing fully qualified Java class.");
+                                require(attribute(activity, "exported").equals("true"), "Launcher must be exported.");
+                                launcherActivity = attribute(activity, "name");
+                            }
+                        }
                     }
                 }
             }
+            require(!launcherActivity.isEmpty() && authCallbacks == 1, "Expected one launcher and one package-specific authentication callback.");
             require(minSdk.equals("26") && Integer.parseInt(targetSdk) >= 36, "Unexpected SDK levels.");
             require(storeBilling == permissions.contains("com.android.vending.BILLING"), "Play Billing permission differs from the explicitly requested release mode.");
             if (storeBilling) require(billingVersion.matches("[0-9]+\\.[0-9]+(?:\\.[0-9]+)?") && Integer.parseInt(billingVersion.split("\\.")[0]) >= 8, "A supported Play Billing 8+ version must be present in bundle metadata.");
@@ -87,7 +115,7 @@ class VerifyBundle {
                 fingerprint = current;
             }
             require(!signed || fingerprint != null, "No upload certificate found.");
-            System.out.println("{\"applicationId\":\"" + packageName + "\",\"versionCode\":" + args[1] + ",\"versionName\":\"" + args[2] + "\",\"minSdk\":" + minSdk + ",\"targetSdk\":" + targetSdk + ",\"debuggable\":false,\"signed\":" + signed + ",\"storeBilling\":" + storeBilling + ",\"playBillingLibraryVersion\":\"" + billingVersion + "\",\"uploadCertificateSha256\":" + (fingerprint == null ? "null" : "\"" + fingerprint + "\"") + ",\"permissions\":[\"" + String.join("\",\"", permissions) + "\"]}");
+            System.out.println("{\"applicationId\":\"" + packageName + "\",\"versionCode\":" + args[1] + ",\"versionName\":\"" + args[2] + "\",\"launcherActivity\":\"" + launcherActivity + "\",\"authCallback\":\"com.solacepomodoro.myapp://auth/callback\",\"minSdk\":" + minSdk + ",\"targetSdk\":" + targetSdk + ",\"debuggable\":false,\"signed\":" + signed + ",\"storeBilling\":" + storeBilling + ",\"playBillingLibraryVersion\":\"" + billingVersion + "\",\"uploadCertificateSha256\":" + (fingerprint == null ? "null" : "\"" + fingerprint + "\"") + ",\"permissions\":[\"" + String.join("\",\"", permissions) + "\"]}");
         }
     }
 }

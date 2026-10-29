@@ -35,7 +35,7 @@ test('native bridge starts without thenable-plugin errors and restores private l
   expect(errors).toEqual([]);
 });
 
-const nativeCallback = 'com.solace.pomodoro://auth/callback';
+const nativeCallback = 'com.solacepomodoro.myapp://auth/callback';
 
 async function beginEmailFlow(page: Page, mode: 'signUp' | 'reset', email: string) {
   const dialog = await openNativeAccount(page);

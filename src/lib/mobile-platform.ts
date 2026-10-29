@@ -1,8 +1,11 @@
 import { Capacitor } from '@capacitor/core';
+import { nativeAuthCallbackForPlatform } from './native-identity';
 
-export const MOBILE_APP_ID = 'com.solace.pomodoro';
-export const MOBILE_AUTH_CALLBACK = `${MOBILE_APP_ID}://auth/callback`;
 export const DEFAULT_APP_ORIGIN = 'https://www.solace-pomodoro.com';
+
+export function nativeAuthCallback(): string | null {
+  return nativeAuthCallbackForPlatform(Capacitor.getPlatform());
+}
 
 export function isNativeApp(): boolean {
   return Capacitor.isNativePlatform();
@@ -29,7 +32,11 @@ export function appApiOrigin(): string {
 }
 
 export function authRedirectUrl(recovery = false): string {
-  if (isNativeApp()) return MOBILE_AUTH_CALLBACK;
+  if (isNativeApp()) {
+    const callback = nativeAuthCallback();
+    if (!callback) throw new Error('La connexion n’est pas disponible sur cette plateforme.');
+    return callback;
+  }
   const callback = new URL('/auth/callback', window.location.origin);
   if (recovery) callback.searchParams.set('next', '/?reset-password=1');
   return callback.href;

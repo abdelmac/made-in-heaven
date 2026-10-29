@@ -28,7 +28,7 @@ vi.mock('@/lib/server/auth', () => ({
 vi.mock('@/lib/billing/server', () => ({ getWorkspaceEntitlements: mocks.entitlements }));
 vi.mock('@/lib/billing/native-config', () => ({
   nativePublicConfiguration: mocks.config,
-  googleConfig: () => ({ packageName: 'com.solace.pomodoro' }),
+  googleConfig: () => ({ packageName: 'com.solacepomodoro.myapp' }),
   nativePurchaseLaunchReady: () => true,
 }));
 vi.mock('@/lib/billing/native-server', () => ({
@@ -87,7 +87,7 @@ const googleRequest = (body: unknown) =>
   });
 const notification = () => ({
   version: '1.0',
-  packageName: 'com.solace.pomodoro',
+  packageName: 'com.solacepomodoro.myapp',
   subscriptionNotification: { purchaseToken: 'private-token-fixture', notificationType: 2 },
 });
 beforeEach(() => {
@@ -351,7 +351,7 @@ describe('store notification entry points', () => {
     );
     const voided = {
       version: '1.0',
-      packageName: 'com.solace.pomodoro',
+      packageName: 'com.solacepomodoro.myapp',
       voidedPurchaseNotification: {
         purchaseToken: 'private-token-fixture',
         productType: 1,
@@ -369,12 +369,13 @@ describe('store notification entry points', () => {
   });
   it('rejects another package, unsupported version, mixed events and incomplete refund', async () => {
     for (const body of [
+      { ...notification(), packageName: 'com.solace.pomodoro' },
       { ...notification(), packageName: 'another.app' },
       { ...notification(), version: 'unsupported' },
       { ...notification(), testNotification: { version: '1.0' } },
       {
         version: '1.0',
-        packageName: 'com.solace.pomodoro',
+        packageName: 'com.solacepomodoro.myapp',
         voidedPurchaseNotification: {
           purchaseToken: 'private-token-fixture',
           productType: 1,

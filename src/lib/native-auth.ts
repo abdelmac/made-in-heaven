@@ -1,15 +1,17 @@
-import { isNativeApp } from './mobile-platform';
+import { isNativeApp, nativeAuthCallback } from './mobile-platform';
 import { createBrowserSupabase } from './supabase/browser';
 
 export type NativeAuthResult = { handled: boolean; recovery?: boolean; error?: string };
 
-const callbackScheme = 'com.solace.pomodoro:';
 const failureMessage = 'Ce lien de connexion est invalide ou a expiré. Demandez un nouveau lien.';
 let activeCallback: { url: string; result: Promise<NativeAuthResult> } | null = null;
 
 /** Accept only our exact callback; PKCE codes are bound to this installation. */
 export async function handleNativeAuthUrl(raw: string): Promise<NativeAuthResult> {
   if (!isNativeApp()) return { handled: false };
+  const callback = nativeAuthCallback();
+  if (!callback) return { handled: false };
+  const callbackScheme = new URL(callback).protocol;
   let url: URL;
   try {
     url = new URL(raw);

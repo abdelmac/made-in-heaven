@@ -2,13 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   native: true,
+  platform: 'ios',
   code: vi.fn(),
   otp: vi.fn(),
   unsubscribe: vi.fn(),
   onAuthStateChange: vi.fn(),
   authEvent: null as null | ((event: string) => void),
 }));
-vi.mock('@/lib/mobile-platform', () => ({ isNativeApp: () => mocks.native }));
+vi.mock('@capacitor/core', () => ({
+  Capacitor: { isNativePlatform: () => mocks.native, getPlatform: () => mocks.platform },
+}));
 vi.mock('@/lib/supabase/browser', () => ({
   createBrowserSupabase: () => ({
     auth: {
@@ -23,6 +26,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.clearAllMocks();
   mocks.native = true;
+  mocks.platform = 'ios';
   mocks.authEvent = null;
   mocks.onAuthStateChange.mockImplementation((callback) => {
     mocks.authEvent = callback;
@@ -44,12 +48,35 @@ describe('native authentication links', () => {
     'com.solace.pomodoro://other/callback?code=valid',
     'com.solace.pomodoro://auth/other?code=valid',
     'attacker://auth/callback?code=valid',
+    'com.solacepomodoro.myapp://auth/callback?code=valid',
     'com.solace.pomodoro://user@auth/callback?code=valid',
   ])('does not handle another origin or route: %s', async (url) => {
     const { handleNativeAuthUrl } = await import('../src/lib/native-auth');
     expect(await handleNativeAuthUrl(url)).toEqual({ handled: false });
     expect(mocks.code).not.toHaveBeenCalled();
     expect(mocks.otp).not.toHaveBeenCalled();
+  });
+
+  it('uses the new Android callback and rejects the iOS/old Android callback on Android', async () => {
+    mocks.platform = 'android';
+    const { handleNativeAuthUrl } = await import('../src/lib/native-auth');
+    expect(await handleNativeAuthUrl('com.solace.pomodoro://auth/callback?code=old-app')).toEqual({
+      handled: false,
+    });
+    expect(mocks.code).not.toHaveBeenCalled();
+    expect(
+      await handleNativeAuthUrl('com.solacepomodoro.myapp://auth/callback?code=new-app'),
+    ).toEqual({ handled: true, recovery: false });
+    expect(mocks.code).toHaveBeenCalledWith('new-app', undefined);
+  });
+
+  it('does not consume a callback on an unsupported native platform', async () => {
+    mocks.platform = 'unknown';
+    const { handleNativeAuthUrl } = await import('../src/lib/native-auth');
+    expect(await handleNativeAuthUrl('com.solacepomodoro.myapp://auth/callback?code=code')).toEqual(
+      { handled: false },
+    );
+    expect(mocks.code).not.toHaveBeenCalled();
   });
 
   it('exchanges a PKCE code bound to the native installation and keeps an explicit flow ID', async () => {

@@ -12,5 +12,4 @@ coverage
 mobile
 android
 ios
-capacitor.config.ts
 vite.mobile.config.mts

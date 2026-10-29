@@ -12,7 +12,7 @@ vi.mock('@/lib/billing/native-config', () => ({
   }),
   googleConfig: () => ({
     environment: 'sandbox',
-    packageName: 'com.solace.pomodoro',
+    packageName: 'com.solacepomodoro.myapp',
     productId: 'pro.monthly',
     basePlanId: 'monthly',
     credentials: {
@@ -104,6 +104,7 @@ describe('Apple server trust and entitlement normalization', () => {
   });
   it.each([
     { bundleId: 'com.other.app' },
+    { bundleId: 'com.solacepomodoro.myapp' },
     { productId: 'pro.yearly' },
     { environment: Environment.PRODUCTION },
     { type: 'Consumable' },
@@ -254,7 +255,7 @@ describe('Google authoritative subscription state', () => {
     mocks.googleRequest
       .mockResolvedValueOnce(
         Response.json({
-          packageName: 'com.solace.pomodoro',
+          packageName: 'com.solacepomodoro.myapp',
           productId: 'pro.monthly',
           basePlans: [
             {
@@ -267,6 +268,10 @@ describe('Google authoritative subscription state', () => {
       )
       .mockResolvedValueOnce(Response.json(googlePurchase()));
     await verifyGoogleSubscription('purchase-token', account);
+    for (const [url] of mocks.googleRequest.mock.calls) {
+      expect(url).toContain('/applications/com.solacepomodoro.myapp/');
+      expect(url).not.toContain('/applications/com.solace.pomodoro/');
+    }
     expect(mocks.googleRequest.mock.calls[0][0]).toContain('/subscriptions/pro.monthly');
     expect(mocks.googleRequest.mock.calls[1][0]).toContain(
       '/purchases/subscriptionsv2/tokens/purchase-token',
@@ -274,12 +279,13 @@ describe('Google authoritative subscription state', () => {
   });
   it('rejects an annual, inactive or wrong catalog product before enabling monthly sales', async () => {
     for (const patch of [
-      { state: 'INACTIVE', duration: 'P1M' },
-      { state: 'ACTIVE', duration: 'P1Y' },
+      { packageName: 'com.solacepomodoro.myapp', state: 'INACTIVE', duration: 'P1M' },
+      { packageName: 'com.solacepomodoro.myapp', state: 'ACTIVE', duration: 'P1Y' },
+      { packageName: 'com.solace.pomodoro', state: 'ACTIVE', duration: 'P1M' },
     ]) {
       mocks.googleRequest.mockResolvedValueOnce(
         Response.json({
-          packageName: 'com.solace.pomodoro',
+          packageName: patch.packageName,
           productId: 'pro.monthly',
           basePlans: [
             {

@@ -2,12 +2,16 @@
 
 Prepared October 28, 2026. Copy for owner review, not submitted metadata. No rating, approval, screenshot or store purchase is claimed. The app interface is currently French; English listing copy does not establish an English interface localization. Confirm every advertised feature against the final signed build and entitlement rules.
 
+Android identity updated October 29 to the owner's requested
+`com.solacepomodoro.myapp`. The iOS identity remains `com.solace.pomodoro`.
+Existence of the new Play Console record has not been independently verified.
+
 ## Identifiers and public contacts
 
 | Field                   | Value / status                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------- |
 | App name                | Solace                                                                          |
-| Android application ID  | `com.solace.pomodoro`                                                           |
+| Android application ID  | `com.solacepomodoro.myapp` — matching signed AAB/APK verified October 29        |
 | iOS bundle ID in source | `com.solace.pomodoro` — registration/signing still required                     |
 | Publisher               | Machta Abdelkader; nickname ennearock; declared country France — owner supplied |
 | Support email           | quetzal.hkm@gmail.com — receipt/monitoring check pending                        |
@@ -17,7 +21,19 @@ Prepared October 28, 2026. Copy for owner review, not submitted metadata. No rat
 | Terms                   | https://www.solace-pomodoro.com/terms                                           |
 | Publisher notice        | https://www.solace-pomodoro.com/legal                                           |
 
-The matching web release is live at the URLs above. Six actual-domain Chrome public/deletion tests passed; HTTP checks confirmed publisher/contact details and disabled checkout. The signup-policy hook is enabled and independently verified; complete new signup/email QA remains an owner task. The policy/legal pages remain provisional drafts with `noindex` metadata: complete [privacy-review.md](privacy-review.md) before submission. Store-specific numeric app IDs, product IDs and Android base-plan IDs have not been supplied; do not invent them. Apple individual enrollment uses legal identity; Google distinguishes display name from verified identity. See [Apple enrollment](https://developer.apple.com/programs/enroll/) and [Google identity requirements](https://support.google.com/googleplay/android-developer/answer/13628312?hl=en).
+The matching backend release is live at the URLs above; October 29 deployment
+`dpl_GAXwpaUbV5xhKD1FGwhCuWGN33xP` is READY with the new Android verification
+identity. The earlier October 28 actual-domain checks passed six Chrome
+public/deletion scenarios and confirmed publisher/contact details and disabled
+checkout. The new Android auth callback is independently verified in the hosted
+allowlist, preserving the website/iOS entries and the signup hook. Complete
+new-package installed signup/email QA remains an owner task. The policy/legal
+pages remain provisional drafts with `noindex` metadata: complete
+[privacy-review.md](privacy-review.md) before submission. Store-specific numeric
+app IDs, product IDs and Android base-plan IDs have not been supplied; do not
+invent them. Apple individual enrollment uses legal identity; Google distinguishes
+display name from verified identity. See [Apple enrollment](https://developer.apple.com/programs/enroll/)
+and [Google identity requirements](https://support.google.com/googleplay/android-developer/answer/13628312?hl=en).
 
 ## Français
 

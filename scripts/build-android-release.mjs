@@ -113,7 +113,7 @@ try {
   for (const name of signingNames) delete inspectionEnv[`SOLACE_ANDROID_${name}`];
   if (!options.skipSync) {
     run(process.execPath, ['scripts/build-mobile.mjs'], { cwd: projectRoot, env: inspectionEnv });
-    run(process.execPath, ['node_modules/@capacitor/cli/bin/capacitor', 'sync', 'android'], {
+    run(process.execPath, ['scripts/capacitor-platform.mjs', 'sync', 'android'], {
       cwd: projectRoot,
       env: inspectionEnv,
     });
@@ -177,7 +177,7 @@ try {
     projectRoot,
     '.local',
     'exports',
-    `solace-${options.versionName}-${options.versionCode}-${options.signed ? 'signed' : 'unsigned'}.aab`,
+    `solace-${metadata.applicationId}-${options.versionName}-${options.versionCode}-${options.signed ? 'signed' : 'unsigned'}.aab`,
   );
   mkdirSync(dirname(exported), { recursive: true });
   copyFileSync(bundle, exported);
@@ -223,8 +223,9 @@ try {
     }).stdout;
     if (
       !badging.includes(
-        `package: name='com.solace.pomodoro' versionCode='${options.versionCode}' versionName='${options.versionName}'`,
+        `package: name='${metadata.applicationId}' versionCode='${options.versionCode}' versionName='${options.versionName}'`,
       ) ||
+      !badging.includes("launchable-activity: name='com.solace.pomodoro.MainActivity'") ||
       badging.includes('application-debuggable') ||
       !/(?:minSdkVersion|sdkVersion):'26'/.test(badging) ||
       !badging.includes("targetSdkVersion:'36'")

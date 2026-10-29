@@ -6,6 +6,17 @@ The web release is live at `www.solace-pomodoro.com`; its legal/privacy pages re
 provisional drafts with `noindex` metadata. Technical implementation and verification belong in
 [store-readiness.md](store-readiness.md) and [mobile.md](mobile.md).
 
+**October 29 Android identity update:** the owner requested
+`com.solacepomodoro.myapp` for Google Play. iOS remains `com.solace.pomodoro`.
+The matching signed Android AAB/APK rebuild, hosted callback addition and backend
+deployment are verified. The new deployment is
+`dpl_GAXwpaUbV5xhKD1FGwhCuWGN33xP`, aliased to `www.solace-pomodoro.com`.
+The Auth allowlist now has three entries, preserving the website and older
+mobile callbacks while appending `com.solacepomodoro.myapp://auth/callback`.
+Do not use the October 28
+`com.solace.pomodoro` AAB for the new Play record. The existing upload key is
+preserved. The Play app record's existence has not been independently verified.
+
 ## Information already supplied
 
 - Legal publisher: **Machta Abdelkader**; individual, based in **France**.
@@ -25,7 +36,7 @@ provisional drafts with `noindex` metadata. Technical implementation and verific
 
 The private-mood, account-deletion, native-billing and legal-acceptance migrations
 are applied to the hosted database; native billing remains bound to sandbox.
-The final full unit run passed **779 tests in 64 files**, and the isolated SQL
+The October 29 full unit run passed **798 tests in 66 files**, and the isolated SQL
 run passed **516 assertions across 15 migrations and 12 suites**. Six Chrome
 public/deletion tests passed against the real deployed domain, with checkout
 disabled. These checks did not perform an Apple/Google purchase.
@@ -103,8 +114,9 @@ select a child-directed audience solely because a rating may be 3+ or 4+.
 
 ### Store activation checklist
 
-1. Register the exact app identifiers **`com.solace.pomodoro`** in the existing
-   developer accounts. Create an Apple auto-renewable **one-month** Pro product and
+1. Use Android package **`com.solacepomodoro.myapp`** in the existing Google Play
+   account and iOS bundle ID **`com.solace.pomodoro`** in the existing Apple
+   account. Match each platform's server verification configuration. Create an Apple auto-renewable **one-month** Pro product and
    an active Google auto-renewing **P1M** base plan, with no trial/offer variants in
    the initial release. Configure the intended local price and display the actual
    localized store price. Do not assume an identifier containing “monthly” proves
@@ -182,6 +194,8 @@ purchase exists. Pausing new production purchases leaves existing receipt
 verification, restoration and signed notification processing available.
 
 ## Existing developer accounts, signing and testing
+
+For the immediate Android step, follow [Google Play: first internal test](google-play-internal-test.md), using the existing signed AAB and the owner's existing Console account. It includes the exact proposed monthly product fields and keeps public production separate.
 
 1. **Open the existing Apple and Play accounts** and complete only outstanding
    identity/contact/agreement tasks. For reference, Apple's standard program is

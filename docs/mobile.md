@@ -1,14 +1,36 @@
 # Solace mobile apps
 
+October 29 identity update: Android now targets the owner's requested
+**`com.solacepomodoro.myapp`**, with callback
+**`com.solacepomodoro.myapp://auth/callback`**. The matching signed AAB/APK rebuild
+is verified, the hosted callback was added and independently read back, and the
+matching backend deployment `dpl_GAXwpaUbV5xhKD1FGwhCuWGN33xP` is READY at
+`www.solace-pomodoro.com`. The iOS
+identity and callback remain **`com.solace.pomodoro`** and
+**`com.solace.pomodoro://auth/callback`**. The October 28 Android artifacts below
+use the older identity and must not be uploaded to the new Play record.
+The rebuilt mobile bundle has passed 26 intercepted native-browser scenarios,
+including the new Android callback. This is not a new-package OS installation or
+an actual store purchase result.
+
 October 28 release handoff: native purchase/restore/manage flows and legal acceptance are implemented, all 15 database migrations are hosted, and signed Android 1.0.0/code1 AAB/APK files are verified locally. See [Android artifacts](android-release.md), [iOS Mac handoff](ios-release.md), [store readiness](store-readiness.md), and [remaining owner actions](publication-owner-actions.md). Store products and credentials, real sandbox purchases, final policy approval and store submission remain pending. Vercel Pro was prepared but the owner left the upgrade pending, so paid production sales remain closed. Historical preparation notes below do not supersede this status.
 
 The mobile client reuses Solace’s React workspace and bundles it with Capacitor 8.
 Its pages, fonts and local workspace are available without downloading the website.
 The Next.js server and its database remain hosted separately.
 
-Both native projects use **`com.solace.pomodoro`** as the app identifier. The iOS
-project is `ios/App/App.xcodeproj`; the Android project is `android/`. The registered
-authentication callback is **`com.solace.pomodoro://auth/callback`**.
+The Android project is `android/` and uses application ID
+**`com.solacepomodoro.myapp`**. The iOS project is `ios/App/App.xcodeproj` and
+keeps bundle ID **`com.solace.pomodoro`**. Callback routing must use the actual
+runtime platform's exact scheme. The new package has separate Android app data
+and sessions; it does not import, overwrite or delete the old debug installation.
+
+Use the platform wrapper for direct Capacitor commands:
+`node scripts/capacitor-platform.mjs sync android` or
+`node scripts/capacitor-platform.mjs sync ios`. The `npm run mobile:*` commands
+below select the platform explicitly. Raw Capacitor commands without the wrapper's
+platform environment are refused, so a generic sync cannot copy the Android app
+identifier into iOS metadata.
 
 ## Build and preview commands
 
@@ -146,17 +168,25 @@ ignored `.local/mobile-public.json`. The mobile environment loader reuses the
 or service-role key in either public key setting. Recreate the public configuration
 on another development machine because this file is not committed.
 
-In the matching Supabase project, add
-`com.solace.pomodoro://auth/callback` to **Authentication → URL Configuration →
-Redirect URLs**. Adding a native scheme to this codebase does not update the hosted
+The matching Supabase project allows
+`com.solacepomodoro.myapp://auth/callback` under **Authentication → URL Configuration →
+Redirect URLs**, alongside `com.solace.pomodoro://auth/callback` for iOS and the
+older Android installation. Adding a native scheme to another codebase or
+environment does not automatically update its hosted
 allowlist. Use PKCE confirmation/recovery links; the native handler accepts the
 exact callback and exchanges a code or supported token hash rather than accepting
 arbitrary access-token fragments. Verify signup confirmation and password recovery
 on the same installation that started the flow. Keep the existing website callback
 available for website users.
 The hosted redirect allowlist for **Solace Hikmagitz** (`zwgjauskorkpucuaqvgs`)
-was updated and read back on **October 28, 2026**. The exact mobile callback is
-allowed alongside the existing website redirect, with two entries in total.
+was updated and read back on **October 28, 2026**. At that time the older mobile
+callback was allowed alongside the website redirect, with two entries in total.
+On October 29, the new Android callback was appended and independently read
+back, preserving both existing entries and their order. The allowlist now has
+three entries. Apply changed only the one allowlist field in one Auth write;
+independent verification reported no remaining changes and zero writes. The
+protected Auth snapshot, including SMTP and the signup hook, stayed unchanged.
+No email or account was created by that configuration verification.
 The CLI preview and verification confirmed only `auth.additional_redirect_urls`
 needed updating. Password sign-in and session restoration after a full app restart
 were later verified on the installed Android app, along with personal-workspace

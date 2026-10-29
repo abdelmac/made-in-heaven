@@ -20,7 +20,7 @@ android {
     namespace = "com.solace.pomodoro"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.solace.pomodoro"
+        applicationId "com.solacepomodoro.myapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode solaceVersionCode.toInteger()

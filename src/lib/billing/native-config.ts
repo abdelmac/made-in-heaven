@@ -5,8 +5,8 @@ import type { NativeEnvironment, NativePlatform } from './native-types';
 import { APPLE_ROOT_G3_BASE64, APPLE_ROOT_SHA256 } from './native-apple-roots';
 import { launchInformationReady } from '@/lib/launch-config';
 import { approvedAppOrigin } from './config';
+import { ANDROID_APP_ID, IOS_APP_ID } from '@/lib/native-identity';
 
-export const NATIVE_APP_ID = 'com.solace.pomodoro';
 export const NATIVE_VERIFICATION_MAX_AGE_MS = 24 * 60 * 60 * 1_000;
 
 export function nativeEnvironment(): NativeEnvironment {
@@ -74,7 +74,7 @@ export function appleConfig() {
   return {
     environment,
     appAppleId,
-    bundleId: NATIVE_APP_ID,
+    bundleId: IOS_APP_ID,
     productId: required('APPLE_IAP_PRODUCT_ID'),
     issuerId: required('APPLE_IAP_ISSUER_ID'),
     keyId: required('APPLE_IAP_KEY_ID'),
@@ -109,7 +109,7 @@ export function googleConfig() {
   }
   return {
     environment,
-    packageName: NATIVE_APP_ID,
+    packageName: ANDROID_APP_ID,
     productId: required('GOOGLE_IAP_PRODUCT_ID'),
     basePlanId: required('GOOGLE_IAP_BASE_PLAN_ID'),
     credentials,

@@ -110,7 +110,7 @@ export function collectMobileChecks(root = projectRoot, env = process.env) {
       label: 'Capacitor configuration',
       ok: existsSync(join(root, 'capacitor.config.ts')),
       required: true,
-      detail: 'capacitor.config.ts — com.solace.pomodoro',
+      detail: 'capacitor.config.ts — Android com.solacepomodoro.myapp; iOS com.solace.pomodoro',
     },
     {
       label: 'Bundled mobile interface',

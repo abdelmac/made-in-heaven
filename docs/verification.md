@@ -1,6 +1,50 @@
 # Verification record
 
-Latest database and release verification was performed on October 28, 2026 for the independent `solace-hikmagitz` installation. Earlier records below are historical; the old `folia-ennearock` Stripe sandbox offering does not apply to this site.
+Latest release verification was performed on October 29, 2026 for the independent `solace-hikmagitz` installation. The last database migration audit remains October 28. Earlier records below are historical; the old `folia-ennearock` Stripe sandbox offering does not apply to this site.
+
+## October 29: Android package alignment — signed rebuild and hosted rollout verified
+
+The owner requested **`com.solacepomodoro.myapp`** for Google Play. Android
+packaging, purchase verification and the new exact auth callback
+`com.solacepomodoro.myapp://auth/callback` are aligned to that identifier in source.
+The iOS bundle and callback remain `com.solace.pomodoro`. The existing Android
+debug installation and upload identity are preserved. Play Console record
+creation has not been independently verified.
+
+The old October 28 signed artifacts below still identify `com.solace.pomodoro`;
+they remain historical records and are not the upload for the new Play package.
+The final mobile bundle passed **26 native-bridge browser scenarios**, including
+the new Android signup/recovery callback, legal acceptance, deletion and native
+purchase flows. Focused checks passed **20 auth/identity unit tests** and **82
+billing unit tests**. These use intercepted native/provider boundaries; no new
+Android installation or real store purchase is established by them.
+
+The final full unit run passed **798 tests in 66 files**; ESLint and TypeScript
+passed. The new signed **1.0.0/code1** AAB and APK were verified as
+`com.solacepomodoro.myapp`, API26/36, debugging disabled and Billing `9.1.0`,
+using the existing upload certificate. The compiled Android callback registers
+only the new scheme, while the launcher retains the original Java namespace.
+Both artifacts and synced iOS share the rebuilt frontend hash; iOS retains its
+original identifier. Exact filenames, sizes and hashes are in the
+[current Android candidate](android-release.md#final-signed-candidate). The old
+October 28 AAB/APK were not overwritten.
+
+The hosted Auth allowlist was updated with one declared field and one Auth
+configuration write. The new callback was appended to the two existing entries,
+preserving their order. Independent verification confirmed all three entries,
+zero remaining changes and zero verification writes. The protected Auth snapshot,
+including SMTP and the signup hook, stayed unchanged. No account or email was
+created by the configuration checks.
+
+Matching backend deployment **`dpl_GAXwpaUbV5xhKD1FGwhCuWGN33xP`** is READY
+and aliased to **https://www.solace-pomodoro.com**. Its Linux Next.js build and
+TypeScript passed. Full repository formatting and ESLint passed. Live HTTP
+checks against the actual domain confirmed all six public routes returned200,
+publisher branding and provisional/noindex policy notices remained visible,
+the exact signup marker/project/versions had no-store caching, checkout remained
+disabled, unauthenticated consent access returned401 and license/source notices
+were present. No new database migration, store upload or device installation
+was performed by this alignment.
 
 ## October 28: native purchases, legal acceptance and signed release
 

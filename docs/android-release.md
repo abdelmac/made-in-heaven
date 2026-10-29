@@ -4,6 +4,18 @@ Run commands from the repository root. The release scripts use the existing
 portable JDK/Android SDK discovered by `scripts/check-mobile.mjs`. They never
 install an app or upload a release to Google Play.
 
+## October 29 package update
+
+The owner requested Android application ID **`com.solacepomodoro.myapp`**.
+iOS remains `com.solace.pomodoro`. The matching package-specific signed AAB/APK
+rebuild is verified, using the existing upload identity. The current exports
+are `solace-com.solacepomodoro.myapp-1.0.0-1-signed.aab` and the matching `.apk`
+under `.local/exports/`; verification results are recorded below. The October 28
+files below contain the old Android ID and must not be uploaded to the new Play
+record; they are retained as historical artifacts rather than overwritten.
+The previously exported `solace-store-preparation-2026-10-28.zip` also contains
+that old-ID AAB/APK; use the new package-specific files for this Play record.
+
 ## Unsigned bundle
 
 ```powershell
@@ -132,6 +144,37 @@ verified, and a repeated Create command refused to replace the identity.
 No portable owner-password backup or store submission has occurred.
 
 ### Final signed candidate
+
+The October 29 build completed and its signature/metadata checks returned exit
+code0. Its verification record is
+`.local/exports/solace-com.solacepomodoro.myapp-1.0.0-1-signed.aab.json`.
+
+| Artifact                                                            |            Size | SHA-256                                                            |
+| ------------------------------------------------------------------- | --------------: | ------------------------------------------------------------------ |
+| `.local/exports/solace-com.solacepomodoro.myapp-1.0.0-1-signed.aab` | 4,944,300 bytes | `a713670f13f60e9452fbc8ab6f554a1a235dfbdb4a2da3685366420cb955cd6f` |
+| `.local/exports/solace-com.solacepomodoro.myapp-1.0.0-1-signed.apk` | 5,202,033 bytes | `25355b9d272abaca79b51f85411f1e5ef0430478f3184efe5de16133f520e5ba` |
+
+Both artifacts identify `com.solacepomodoro.myapp`, version `1.0.0`, code `1`,
+minimum API26 and target API36, with debugging disabled and Billing Library
+`9.1.0`. Their upload certificate remains
+`fb306c60c9b921d267eae19122a076168770226a51e7d7daf95b76c45e2b652e`;
+no upload identity was replaced. AAB payload signatures and the APK v2 signature
+were checked.
+
+The compiled Android manifest registers the new exact callback
+`com.solacepomodoro.myapp://auth/callback`, without the older Android scheme.
+The Java launcher remains `com.solace.pomodoro.MainActivity`; its namespace is
+separate from the application ID and does not change the Play package. The same
+rebuilt web index SHA-256,
+`fb1361908c281b309651cf0866e2034ef3378b9e95c83713c08954402ff488b5`,
+was verified in the AAB, APK and synced iOS assets. The iOS metadata keeps
+`com.solace.pomodoro`.
+
+The older October 28 files remain unchanged. Neither new artifact has been
+installed on the owner's phone or uploaded to a store; real-device auth and
+purchase tests remain separate work.
+
+### Historical October 28 signed candidate — old Android ID
 
 The frozen frontend/native source was rebuilt and both platforms were synced on
 October 28, 2026. The signed Android build and release lint completed successfully.

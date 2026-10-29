@@ -78,6 +78,13 @@ function googleEnvironment() {
   vi.stubEnv('GOOGLE_IAP_PUSH_SERVICE_ACCOUNT', 'push@fixture.iam.gserviceaccount.com');
 }
 describe('native billing configuration fails closed', () => {
+  it('uses the new Play package while preserving the existing Apple bundle identity', () => {
+    appleEnvironment();
+    googleEnvironment();
+    expect(googleConfig().packageName).toBe('com.solacepomodoro.myapp');
+    expect(googleConfig().packageName).not.toBe('com.solace.pomodoro');
+    expect(appleConfig().bundleId).toBe('com.solace.pomodoro');
+  });
   it('keeps sandbox independent and production sales gated by hosting, legal and launch review', () => {
     vi.stubEnv('NATIVE_BILLING_ENVIRONMENT', 'sandbox');
     expect(nativePurchaseLaunchReady()).toBe(true);

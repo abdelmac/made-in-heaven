@@ -2,6 +2,15 @@
 
 ## Current verification
 
+The October 29 Android package target is `com.solacepomodoro.myapp`, with new
+callback `com.solacepomodoro.myapp://auth/callback`. This exact callback was
+appended to the hosted allowlist and independently verified, preserving the
+website entry and `com.solace.pomodoro://auth/callback` for iOS and the previously
+tested Android installation. The allowlist now has three entries; only that
+field changed, with SMTP and the signup hook unchanged. These checks created no
+account or email. The delivery evidence below concerns the older installation; no new-package
+signup, recovery email or installed-device result is claimed yet.
+
 On October 28, 2026, the installed Android app passed existing-account sign-in,
 session restoration after a full restart, personal-workspace cloud saving and
 recovery-link handling. The owner also confirmed a successful password change
@@ -69,8 +78,9 @@ signup delivery result and device verification are recorded above.
 
 The prepared helper declares only SMTP settings and the email-sending rate.
 The website URL, redirect allowlist, confirmation requirement and other rate
-limits are checked separately and preserved. In particular, the verified mobile
-callback stays `com.solace.pomodoro://auth/callback`.
+limits are checked separately and preserved. In particular, the previously
+verified mobile callback `com.solace.pomodoro://auth/callback` is retained while
+the new Android callback is added separately.
 
 ## Local setup helper
 

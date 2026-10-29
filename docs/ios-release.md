@@ -50,9 +50,14 @@ by hand.
 ```sh
 npm ci
 npm run mobile:build
-npx cap sync ios
+node scripts/capacitor-platform.mjs sync ios
 open ios/App/App.xcodeproj
 ```
+
+The platform wrapper selects the unchanged iOS identity `com.solace.pomodoro`.
+Android now uses `com.solacepomodoro.myapp`; do not use an unqualified Capacitor
+sync to copy that identifier into iOS metadata. To open Xcode through the same
+wrapper, use `node scripts/capacitor-platform.mjs open ios`.
 
 The final sync must happen after the intended frontend source is frozen. It
 copies the current web assets and the static purchase configuration into the

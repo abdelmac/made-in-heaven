@@ -48,7 +48,7 @@ try {
   if (!args.includes('--skip-sync')) {
     console.log('Building the mobile interface and syncing native plugins…');
     run(process.execPath, ['scripts/build-mobile.mjs'], { cwd: projectRoot, env });
-    run(process.execPath, ['node_modules/@capacitor/cli/bin/capacitor', 'sync'], {
+    run(process.execPath, ['scripts/capacitor-platform.mjs', 'sync', 'android'], {
       cwd: projectRoot,
       env,
     });

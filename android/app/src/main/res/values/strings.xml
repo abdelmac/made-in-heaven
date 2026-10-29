@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">Solace</string>
     <string name="title_activity_main">Solace</string>
-    <string name="package_name">com.solace.pomodoro</string>
-    <string name="custom_url_scheme">com.solace.pomodoro</string>
+    <string name="package_name">com.solacepomodoro.myapp</string>
+    <string name="custom_url_scheme">com.solacepomodoro.myapp</string>
 </resources>
