@@ -18,10 +18,10 @@ beforeEach(() => {
   platform.native = true;
 });
 describe('native store and callback identities', () => {
-  it('keeps Android Play identity and iOS bundle identity separate', () => {
-    expect(ANDROID_APP_ID).toBe('com.solacepomodoro.myapp');
+  it('matches the existing Play and iOS records and their registered callbacks', () => {
+    expect(ANDROID_APP_ID).toBe('com.solace.pomodoro');
     expect(IOS_APP_ID).toBe('com.solace.pomodoro');
-    expect(nativeAuthCallback()).toBe('com.solacepomodoro.myapp://auth/callback');
+    expect(nativeAuthCallback()).toBe('com.solace.pomodoro://auth/callback');
     expect(authRedirectUrl()).toBe(nativeAuthCallback());
     expect(authRedirectUrl(true)).toBe(nativeAuthCallback());
     platform.name = 'ios';

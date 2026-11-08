@@ -1,8 +1,49 @@
 # Verification record
 
-Latest release verification was performed on October 29, 2026 for the independent `solace-hikmagitz` installation. The last database migration audit remains October 28. Earlier records below are historical; the old `folia-ennearock` Stripe sandbox offering does not apply to this site.
+Latest release verification is November 3, 2026 for the independent `solace-hikmagitz` installation. The last database migration audit remains October 28. Earlier records below are historical; the old `folia-ennearock` Stripe sandbox offering does not apply to this site.
+
+## November 3: existing Play package correction — signed rebuild and backend verified
+
+The owner confirmed the Play app exists, then reported Google's upload error
+requiring **`com.solace.pomodoro`**. That explicit store requirement supersedes
+the earlier requested `com.solacepomodoro.myapp` identity. Source packaging,
+native callbacks and Google verification are restored to the original package.
+The fresh signed candidate is **1.0.0/code2**. Actual merged manifest inspection
+and payload/APK signatures verified the package, exact callback, launcher,
+SDK26/36, debugging disabled and Billing `9.1.0`. The existing upload certificate
+is preserved. Artifact sizes/hashes are in the
+[current Android record](android-release.md#final-signed-candidate).
+iOS was synced with its original identifier unchanged. The current callback was already allowed, so no
+Supabase Auth mutation or database migration is required. After receiving the
+corrected code-2 AAB, the owner reported that its Play Console upload succeeded.
+That upload result has not been independently inspected. The owner subsequently
+shared the tester link and replied "success" after instructions to install via
+that link and try signing in. This records owner-reported success following the
+Play installation/sign-in instructions; no independent device inspection or
+complete core-feature QA was performed. Internal rollout, tester enrollment and
+installation remain independently unverified. No actual store purchase or public
+publication has been established. The next milestone is license tester
+enrollment, the existing or new €1/month Google Pro catalog and secure Google
+server configuration before purchase testing.
+
+The full unit run passed **798 tests in 66 files**. Whole-repository ESLint,
+scoped formatting and diff checks passed. Corrected production
+deployment **`dpl_NsdqKBb4Xx6DVYfNSYwdZk6ciBCz`** is READY and aliased to
+**https://www.solace-pomodoro.com**; its Linux Next.js build and TypeScript
+passed. All **26 mobile Chrome browser scenarios** passed against the current
+`com.solace.pomodoro` bundle. Providers/native boundaries were intercepted, so
+these are not installed-device or actual purchase results. Read-only live HTTP
+smoke checks passed on the new production deployment: all six public pages
+returned 200, the exact signup-readiness marker/project/versions matched,
+checkout remained disabled, unauthenticated consent access returned 401 and
+license/source notices were present. No email, account, deletion or purchase
+request was made by these checks.
 
 ## October 29: Android package alignment — signed rebuild and hosted rollout verified
+
+This historical candidate is superseded by Play's November 3 package validation.
+Its `com.solacepomodoro.myapp` artifacts cannot be uploaded to the existing app.
+Statements below describe the October 29 state rather than current upload guidance.
 
 The owner requested **`com.solacepomodoro.myapp`** for Google Play. Android
 packaging, purchase verification and the new exact auth callback

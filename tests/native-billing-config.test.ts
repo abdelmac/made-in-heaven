@@ -5,6 +5,7 @@ vi.mock('server-only', () => ({}));
 import {
   appleConfig,
   googleConfig,
+  googlePushConfig,
   nativeEnvironment,
   nativePurchaseLaunchReady,
   nativePublicConfiguration,
@@ -78,11 +79,25 @@ function googleEnvironment() {
   vi.stubEnv('GOOGLE_IAP_PUSH_SERVICE_ACCOUNT', 'push@fixture.iam.gserviceaccount.com');
 }
 describe('native billing configuration fails closed', () => {
-  it('uses the new Play package while preserving the existing Apple bundle identity', () => {
+  it('allows notification identity checks while purchases and API credentials stay disabled', () => {
+    googleEnvironment();
+    vi.stubEnv('GOOGLE_IAP_ENABLED', 'false');
+    vi.stubEnv('GOOGLE_IAP_SERVICE_ACCOUNT_JSON', undefined);
+    expect(googlePushConfig()).toMatchObject({
+      environment: 'sandbox',
+      packageName: 'com.solace.pomodoro',
+      pushServiceAccount: 'push@fixture.iam.gserviceaccount.com',
+    });
+    expect(() => googleConfig()).toThrow();
+    expect(nativePublicConfiguration('android').ready).toBe(false);
+    vi.stubEnv('GOOGLE_IAP_PUSH_AUDIENCE', undefined);
+    expect(() => googlePushConfig()).toThrow();
+  });
+  it('uses the existing Play package and preserves the Apple bundle identity', () => {
     appleEnvironment();
     googleEnvironment();
-    expect(googleConfig().packageName).toBe('com.solacepomodoro.myapp');
-    expect(googleConfig().packageName).not.toBe('com.solace.pomodoro');
+    expect(googleConfig().packageName).toBe('com.solace.pomodoro');
+    expect(googleConfig().packageName).not.toBe('com.solacepomodoro.myapp');
     expect(appleConfig().bundleId).toBe('com.solace.pomodoro');
   });
   it('keeps sandbox independent and production sales gated by hosting, legal and launch review', () => {

@@ -96,6 +96,21 @@ export function googleConfig() {
   } catch {
     throw new HttpError(503, 'Google Play verification credentials are not configured.');
   }
+  const { pushAudience, pushServiceAccount } = googlePushConfig();
+  return {
+    environment,
+    packageName: ANDROID_APP_ID,
+    productId: required('GOOGLE_IAP_PRODUCT_ID'),
+    basePlanId: required('GOOGLE_IAP_BASE_PLAN_ID'),
+    credentials,
+    pushAudience,
+    pushServiceAccount,
+  };
+}
+
+/** Verify signed delivery before opening native checkout; no API key is needed. */
+export function googlePushConfig() {
+  const environment = nativeEnvironment();
   const pushAudience = required('GOOGLE_IAP_PUSH_AUDIENCE');
   const pushServiceAccount = required('GOOGLE_IAP_PUSH_SERVICE_ACCOUNT');
   try {
@@ -110,9 +125,6 @@ export function googleConfig() {
   return {
     environment,
     packageName: ANDROID_APP_ID,
-    productId: required('GOOGLE_IAP_PRODUCT_ID'),
-    basePlanId: required('GOOGLE_IAP_BASE_PLAN_ID'),
-    credentials,
     pushAudience,
     pushServiceAccount,
   };

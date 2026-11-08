@@ -37,7 +37,7 @@ class VerifyBundle {
             }
             var manifest = XmlNode.parseFrom(bundle.getInputStream(bundle.getJarEntry("base/manifest/AndroidManifest.xml"))).getElement();
             String packageName = attribute(manifest, "package");
-            require(packageName.equals("com.solacepomodoro.myapp"), "Unexpected Android application ID.");
+            require(packageName.equals("com.solace.pomodoro"), "Unexpected Android application ID for the existing Play Console app.");
             require(attribute(manifest, "versionCode").equals(args[1]), "Unexpected bundle version code.");
             require(attribute(manifest, "versionName").equals(args[2]), "Unexpected bundle version name.");
             String minSdk = "", targetSdk = "";
@@ -73,8 +73,8 @@ class VerifyBundle {
                                 if (intent.getName().equals("category") && attribute(intent, "name").equals("android.intent.category.LAUNCHER")) launcherCategory = true;
                                 if (intent.getName().equals("data")) {
                                     String scheme = attribute(intent, "scheme");
-                                    require(!scheme.equals("com.solace.pomodoro"), "New Android app must not claim the previous app's authentication scheme.");
-                                    if (scheme.equals("com.solacepomodoro.myapp")) {
+                                    require(!scheme.equals("com.solacepomodoro.myapp"), "Android app must not claim the rejected package's authentication scheme.");
+                                    if (scheme.equals("com.solace.pomodoro")) {
                                         require(attribute(intent, "host").equals("auth") && attribute(intent, "path").equals("/callback"), "Unexpected Android authentication callback.");
                                         authCallbacks++;
                                     }
@@ -115,7 +115,7 @@ class VerifyBundle {
                 fingerprint = current;
             }
             require(!signed || fingerprint != null, "No upload certificate found.");
-            System.out.println("{\"applicationId\":\"" + packageName + "\",\"versionCode\":" + args[1] + ",\"versionName\":\"" + args[2] + "\",\"launcherActivity\":\"" + launcherActivity + "\",\"authCallback\":\"com.solacepomodoro.myapp://auth/callback\",\"minSdk\":" + minSdk + ",\"targetSdk\":" + targetSdk + ",\"debuggable\":false,\"signed\":" + signed + ",\"storeBilling\":" + storeBilling + ",\"playBillingLibraryVersion\":\"" + billingVersion + "\",\"uploadCertificateSha256\":" + (fingerprint == null ? "null" : "\"" + fingerprint + "\"") + ",\"permissions\":[\"" + String.join("\",\"", permissions) + "\"]}");
+            System.out.println("{\"applicationId\":\"" + packageName + "\",\"versionCode\":" + args[1] + ",\"versionName\":\"" + args[2] + "\",\"launcherActivity\":\"" + launcherActivity + "\",\"authCallback\":\"com.solace.pomodoro://auth/callback\",\"minSdk\":" + minSdk + ",\"targetSdk\":" + targetSdk + ",\"debuggable\":false,\"signed\":" + signed + ",\"storeBilling\":" + storeBilling + ",\"playBillingLibraryVersion\":\"" + billingVersion + "\",\"uploadCertificateSha256\":" + (fingerprint == null ? "null" : "\"" + fingerprint + "\"") + ",\"permissions\":[\"" + String.join("\",\"", permissions) + "\"]}");
         }
     }
 }

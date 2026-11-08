@@ -2,14 +2,18 @@
 
 ## Current verification
 
-The October 29 Android package target is `com.solacepomodoro.myapp`, with new
-callback `com.solacepomodoro.myapp://auth/callback`. This exact callback was
-appended to the hosted allowlist and independently verified, preserving the
-website entry and `com.solace.pomodoro://auth/callback` for iOS and the previously
-tested Android installation. The allowlist now has three entries; only that
-field changed, with SMTP and the signup hook unchanged. These checks created no
-account or email. The delivery evidence below concerns the older installation; no new-package
-signup, recovery email or installed-device result is claimed yet.
+November 3 correction: Play Console requires Android package
+`com.solace.pomodoro`, using `com.solace.pomodoro://auth/callback` alongside iOS.
+That callback is already allowed and was used by the earlier installed Android
+app. This correction needs no new hosted Auth configuration or email requests.
+Fresh signed-release signup/recovery checks remain pending.
+
+Historically, on October 29 the now-superseded Android callback
+`com.solacepomodoro.myapp://auth/callback` was appended to the allowlist and
+independently verified, preserving the website and original native entries.
+The resulting three-entry allowlist, SMTP and signup hook are left unchanged.
+Those checks created no account or email. The delivery evidence below concerns
+the earlier installed build, not a new signed-release installation.
 
 On October 28, 2026, the installed Android app passed existing-account sign-in,
 session restoration after a full restart, personal-workspace cloud saving and
@@ -79,8 +83,9 @@ signup delivery result and device verification are recorded above.
 The prepared helper declares only SMTP settings and the email-sending rate.
 The website URL, redirect allowlist, confirmation requirement and other rate
 limits are checked separately and preserved. In particular, the previously
-verified mobile callback `com.solace.pomodoro://auth/callback` is retained while
-the new Android callback is added separately.
+verified mobile callback `com.solace.pomodoro://auth/callback` is already present
+for both current platforms. No redirect or SMTP mutation is needed for the
+November 3 package correction.
 
 ## Local setup helper
 

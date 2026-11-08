@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import {
+  constants,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -179,8 +180,14 @@ try {
     'exports',
     `solace-${metadata.applicationId}-${options.versionName}-${options.versionCode}-${options.signed ? 'signed' : 'unsigned'}.aab`,
   );
+  const exportPaths = [exported, `${exported}.json`];
+  if (options.apk) exportPaths.push(exported.replace(/\.aab$/, '.apk'));
+  if (exportPaths.some(existsSync))
+    throw new Error(
+      'Release export already exists. Choose a new version code; historical exports are preserved.',
+    );
   mkdirSync(dirname(exported), { recursive: true });
-  copyFileSync(bundle, exported);
+  copyFileSync(bundle, exported, constants.COPYFILE_EXCL);
   const report = {
     ...metadata,
     bytes: statSync(exported).size,
@@ -232,7 +239,7 @@ try {
     )
       throw new Error('Release APK package, version, SDK levels or debuggable state do not match.');
     const exportedApk = exported.replace(/\.aab$/, '.apk');
-    copyFileSync(apk, exportedApk);
+    copyFileSync(apk, exportedApk, constants.COPYFILE_EXCL);
     report.apk = {
       artifact: exportedApk,
       bytes: statSync(exportedApk).size,
@@ -242,7 +249,7 @@ try {
       debuggable: false,
     };
   }
-  writeFileSync(`${exported}.json`, `${JSON.stringify(report, null, 2)}\n`);
+  writeFileSync(`${exported}.json`, `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });
   console.log(JSON.stringify(report, null, 2));
   console.log(
     options.signed

@@ -55,8 +55,9 @@ open ios/App/App.xcodeproj
 ```
 
 The platform wrapper selects the unchanged iOS identity `com.solace.pomodoro`.
-Android now uses `com.solacepomodoro.myapp`; do not use an unqualified Capacitor
-sync to copy that identifier into iOS metadata. To open Xcode through the same
+As of the November 3 Play correction, Android also uses `com.solace.pomodoro`.
+Continue selecting each platform explicitly so future Android changes cannot
+silently change iOS metadata. To open Xcode through the same
 wrapper, use `node scripts/capacitor-platform.mjs open ios`.
 
 The final sync must happen after the intended frontend source is frozen. It

@@ -57,25 +57,26 @@ describe('native authentication links', () => {
     expect(mocks.otp).not.toHaveBeenCalled();
   });
 
-  it('uses the new Android callback and rejects the iOS/old Android callback on Android', async () => {
+  it('uses the existing Play callback and rejects the superseded package on Android', async () => {
     mocks.platform = 'android';
     const { handleNativeAuthUrl } = await import('../src/lib/native-auth');
-    expect(await handleNativeAuthUrl('com.solace.pomodoro://auth/callback?code=old-app')).toEqual({
-      handled: false,
-    });
-    expect(mocks.code).not.toHaveBeenCalled();
     expect(
-      await handleNativeAuthUrl('com.solacepomodoro.myapp://auth/callback?code=new-app'),
-    ).toEqual({ handled: true, recovery: false });
-    expect(mocks.code).toHaveBeenCalledWith('new-app', undefined);
+      await handleNativeAuthUrl('com.solacepomodoro.myapp://auth/callback?code=wrong-app'),
+    ).toEqual({ handled: false });
+    expect(mocks.code).not.toHaveBeenCalled();
+    expect(await handleNativeAuthUrl('com.solace.pomodoro://auth/callback?code=play-app')).toEqual({
+      handled: true,
+      recovery: false,
+    });
+    expect(mocks.code).toHaveBeenCalledWith('play-app', undefined);
   });
 
   it('does not consume a callback on an unsupported native platform', async () => {
     mocks.platform = 'unknown';
     const { handleNativeAuthUrl } = await import('../src/lib/native-auth');
-    expect(await handleNativeAuthUrl('com.solacepomodoro.myapp://auth/callback?code=code')).toEqual(
-      { handled: false },
-    );
+    expect(await handleNativeAuthUrl('com.solace.pomodoro://auth/callback?code=code')).toEqual({
+      handled: false,
+    });
     expect(mocks.code).not.toHaveBeenCalled();
   });
 

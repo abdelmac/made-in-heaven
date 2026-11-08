@@ -1,17 +1,21 @@
 # Solace mobile apps
 
-October 29 identity update: Android now targets the owner's requested
-**`com.solacepomodoro.myapp`**, with callback
-**`com.solacepomodoro.myapp://auth/callback`**. The matching signed AAB/APK rebuild
-is verified, the hosted callback was added and independently read back, and the
-matching backend deployment `dpl_GAXwpaUbV5xhKD1FGwhCuWGN33xP` is READY at
-`www.solace-pomodoro.com`. The iOS
-identity and callback remain **`com.solace.pomodoro`** and
-**`com.solace.pomodoro://auth/callback`**. The October 28 Android artifacts below
-use the older identity and must not be uploaded to the new Play record.
-The rebuilt mobile bundle has passed 26 intercepted native-browser scenarios,
-including the new Android callback. This is not a new-package OS installation or
-an actual store purchase result.
+November 3 Play correction: the owner's existing Play Console app explicitly
+requires **`com.solace.pomodoro`**. Android source is restored to that ID
+and **`com.solace.pomodoro://auth/callback`**, already allowed by hosted Auth.
+iOS retains the same existing identity and callback. The new signed Android
+**1.0.0/code2** rebuild and matching backend update are verified; see the
+[current artifact record](android-release.md#final-signed-candidate).
+The October 29 `com.solacepomodoro.myapp` artifacts are superseded for this Play
+record. Their earlier 26 intercepted native-browser checks and READY deployment
+`dpl_GAXwpaUbV5xhKD1FGwhCuWGN33xP` are historical results, not verification of
+the corrected release. The corrected source passed **798 unit tests in 66
+files**. Matching production deployment `dpl_NsdqKBb4Xx6DVYfNSYwdZk6ciBCz` is
+READY at `www.solace-pomodoro.com`, with its Linux Next.js build and TypeScript
+passing. All **26 mobile Chrome browser scenarios** passed against the corrected
+bundle with intercepted providers, and read-only live HTTP smoke checks passed
+on the new deployment. No installed-device or real purchase result is claimed
+for the fresh candidate.
 
 October 28 release handoff: native purchase/restore/manage flows and legal acceptance are implemented, all 15 database migrations are hosted, and signed Android 1.0.0/code1 AAB/APK files are verified locally. See [Android artifacts](android-release.md), [iOS Mac handoff](ios-release.md), [store readiness](store-readiness.md), and [remaining owner actions](publication-owner-actions.md). Store products and credentials, real sandbox purchases, final policy approval and store submission remain pending. Vercel Pro was prepared but the owner left the upgrade pending, so paid production sales remain closed. Historical preparation notes below do not supersede this status.
 
@@ -20,10 +24,12 @@ Its pages, fonts and local workspace are available without downloading the websi
 The Next.js server and its database remain hosted separately.
 
 The Android project is `android/` and uses application ID
-**`com.solacepomodoro.myapp`**. The iOS project is `ios/App/App.xcodeproj` and
+**`com.solace.pomodoro`**. The iOS project is `ios/App/App.xcodeproj` and
 keeps bundle ID **`com.solace.pomodoro`**. Callback routing must use the actual
-runtime platform's exact scheme. The new package has separate Android app data
-and sessions; it does not import, overwrite or delete the old debug installation.
+runtime platform's exact scheme. The release again shares the existing debug
+app's package, but the signing certificates can differ. Do not uninstall the
+debug app or erase its local data to resolve that conflict; arrange an
+owner-approved separate test device/profile or a verified data-preserving handoff.
 
 Use the platform wrapper for direct Capacitor commands:
 `node scripts/capacitor-platform.mjs sync android` or
@@ -168,10 +174,11 @@ ignored `.local/mobile-public.json`. The mobile environment loader reuses the
 or service-role key in either public key setting. Recreate the public configuration
 on another development machine because this file is not committed.
 
-The matching Supabase project allows
-`com.solacepomodoro.myapp://auth/callback` under **Authentication → URL Configuration →
-Redirect URLs**, alongside `com.solace.pomodoro://auth/callback` for iOS and the
-older Android installation. Adding a native scheme to another codebase or
+The matching Supabase project already allows the current shared native callback
+`com.solace.pomodoro://auth/callback` under **Authentication → URL Configuration →
+Redirect URLs** for Android and iOS. The superseded October 29 callback
+`com.solacepomodoro.myapp://auth/callback` remains in the allowlist; this correction
+does not change hosted Auth settings. Adding a native scheme to another codebase or
 environment does not automatically update its hosted
 allowlist. Use PKCE confirmation/recovery links; the native handler accepts the
 exact callback and exchanges a code or supported token hash rather than accepting

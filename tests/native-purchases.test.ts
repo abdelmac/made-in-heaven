@@ -509,6 +509,71 @@ describe('verified purchase delivery', () => {
 });
 
 describe('restoration and interrupted purchase recovery', () => {
+  it('recovers the same pending Android purchase only after server verification and acknowledgement', async () => {
+    const f = fixture('android');
+    f.plugin.purchaseProduct.mockRejectedValueOnce(new Error('Purchase is pending'));
+    await expect(f.adapter.purchase(f.scope, f.offer)).rejects.toMatchObject({ issue: 'pending' });
+    f.config.pendingPurchaseIntent = {
+      intentId,
+      platform: 'android',
+      expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+    };
+    const receipt = transaction('android', { purchaseState: '2' });
+    f.plugin.getPurchases.mockResolvedValue({ purchases: [receipt] });
+    expect(await f.adapter.recover(f.scope)).toEqual({
+      verified: 0,
+      pending: true,
+      unfinished: false,
+    });
+    expect(f.request.mock.calls.filter(([path]) => String(path).endsWith('/verify'))).toHaveLength(
+      0,
+    );
+    await expect(f.adapter.purchase(f.scope, f.offer)).rejects.toMatchObject({
+      issue: 'purchase-blocked',
+    });
+
+    f.plugin.getPurchases.mockResolvedValue({
+      purchases: [{ ...receipt, purchaseState: '1' }],
+    });
+    let delivery = { verified: false, acknowledged: true };
+    f.request.mockImplementation(async (path) =>
+      String(path).endsWith('/verify') ? Response.json(delivery) : f.respond(path),
+    );
+    for (const response of [
+      { verified: false, acknowledged: true },
+      { verified: true, acknowledged: false },
+    ]) {
+      delivery = response;
+      expect(await f.adapter.recover(f.scope)).toEqual({
+        verified: 0,
+        pending: false,
+        unfinished: true,
+      });
+    }
+    delivery = { verified: true, acknowledged: true };
+    expect(await f.adapter.recover(f.scope)).toEqual({
+      verified: 1,
+      pending: false,
+      unfinished: false,
+    });
+
+    const posts = (f.request.mock.calls as unknown as [string, RequestInit][]).filter(([path]) =>
+      path.endsWith('/verify'),
+    );
+    expect(posts).toHaveLength(3);
+    for (const [, init] of posts) {
+      expect(JSON.parse(String(init.body))).toEqual({
+        workspaceId,
+        platform: 'android',
+        productId,
+        purchaseToken: receipt.purchaseToken,
+      });
+    }
+    expect(f.plugin.purchaseProduct).toHaveBeenCalledTimes(1);
+    expect(f.plugin.finishTransaction).not.toHaveBeenCalled();
+    expect(f.events).not.toContain('released');
+  });
+
   it('deduplicates unfinished deliveries and ignores purchases belonging to another app account', async () => {
     const f = fixture();
     f.plugin.getPurchases.mockResolvedValueOnce({

@@ -4,22 +4,21 @@ Run commands from the repository root. The release scripts use the existing
 portable JDK/Android SDK discovered by `scripts/check-mobile.mjs`. They never
 install an app or upload a release to Google Play.
 
-## October 29 package update
+## November 3 Play package correction
 
-The owner requested Android application ID **`com.solacepomodoro.myapp`**.
-iOS remains `com.solace.pomodoro`. The matching package-specific signed AAB/APK
-rebuild is verified, using the existing upload identity. The current exports
-are `solace-com.solacepomodoro.myapp-1.0.0-1-signed.aab` and the matching `.apk`
-under `.local/exports/`; verification results are recorded below. The October 28
-files below contain the old Android ID and must not be uploaded to the new Play
-record; they are retained as historical artifacts rather than overwritten.
-The previously exported `solace-store-preparation-2026-10-28.zip` also contains
-that old-ID AAB/APK; use the new package-specific files for this Play record.
+Play Console explicitly requires **`com.solace.pomodoro`** for the owner's Solace
+record. Android is realigned with that permanent ID and callback; iOS keeps
+the same existing identifier. The October 29 `com.solacepomodoro.myapp` AAB/APK
+and its preparation ZIP are superseded and must not be uploaded to this record.
+The verified fresh signed candidate is version **1.0.0/code2**, exported as
+`solace-com.solace.pomodoro-1.0.0-2-signed.aab` and the matching `.apk` under
+`.local/exports/`. Its verification is recorded below. Preserve the existing
+upload key and all historical artifacts.
 
 ## Unsigned bundle
 
 ```powershell
-node scripts/build-android-release.mjs --version-code 1 --version-name 1.0.0 --store-billing
+node scripts/build-android-release.mjs --version-code 2 --version-name 1.0.0 --store-billing
 ```
 
 The default rebuilds the mobile interface, syncs Android plugins/assets, runs
@@ -71,7 +70,7 @@ Inspect the existing certificate and build a signed release:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-release-signing.ps1 -Action Check
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-release-signing.ps1 -Action Build -VersionCode 1 -VersionName 1.0.0 -StoreBilling
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-release-signing.ps1 -Action Build -VersionCode 2 -VersionName 1.0.0 -StoreBilling
 ```
 
 The signing environment is local to that PowerShell process and its build
@@ -145,6 +144,36 @@ No portable owner-password backup or store submission has occurred.
 
 ### Final signed candidate
 
+The November 3 build completed with package **`com.solace.pomodoro`**, version
+**1.0.0/code2**. Its verification record is
+`.local/exports/solace-com.solace.pomodoro-1.0.0-2-signed.aab.json`.
+
+| Artifact                                                       |            Size | SHA-256                                                            |
+| -------------------------------------------------------------- | --------------: | ------------------------------------------------------------------ |
+| `.local/exports/solace-com.solace.pomodoro-1.0.0-2-signed.aab` | 4,944,292 bytes | `040fcc445aef6269bb3e6f9fbce79159a8eb4388ebcaefccd98a2b8af3b7160b` |
+| `.local/exports/solace-com.solace.pomodoro-1.0.0-2-signed.apk` | 5,202,001 bytes | `b98e91d40578cea41d2941ec488ef4eff7fd821dc360b0ced2079a710febddc9` |
+
+Actual merged manifest inspection verified minimum API26, target API36,
+debugging disabled, Billing Library `9.1.0` and the exact callback
+`com.solace.pomodoro://auth/callback`. The launcher remains
+`com.solace.pomodoro.MainActivity`. AAB payload signatures and the APK v2
+signature were verified with the preserved RSA4096 upload certificate
+`fb306c60c9b921d267eae19122a076168770226a51e7d7daf95b76c45e2b652e`.
+The rebuilt assets' web-index SHA-256 is
+`e6735ed407069986d1288f89a682fa2b80011534ffa4aec4187b3d63d1a6f616`;
+iOS was synced and retains its original identifier.
+
+Neither artifact was installed or uploaded by this correction. Code 2 avoids
+reusing the earlier candidate's code 1; if Play has already used code 2, choose
+the next unused code and rebuild. The existing debug installation can have a
+different signer despite using the same package. Do not uninstall it or clear
+its local data to resolve an install conflict.
+
+### Historical October 29 signed candidate — superseded package
+
+These artifacts were verified at the time but the owner's Play Console later
+required `com.solace.pomodoro`. They cannot be uploaded to that app record.
+
 The October 29 build completed and its signature/metadata checks returned exit
 code0. Its verification record is
 `.local/exports/solace-com.solacepomodoro.myapp-1.0.0-1-signed.aab.json`.
@@ -174,7 +203,7 @@ The older October 28 files remain unchanged. Neither new artifact has been
 installed on the owner's phone or uploaded to a store; real-device auth and
 purchase tests remain separate work.
 
-### Historical October 28 signed candidate — old Android ID
+### Historical October 28 signed candidate — matching package, earlier code
 
 The frozen frontend/native source was rebuilt and both platforms were synced on
 October 28, 2026. The signed Android build and release lint completed successfully.

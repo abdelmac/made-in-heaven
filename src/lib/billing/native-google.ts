@@ -2,7 +2,7 @@ import 'server-only';
 import { GoogleAuth, OAuth2Client } from 'google-auth-library';
 import { z } from 'zod';
 import { HttpError } from '@/lib/server/http';
-import { googleConfig } from './native-config';
+import { googleConfig, googlePushConfig } from './native-config';
 import type { VerifiedNativeSubscription } from './native-types';
 
 const lineSchema = z.object({
@@ -173,7 +173,7 @@ export async function acknowledgeGoogleSubscription(purchaseToken: string) {
 }
 
 export async function authenticateGooglePush(request: Request) {
-  const config = googleConfig();
+  const config = googlePushConfig();
   const authorization = request.headers.get('authorization');
   if (!authorization?.startsWith('Bearer ') || authorization.length > 16_000)
     throw new HttpError(401, 'A verified Google Pub/Sub identity is required.');

@@ -61,7 +61,7 @@ describe('native platform command isolation', () => {
 
 describe('platform-specific Capacitor configuration', () => {
   it.each([
-    ['android', 'com.solacepomodoro.myapp'],
+    ['android', 'com.solace.pomodoro'],
     ['ios', 'com.solace.pomodoro'],
   ])(
     'uses the exact %s identity without changing purchase safety settings',

@@ -2,16 +2,18 @@
 
 Prepared October 28, 2026. Copy for owner review, not submitted metadata. No rating, approval, screenshot or store purchase is claimed. The app interface is currently French; English listing copy does not establish an English interface localization. Confirm every advertised feature against the final signed build and entitlement rules.
 
-Android identity updated October 29 to the owner's requested
-`com.solacepomodoro.myapp`. The iOS identity remains `com.solace.pomodoro`.
-Existence of the new Play Console record has not been independently verified.
+November 3 correction: the owner created the Play Console app and its upload
+validation explicitly requires `com.solace.pomodoro`. Android is realigned
+with that permanent identity; the October 29 `com.solacepomodoro.myapp` candidate
+is superseded. iOS keeps `com.solace.pomodoro`. The fresh code-2 signed candidate
+and matching backend update are verified; successful upload is not yet verified.
 
 ## Identifiers and public contacts
 
 | Field                   | Value / status                                                                  |
 | ----------------------- | ------------------------------------------------------------------------------- |
 | App name                | Solace                                                                          |
-| Android application ID  | `com.solacepomodoro.myapp` — matching signed AAB/APK verified October 29        |
+| Android application ID  | `com.solace.pomodoro` — matching signed code-2 AAB/APK verified November 3      |
 | iOS bundle ID in source | `com.solace.pomodoro` — registration/signing still required                     |
 | Publisher               | Machta Abdelkader; nickname ennearock; declared country France — owner supplied |
 | Support email           | quetzal.hkm@gmail.com — receipt/monitoring check pending                        |
@@ -21,13 +23,18 @@ Existence of the new Play Console record has not been independently verified.
 | Terms                   | https://www.solace-pomodoro.com/terms                                           |
 | Publisher notice        | https://www.solace-pomodoro.com/legal                                           |
 
-The matching backend release is live at the URLs above; October 29 deployment
-`dpl_GAXwpaUbV5xhKD1FGwhCuWGN33xP` is READY with the new Android verification
-identity. The earlier October 28 actual-domain checks passed six Chrome
+The public backend is live at the URLs above; matching November 3 deployment
+`dpl_NsdqKBb4Xx6DVYfNSYwdZk6ciBCz` is READY with Android verification configured
+for `com.solace.pomodoro`. Its Linux production build and TypeScript passed;
+read-only live HTTP checks passed all six public pages, signup readiness,
+disabled checkout, unauthenticated consent rejection and license notices.
+The October 29 deployment
+`dpl_GAXwpaUbV5xhKD1FGwhCuWGN33xP` is a historical READY result for the superseded
+Android identity. The earlier October 28 actual-domain checks passed six Chrome
 public/deletion scenarios and confirmed publisher/contact details and disabled
-checkout. The new Android auth callback is independently verified in the hosted
-allowlist, preserving the website/iOS entries and the signup hook. Complete
-new-package installed signup/email QA remains an owner task. The policy/legal
+checkout. The current `com.solace.pomodoro://auth/callback` already exists in the
+hosted allowlist; no Auth settings change is needed. Complete signed-release
+installed signup/email QA remains an owner task. The policy/legal
 pages remain provisional drafts with `noindex` metadata: complete
 [privacy-review.md](privacy-review.md) before submission. Store-specific numeric
 app IDs, product IDs and Android base-plan IDs have not been supplied; do not

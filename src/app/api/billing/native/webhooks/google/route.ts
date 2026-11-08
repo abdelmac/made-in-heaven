@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { authenticateGooglePush } from '@/lib/billing/native-google';
-import { googleConfig } from '@/lib/billing/native-config';
+import { ANDROID_APP_ID } from '@/lib/native-identity';
 import { reconcileNativeNotification } from '@/lib/billing/native-server';
 import { handleApiError, HttpError, readJson } from '@/lib/server/http';
 
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       throw new HttpError(400, 'Google Play notification contains invalid data.');
     }
     const notification = notificationSchema.parse(raw);
-    if (notification.packageName !== googleConfig().packageName)
+    if (notification.packageName !== ANDROID_APP_ID)
       throw new HttpError(400, 'Google Play notification belongs to another app.');
     if (
       [

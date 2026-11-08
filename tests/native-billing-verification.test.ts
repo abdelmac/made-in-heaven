@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SignedDataVerifier, Environment } from '@apple/app-store-server-library';
 vi.mock('server-only', () => ({}));
-const mocks = vi.hoisted(() => ({ googleRequest: vi.fn(), tokenClaims: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  googleRequest: vi.fn(),
+  tokenClaims: vi.fn(),
+  purchaseConfigurationBlocked: false,
+}));
 vi.mock('@/lib/billing/native-config', () => ({
   appleConfig: () => ({
     environment: 'sandbox',
@@ -10,15 +14,22 @@ vi.mock('@/lib/billing/native-config', () => ({
     appAppleId: 123,
     roots: [],
   }),
-  googleConfig: () => ({
-    environment: 'sandbox',
-    packageName: 'com.solacepomodoro.myapp',
-    productId: 'pro.monthly',
-    basePlanId: 'monthly',
-    credentials: {
-      client_email: 'fixture@fixture.iam.gserviceaccount.com',
-      private_key: 'fixture',
-    },
+  googleConfig: () => {
+    if (mocks.purchaseConfigurationBlocked) throw new Error('Purchases are disabled.');
+    return {
+      environment: 'sandbox',
+      packageName: 'com.solace.pomodoro',
+      productId: 'pro.monthly',
+      basePlanId: 'monthly',
+      credentials: {
+        client_email: 'fixture@fixture.iam.gserviceaccount.com',
+        private_key: 'fixture',
+      },
+      pushAudience: 'https://solace.example/api/billing/native/webhooks/google',
+      pushServiceAccount: 'push@fixture.iam.gserviceaccount.com',
+    };
+  },
+  googlePushConfig: () => ({
     pushAudience: 'https://solace.example/api/billing/native/webhooks/google',
     pushServiceAccount: 'push@fixture.iam.gserviceaccount.com',
   }),
@@ -255,7 +266,7 @@ describe('Google authoritative subscription state', () => {
     mocks.googleRequest
       .mockResolvedValueOnce(
         Response.json({
-          packageName: 'com.solacepomodoro.myapp',
+          packageName: 'com.solace.pomodoro',
           productId: 'pro.monthly',
           basePlans: [
             {
@@ -269,8 +280,8 @@ describe('Google authoritative subscription state', () => {
       .mockResolvedValueOnce(Response.json(googlePurchase()));
     await verifyGoogleSubscription('purchase-token', account);
     for (const [url] of mocks.googleRequest.mock.calls) {
-      expect(url).toContain('/applications/com.solacepomodoro.myapp/');
-      expect(url).not.toContain('/applications/com.solace.pomodoro/');
+      expect(url).toContain('/applications/com.solace.pomodoro/');
+      expect(url).not.toContain('/applications/com.solacepomodoro.myapp/');
     }
     expect(mocks.googleRequest.mock.calls[0][0]).toContain('/subscriptions/pro.monthly');
     expect(mocks.googleRequest.mock.calls[1][0]).toContain(
@@ -279,9 +290,9 @@ describe('Google authoritative subscription state', () => {
   });
   it('rejects an annual, inactive or wrong catalog product before enabling monthly sales', async () => {
     for (const patch of [
-      { packageName: 'com.solacepomodoro.myapp', state: 'INACTIVE', duration: 'P1M' },
-      { packageName: 'com.solacepomodoro.myapp', state: 'ACTIVE', duration: 'P1Y' },
-      { packageName: 'com.solace.pomodoro', state: 'ACTIVE', duration: 'P1M' },
+      { packageName: 'com.solace.pomodoro', state: 'INACTIVE', duration: 'P1M' },
+      { packageName: 'com.solace.pomodoro', state: 'ACTIVE', duration: 'P1Y' },
+      { packageName: 'com.solacepomodoro.myapp', state: 'ACTIVE', duration: 'P1M' },
     ]) {
       mocks.googleRequest.mockResolvedValueOnce(
         Response.json({
@@ -302,6 +313,21 @@ describe('Google authoritative subscription state', () => {
 });
 
 describe('Google RTDN identity', () => {
+  afterEach(() => {
+    mocks.purchaseConfigurationBlocked = false;
+  });
+  it('authenticates signed push delivery without invoking disabled purchase configuration', async () => {
+    mocks.purchaseConfigurationBlocked = true;
+    mocks.tokenClaims.mockResolvedValue({
+      getPayload: () => ({
+        email: 'push@fixture.iam.gserviceaccount.com',
+        email_verified: true,
+        iss: 'https://accounts.google.com',
+      }),
+    });
+    await expect(authenticateGooglePush(request())).resolves.toBeUndefined();
+    expect(mocks.googleRequest).not.toHaveBeenCalled();
+  });
   const request = () =>
     new Request('https://solace.example/api/billing/native/webhooks/google', {
       headers: { authorization: 'Bearer oidc-fixture' },

@@ -28,7 +28,7 @@ vi.mock('@/lib/server/auth', () => ({
 vi.mock('@/lib/billing/server', () => ({ getWorkspaceEntitlements: mocks.entitlements }));
 vi.mock('@/lib/billing/native-config', () => ({
   nativePublicConfiguration: mocks.config,
-  googleConfig: () => ({ packageName: 'com.solacepomodoro.myapp' }),
+  googleConfig: () => ({ packageName: 'com.solace.pomodoro' }),
   nativePurchaseLaunchReady: () => true,
 }));
 vi.mock('@/lib/billing/native-server', () => ({
@@ -87,7 +87,7 @@ const googleRequest = (body: unknown) =>
   });
 const notification = () => ({
   version: '1.0',
-  packageName: 'com.solacepomodoro.myapp',
+  packageName: 'com.solace.pomodoro',
   subscriptionNotification: { purchaseToken: 'private-token-fixture', notificationType: 2 },
 });
 beforeEach(() => {
@@ -341,6 +341,24 @@ describe('store notification entry points', () => {
     expect((await googlePOST(googleRequest(notification()))).status).toBe(401);
     expect(mocks.reconcile).not.toHaveBeenCalled();
   });
+  it('acknowledges only an authenticated test notification without opening billing access', async () => {
+    mocks.config.mockReturnValue({ ready: false, platform: 'android' });
+    const testEvent = {
+      version: '1.0',
+      packageName: 'com.solace.pomodoro',
+      testNotification: { version: '1.0' },
+    };
+    const response = await googlePOST(googleRequest(testEvent));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ received: true });
+    expect(mocks.authenticate).toHaveBeenCalledOnce();
+    expect(mocks.config).not.toHaveBeenCalled();
+    expect(mocks.catalog).not.toHaveBeenCalled();
+    expect(mocks.prepare).not.toHaveBeenCalled();
+    expect(mocks.reconcile).not.toHaveBeenCalled();
+    mocks.authenticate.mockRejectedValue(new HttpError(401, 'invalid Google identity'));
+    expect((await googlePOST(googleRequest(testEvent))).status).toBe(401);
+  });
   it('re-queries Google for lifecycle events and passes exact full-refund order identity', async () => {
     expect((await googlePOST(googleRequest(notification()))).status).toBe(200);
     expect(mocks.reconcile).toHaveBeenLastCalledWith(
@@ -351,7 +369,7 @@ describe('store notification entry points', () => {
     );
     const voided = {
       version: '1.0',
-      packageName: 'com.solacepomodoro.myapp',
+      packageName: 'com.solace.pomodoro',
       voidedPurchaseNotification: {
         purchaseToken: 'private-token-fixture',
         productType: 1,
@@ -369,13 +387,13 @@ describe('store notification entry points', () => {
   });
   it('rejects another package, unsupported version, mixed events and incomplete refund', async () => {
     for (const body of [
-      { ...notification(), packageName: 'com.solace.pomodoro' },
+      { ...notification(), packageName: 'com.solacepomodoro.myapp' },
       { ...notification(), packageName: 'another.app' },
       { ...notification(), version: 'unsupported' },
       { ...notification(), testNotification: { version: '1.0' } },
       {
         version: '1.0',
-        packageName: 'com.solacepomodoro.myapp',
+        packageName: 'com.solace.pomodoro',
         voidedPurchaseNotification: {
           purchaseToken: 'private-token-fixture',
           productType: 1,

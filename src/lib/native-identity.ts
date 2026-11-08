@@ -1,5 +1,5 @@
-/** Store identities are independent: changing Android must not rename the iOS app. */
-export const ANDROID_APP_ID = 'com.solacepomodoro.myapp';
+/** Match the existing store records; keep each platform's identity explicit. */
+export const ANDROID_APP_ID = 'com.solace.pomodoro';
 export const IOS_APP_ID = 'com.solace.pomodoro';
 
 export function nativeAppIdForPlatform(platform: string): string | null {
