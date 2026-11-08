@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   from: vi.fn(),
   lock: vi.fn(),
   google: vi.fn(),
+  inspectGoogle: vi.fn(),
   acknowledge: vi.fn(),
   apple: vi.fn(),
   decodeApple: vi.fn(),
@@ -27,6 +28,7 @@ vi.mock('@/lib/billing/native-apple', () => ({
 vi.mock('@/lib/billing/native-google', () => ({
   acknowledgeGoogleSubscription: mocks.acknowledge,
   verifyGoogleSubscription: mocks.google,
+  inspectGooglePurchaseForRecovery: mocks.inspectGoogle,
 }));
 import {
   assertNoNativeSubscription,
@@ -80,6 +82,10 @@ beforeEach(() => {
     }),
   );
   mocks.google.mockImplementation(async () => state());
+  mocks.inspectGoogle.mockImplementation(async (...args) => ({
+    inactive: false,
+    state: await mocks.google(...args),
+  }));
   mocks.from.mockImplementation((table: string) => {
     const query = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn() };
     query.select.mockReturnValue(query);
@@ -160,6 +166,7 @@ describe('native verified purchase processing', () => {
       mocks.acknowledge.mock.invocationCallOrder[0],
     );
     expect(mocks.google).toHaveBeenCalledWith('private-purchase-token', account);
+    expect(mocks.inspectGoogle).toHaveBeenCalledExactlyOnceWith('private-purchase-token', account);
   });
   it('does not acknowledge or grant on failed ownership persistence', async () => {
     const original = mocks.rpc.getMockImplementation()!;
@@ -194,6 +201,116 @@ describe('native verified purchase processing', () => {
     mocks.google.mockResolvedValue({ ...state(), acknowledged: true });
     await verifyNativePurchase('user', 'workspace', input);
     expect(mocks.acknowledge).not.toHaveBeenCalled();
+  });
+  it.each([false, true])(
+    'resolves only an inspected expired production receipt without persisting or changing its acknowledgement (%s)',
+    async (acknowledged) => {
+      const expiredAt = new Date(Date.now() - 86_400_000).toISOString();
+      mocks.inspectGoogle.mockResolvedValue({
+        inactive: true,
+        state: {
+          ...state(),
+          environment: 'production',
+          status: 'expired',
+          currentPeriodEnd: expiredAt,
+          acknowledged,
+        },
+      });
+      mocks.entitlements.mockResolvedValue({ tier: 'free' });
+      expect(await verifyNativePurchase('user', 'workspace', input)).toEqual({
+        verified: false,
+        acknowledged,
+        resolved: true,
+        resolution: 'inactive_purchase',
+        entitlementGranted: false,
+        subscription: { provider: 'google', status: 'expired', currentPeriodEnd: expiredAt },
+        entitlements: { tier: 'free' },
+      });
+      expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
+        'folia_account_legal_eligible',
+        'folia_native_billing_version',
+        'assert_native_billing_environment',
+        'prepare_native_billing',
+      ]);
+      expect(mocks.lock).toHaveBeenCalledOnce();
+      expect(mocks.acknowledge).not.toHaveBeenCalled();
+      expect(mocks.entitlements).toHaveBeenCalledWith('workspace');
+    },
+  );
+  it('reports the current account entitlement independently of resolving an inactive receipt', async () => {
+    mocks.inspectGoogle.mockResolvedValue({
+      inactive: true,
+      state: {
+        ...state(),
+        environment: 'production',
+        status: 'expired',
+        currentPeriodEnd: new Date(Date.now() - 1000).toISOString(),
+      },
+    });
+    expect(await verifyNativePurchase('user', 'workspace', input)).toMatchObject({
+      verified: false,
+      entitlementGranted: false,
+      entitlements: { tier: 'pro' },
+    });
+  });
+  it('durably removes a same-environment terminal grant before resolving without acknowledging or releasing an intent', async () => {
+    const expiredAt = new Date(Date.now() - 86_400_000).toISOString();
+    mocks.inspectGoogle.mockResolvedValue({
+      inactive: true,
+      state: { ...state(), status: 'expired', currentPeriodEnd: expiredAt },
+    });
+    mocks.entitlements.mockResolvedValue({ tier: 'free' });
+    expect(await verifyNativePurchase('user', 'workspace', input)).toMatchObject({
+      verified: false,
+      acknowledged: false,
+      resolved: true,
+      resolution: 'inactive_purchase',
+      entitlementGranted: false,
+      subscription: { provider: 'google', status: 'expired', currentPeriodEnd: expiredAt },
+      entitlements: { tier: 'free' },
+    });
+    const commits = mocks.rpc.mock.calls.filter(([name]) => name === 'commit_native_billing_state');
+    expect(commits).toHaveLength(1);
+    expect(commits[0][1]).toMatchObject({
+      p_lock_token: 'fenced-lock',
+      p_state: {
+        environment: 'sandbox',
+        status: 'expired',
+        current_period_end: expiredAt,
+        acknowledged: false,
+      },
+    });
+    const commitIndex = mocks.rpc.mock.calls.findIndex(
+      ([name]) => name === 'commit_native_billing_state',
+    );
+    expect(mocks.rpc.mock.invocationCallOrder[commitIndex]).toBeLessThan(
+      mocks.entitlements.mock.invocationCallOrder[0],
+    );
+    expect(mocks.rpc.mock.calls.some(([name]) => name === 'release_native_purchase_intent')).toBe(
+      false,
+    );
+    expect(mocks.acknowledge).not.toHaveBeenCalled();
+  });
+  it('does not resolve a same-environment expired receipt if terminal persistence fails', async () => {
+    mocks.inspectGoogle.mockResolvedValue({
+      inactive: true,
+      state: {
+        ...state(),
+        status: 'expired',
+        currentPeriodEnd: new Date(Date.now() - 1000).toISOString(),
+      },
+    });
+    const original = mocks.rpc.getMockImplementation()!;
+    mocks.rpc.mockImplementation((name, args) =>
+      name === 'commit_native_billing_state'
+        ? Promise.resolve({ error: { code: '23514' } })
+        : original(name, args),
+    );
+    await expect(verifyNativePurchase('user', 'workspace', input)).rejects.toMatchObject({
+      status: 409,
+    });
+    expect(mocks.acknowledge).not.toHaveBeenCalled();
+    expect(mocks.entitlements).not.toHaveBeenCalled();
   });
   it('fails closed before provider calls if schema capability is absent or wrong', async () => {
     const original = mocks.rpc.getMockImplementation()!;
@@ -270,6 +387,7 @@ describe('native verified purchase processing', () => {
       revoked_transaction_id: 'GPA.fixture',
     });
     expect(mocks.acknowledge).not.toHaveBeenCalled();
+    expect(mocks.inspectGoogle).not.toHaveBeenCalled();
   });
   it('does not query stores or restore grants for a deleted mapped account', async () => {
     const original = mocks.from.getMockImplementation()!;

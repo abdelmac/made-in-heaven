@@ -138,6 +138,23 @@ function fixture(platform: NativeStorePlatform = 'ios') {
   };
 }
 
+function inactivePurchaseResponse(overrides: Record<string, unknown> = {}) {
+  return {
+    verified: false,
+    acknowledged: false,
+    resolved: true,
+    resolution: 'inactive_purchase',
+    entitlementGranted: false,
+    subscription: {
+      provider: 'google',
+      status: 'expired',
+      currentPeriodEnd: new Date(Date.now() - 60_000).toISOString(),
+    },
+    entitlements: { tier: 'free' },
+    ...overrides,
+  };
+}
+
 describe('native purchase safety gates', () => {
   it('boxes Capacitor proxies instead of assimilating their synthesized then property', async () => {
     const f = fixture();
@@ -637,5 +654,219 @@ describe('restoration and interrupted purchase recovery', () => {
     await purchase;
     await restore;
     expect(f.plugin.restorePurchases).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('authoritatively inactive Android purchase recovery', () => {
+  it.each([false, true])(
+    'resolves an inactive receipt with actual acknowledgement %s without granting or finishing it',
+    async (acknowledged) => {
+      const f = fixture('android');
+      const receipt = transaction('android');
+      f.plugin.getPurchases.mockResolvedValueOnce({ purchases: [receipt] });
+      f.plugin.getUnfinishedTransactions.mockResolvedValueOnce({ transactions: [receipt] });
+      f.request.mockImplementation(async (path) =>
+        String(path).endsWith('/verify')
+          ? Response.json(inactivePurchaseResponse({ acknowledged, entitlements: { tier: 'pro' } }))
+          : f.respond(path),
+      );
+
+      expect(await f.adapter.recover(f.scope)).toEqual({
+        verified: 0,
+        pending: false,
+        unfinished: false,
+        resolved: 1,
+      });
+      expect(f.config.entitlements).toEqual({ tier: 'free' });
+      expect(
+        f.request.mock.calls.filter(([path]) => String(path).endsWith('/verify')),
+      ).toHaveLength(1);
+      expect(f.plugin.purchaseProduct).not.toHaveBeenCalled();
+      expect(f.plugin.finishTransaction).not.toHaveBeenCalled();
+      expect(f.events).not.toContain('reserved');
+      expect(f.events).not.toContain('released');
+    },
+  );
+
+  it.each([
+    'verified',
+    'acknowledged',
+    'resolved',
+    'resolution',
+    'entitlementGranted',
+    'subscription',
+    'entitlements',
+  ])('keeps a receipt unfinished when the terminal result lacks %s', async (field) => {
+    const f = fixture('android');
+    f.plugin.getUnfinishedTransactions.mockResolvedValueOnce({
+      transactions: [transaction('android')],
+    });
+    f.request.mockImplementation(async (path) =>
+      String(path).endsWith('/verify')
+        ? Response.json(inactivePurchaseResponse({ [field]: undefined }))
+        : f.respond(path),
+    );
+
+    expect(await f.adapter.recover(f.scope)).toEqual({
+      verified: 0,
+      pending: false,
+      unfinished: true,
+    });
+    expect(f.plugin.finishTransaction).not.toHaveBeenCalled();
+    expect(f.plugin.purchaseProduct).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: 'an active subscription', subscription: { status: 'active' } },
+    { name: 'another provider', subscription: { provider: 'apple' } },
+    {
+      name: 'a future expiry',
+      subscription: { currentPeriodEnd: new Date(Date.now() + 86_400_000).toISOString() },
+    },
+    { name: 'a missing expiry', subscription: { currentPeriodEnd: undefined } },
+    { name: 'an invalid expiry', subscription: { currentPeriodEnd: 'not-a-date' } },
+    { name: 'a non-ISO expiry', subscription: { currentPeriodEnd: 'January 1, 2020' } },
+    { name: 'an impossible ISO date', subscription: { currentPeriodEnd: '2025-02-30T00:00:00Z' } },
+  ])('rejects a terminal result containing $name', async ({ subscription }) => {
+    const f = fixture('android');
+    const inactive = inactivePurchaseResponse();
+    f.plugin.getPurchases.mockResolvedValueOnce({ purchases: [transaction('android')] });
+    f.request.mockImplementation(async (path) =>
+      String(path).endsWith('/verify')
+        ? Response.json({
+            ...inactive,
+            subscription: { ...inactive.subscription, ...subscription },
+          })
+        : f.respond(path),
+    );
+
+    expect(await f.adapter.recover(f.scope)).toEqual({
+      verified: 0,
+      pending: false,
+      unfinished: true,
+    });
+    expect(f.plugin.finishTransaction).not.toHaveBeenCalled();
+    expect(f.plugin.purchaseProduct).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { verified: true },
+    { acknowledged: 'false' },
+    { resolved: 'true' },
+    { resolved: false },
+    { resolution: 'active_purchase' },
+    { entitlementGranted: true },
+    { entitlements: { tier: 'unknown' } },
+    { entitlements: null },
+  ])('rejects forged or malformed terminal flags %j', async (overrides) => {
+    const f = fixture('android');
+    f.plugin.getPurchases.mockResolvedValueOnce({ purchases: [transaction('android')] });
+    f.request.mockImplementation(async (path) =>
+      String(path).endsWith('/verify')
+        ? Response.json(inactivePurchaseResponse(overrides))
+        : f.respond(path),
+    );
+
+    expect(await f.adapter.recover(f.scope)).toEqual({
+      verified: 0,
+      pending: false,
+      unfinished: true,
+    });
+    expect(f.plugin.finishTransaction).not.toHaveBeenCalled();
+    expect(f.plugin.purchaseProduct).not.toHaveBeenCalled();
+  });
+
+  it('does not accept a terminal contract from a failed verification response', async () => {
+    const f = fixture('android');
+    f.plugin.getPurchases.mockResolvedValueOnce({ purchases: [transaction('android')] });
+    f.request.mockImplementation(async (path) =>
+      String(path).endsWith('/verify')
+        ? Response.json(inactivePurchaseResponse(), { status: 400 })
+        : f.respond(path),
+    );
+
+    expect(await f.adapter.recover(f.scope)).toEqual({
+      verified: 0,
+      pending: false,
+      unfinished: true,
+    });
+    expect(f.plugin.finishTransaction).not.toHaveBeenCalled();
+  });
+
+  it.each(['pending', 'unfinished', 'verified'] as const)(
+    'preserves another receipt that is %s while resolving the inactive one',
+    async (otherState) => {
+      const f = fixture('android');
+      const inactive = transaction('android');
+      const other = transaction('android', {
+        purchaseToken: 'fixture-other-purchase-token',
+        purchaseState: otherState === 'pending' ? '2' : '1',
+      });
+      f.plugin.getPurchases.mockResolvedValueOnce({ purchases: [inactive] });
+      f.plugin.getUnfinishedTransactions.mockResolvedValueOnce({ transactions: [inactive, other] });
+      f.request.mockImplementation(async (path: RequestInfo | URL, init?: RequestInit) => {
+        if (!String(path).endsWith('/verify')) return f.respond(path);
+        const { purchaseToken } = JSON.parse(String(init?.body));
+        return Response.json(
+          purchaseToken === inactive.purchaseToken
+            ? inactivePurchaseResponse()
+            : { verified: otherState === 'verified', acknowledged: true },
+        );
+      });
+
+      expect(await f.adapter.recover(f.scope)).toEqual({
+        verified: otherState === 'verified' ? 1 : 0,
+        pending: otherState === 'pending',
+        unfinished: otherState === 'unfinished',
+        resolved: 1,
+      });
+      expect(f.plugin.finishTransaction).not.toHaveBeenCalled();
+      expect(f.plugin.purchaseProduct).not.toHaveBeenCalled();
+    },
+  );
+
+  it('retains the server purchase fence after resolving an inactive receipt', async () => {
+    const f = fixture('android');
+    f.config.purchaseAllowed = false;
+    f.config.pendingPurchaseIntent = {
+      intentId,
+      platform: 'android',
+      expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+    };
+    f.plugin.getPurchases.mockResolvedValueOnce({ purchases: [transaction('android')] });
+    f.request.mockImplementation(async (path) =>
+      String(path).endsWith('/verify')
+        ? Response.json(inactivePurchaseResponse())
+        : f.respond(path),
+    );
+
+    expect(await f.adapter.recover(f.scope)).toMatchObject({ resolved: 1, verified: 0 });
+    await expect(f.adapter.purchase(f.scope, f.offer)).rejects.toMatchObject({
+      issue: 'purchase-blocked',
+    });
+    expect(f.config.pendingPurchaseIntent.intentId).toBe(intentId);
+    expect(f.plugin.purchaseProduct).not.toHaveBeenCalled();
+    expect(f.events).not.toContain('released');
+    expect(f.events).not.toContain('reserved');
+  });
+
+  it('does not accept the Android inactive contract for an iOS transaction', async () => {
+    const f = fixture('ios');
+    f.plugin.getUnfinishedTransactions.mockResolvedValueOnce({
+      transactions: [transaction('ios')],
+    });
+    f.request.mockImplementation(async (path) =>
+      String(path).endsWith('/verify')
+        ? Response.json(inactivePurchaseResponse())
+        : f.respond(path),
+    );
+
+    expect(await f.adapter.recover(f.scope)).toEqual({
+      verified: 0,
+      pending: false,
+      unfinished: true,
+    });
+    expect(f.plugin.finishTransaction).not.toHaveBeenCalled();
+    expect(f.plugin.purchaseProduct).not.toHaveBeenCalled();
   });
 });

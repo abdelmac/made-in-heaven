@@ -6,6 +6,74 @@ The web release is live at `www.solace-pomodoro.com`; its legal/privacy pages re
 provisional drafts with `noindex` metadata. Technical implementation and verification belong in
 [store-readiness.md](store-readiness.md) and [mobile.md](mobile.md).
 
+**November 8, 2026 — current license-testing checkpoint:** Direct inspection of
+the owner's French **Test de licence** screenshot shows the email-lists radio
+selected and one list, **Google account used on your phone**, with **4 users**.
+The list's row checkbox and header checkbox are **empty**;
+**Enregistrer les modifications** is disabled, and the license response is
+`RESPOND_NORMALLY`. The list exists but is not selected for license testing in
+the shown state. This updates the earlier owner-reported selected/saved
+enrollment below; the image does not verify addresses, purchasing-account
+membership or publisher ownership.
+
+The owner now reports **ticking the list's row checkbox, saving, reloading and
+confirming it remains checked**. This correction is owner-confirmed; no updated
+screenshot or independent Console/API verification is available. Google's
+[license-testing instructions](https://support.google.com/googleplay/android-developer/answer/6062777?hl=en)
+require choosing the tester list and saving changes.
+
+November 8 read-only prechecks confirm **sandbox**, **0 unresolved Google sandbox
+`solace_pro` intents, 0 Google subscriptions across environments and 0
+acknowledgements**. Public Vercel values match `NATIVE_BILLING_ENVIRONMENT=sandbox`,
+`NATIVE_LIVE_PURCHASES_ENABLED=false`, `GOOGLE_IAP_ENABLED=true`, `solace_pro` and
+`monthly`. No private credential was read; no configuration, deployment, schema
+or entitlement changed.
+
+The subsequent direct screenshot shows **Subscribe disabled**, Refresh/Restore
+enabled and **"Un achat reste à finaliser..."**. This identifies unfinished receipt
+recovery, rather than the durable-intent/busy state. Fresh read-only counts remain
+**sandbox, 0 unresolved Google sandbox intents, 0 Google subscriptions across
+environments and 0 acknowledgements**. Request metadata shows two native billing
+GET 200 responses at **20:50:52.753–20:51:00.741 UTC**, and two verification POST
+400 responses at **20:50:57.718–20:51:03.927 UTC**; the cause was unknown at that check.
+
+A privacy-limited diagnostic emits the fixed event
+`native_purchase_verification_failed` with only an allowlisted reason code and
+numeric status. Five owner/restore requests at **21:03:41–21:05:02 UTC** confirmed
+**`environment_mismatch` / 400**: a non-test Google receipt reached sandbox.
+The operator has not independently read its current inactive Google state.
+
+The backend and new Android client now support a strict inactive-receipt result:
+only a current Google v2 **EXPIRED** receipt owned by the current account, with
+one configured monthly product/base plan, a past RFC3339 expiry, no linked
+purchase token and no offer qualifies. Sandbox may inspect an expired production
+receipt and return `verified:false`, `resolved:true`,
+`resolution:inactive_purchase`, `entitlementGranted:false` and the actual
+acknowledgement state, without a production database write, acknowledgement or
+grant. Same-environment terminal persistence follows the normal path and releases
+no intent. Pending, active and unknown receipts remain blocked; iOS, normal
+strict verification and RTDN behavior are unchanged.
+
+Final deployment **`dpl_5SaET5RWbmsnhrqkN9dvfzg65tfx`** is **READY** at
+**https://www.solace-pomodoro.com**. The **947-test / 69-file** regression run,
+TypeScript, ESLint, Prettier and independent review passed, as did the cloud
+Next.js **16.4.3** build/TypeScript. Post-deploy checks passed: home/prices 200
+with web checkout disabled, invalid verification 400, unauthenticated verification
+401, Android preflight 204 with exact `https://localhost`, and unsigned Google
+push 401. Fresh readbacks retain the five public sandbox settings above and
+**0 Google sandbox intents, 0 Google subscriptions across environments and 0
+acknowledgements**; no private credential was read.
+
+The current signed candidate is **1.0.1/code3**,
+`.local/exports/solace-com.solace.pomodoro-1.0.1-3-signed.aab`; its actual bundle
+contains the new protocol and preserves the upload certificate and callback.
+See the [artifact verification](android-release.md#final-signed-candidate).
+It is **not submitted**. The existing **1.0.0/code2** client cannot understand
+the new result. The owner must upload code 3 to the **existing internal track**,
+update Solace through Play, then **Restore once, without buying**, and report
+whether the warning clears and Subscribe enables. Phone validation, test-card
+availability and a licensed purchase remain pending; paid launch remains deferred.
+
 **November 4 RTDN configuration:** the owner returned a real Cloud Shell apply
 result with `ok:true` and `configurationVerified:true` for the pinned Solace
 resources in `ennearock-web`. This is owner-returned configuration evidence,

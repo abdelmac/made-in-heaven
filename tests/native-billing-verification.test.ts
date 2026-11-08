@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   googleRequest: vi.fn(),
   tokenClaims: vi.fn(),
   purchaseConfigurationBlocked: false,
+  googleEnvironment: 'sandbox' as 'sandbox' | 'production',
 }));
 vi.mock('@/lib/billing/native-config', () => ({
   appleConfig: () => ({
@@ -17,7 +18,7 @@ vi.mock('@/lib/billing/native-config', () => ({
   googleConfig: () => {
     if (mocks.purchaseConfigurationBlocked) throw new Error('Purchases are disabled.');
     return {
-      environment: 'sandbox',
+      environment: mocks.googleEnvironment,
       packageName: 'com.solace.pomodoro',
       productId: 'pro.monthly',
       basePlanId: 'monthly',
@@ -50,6 +51,7 @@ import { appleSubscriptionState, validateAppleTransaction } from '@/lib/billing/
 import {
   authenticateGooglePush,
   googleSubscriptionState,
+  inspectGooglePurchaseForRecovery,
   verifyGoogleProductConfiguration,
   verifyGoogleSubscription,
 } from '@/lib/billing/native-google';
@@ -103,6 +105,7 @@ const googlePurchase = () => ({
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.googleEnvironment = 'sandbox';
   vi.stubGlobal('fetch', mocks.googleRequest);
 });
 afterEach(() => vi.unstubAllGlobals());
@@ -309,6 +312,208 @@ describe('Google authoritative subscription state', () => {
       );
       await expect(verifyGoogleProductConfiguration()).rejects.toThrow();
     }
+  });
+});
+
+describe('Google owner-only inactive receipt inspection', () => {
+  const catalog = () => ({
+    packageName: 'com.solace.pomodoro',
+    productId: 'pro.monthly',
+    basePlans: [
+      {
+        basePlanId: 'monthly',
+        state: 'ACTIVE',
+        autoRenewingBasePlanType: { billingPeriodDuration: 'P1M' },
+      },
+    ],
+  });
+  const expired = () => ({
+    ...googlePurchase(),
+    testPurchase: undefined,
+    subscriptionState: 'SUBSCRIPTION_STATE_EXPIRED',
+    lineItems: [
+      {
+        ...googlePurchase().lineItems[0],
+        expiryTime: new Date(Date.now() - 86_400_000).toISOString(),
+      },
+    ],
+  });
+  const inspect = async (raw: unknown, expectedAccount = account) => {
+    mocks.googleRequest
+      .mockResolvedValueOnce(Response.json(catalog()))
+      .mockResolvedValueOnce(Response.json(raw));
+    return inspectGooglePurchaseForRecovery('purchase-token', expectedAccount);
+  };
+
+  it.each(['ACKNOWLEDGEMENT_STATE_PENDING', 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED'])(
+    'authoritatively inspects an expired production receipt and preserves actual %s',
+    async (acknowledgementState) => {
+      const purchase = { ...expired(), acknowledgementState };
+      const result = await inspect(purchase);
+      expect(result).toMatchObject({
+        inactive: true,
+        state: {
+          provider: 'google',
+          environment: 'production',
+          status: 'expired',
+          currentPeriodEnd: purchase.lineItems[0].expiryTime,
+          acknowledged: acknowledgementState === 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED',
+        },
+      });
+      expect(mocks.googleRequest).toHaveBeenCalledTimes(2);
+      expect(mocks.googleRequest.mock.calls[0][0]).toBe(
+        'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.solace.pomodoro/subscriptions/pro.monthly',
+      );
+      expect(mocks.googleRequest.mock.calls[1][0]).toBe(
+        'https://androidpublisher.googleapis.com/androidpublisher/v3/applications/com.solace.pomodoro/purchases/subscriptionsv2/tokens/purchase-token',
+      );
+      for (const [, options] of mocks.googleRequest.mock.calls) {
+        expect(options.headers.Authorization).toBe('Bearer fixture-access');
+        expect(options.method).toBe('GET');
+        expect(options.cache).toBe('no-store');
+      }
+    },
+  );
+  it('requires strict expiry evidence for same-environment terminal recovery too', async () => {
+    expect(await inspect({ ...expired(), testPurchase: {} })).toMatchObject({
+      inactive: true,
+      state: { environment: 'sandbox', status: 'expired', acknowledged: false },
+    });
+  });
+  it('requires the raw expiry to be strictly before the server clock', async () => {
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(now);
+    try {
+      await expect(
+        inspect({
+          ...expired(),
+          lineItems: [{ ...expired().lineItems[0], expiryTime: new Date(now).toISOString() }],
+        }),
+      ).rejects.toMatchObject({ status: 400 });
+    } finally {
+      clock.mockRestore();
+    }
+  });
+  it.each([
+    'SUBSCRIPTION_STATE_ACTIVE',
+    'SUBSCRIPTION_STATE_IN_GRACE_PERIOD',
+    'SUBSCRIPTION_STATE_CANCELED',
+    'SUBSCRIPTION_STATE_PENDING',
+    'SUBSCRIPTION_STATE_ON_HOLD',
+    'SUBSCRIPTION_STATE_PAUSED',
+    'SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED',
+    'SUBSCRIPTION_STATE_UNSPECIFIED',
+    'unknown',
+  ])('keeps a cross-environment %s receipt blocked', async (subscriptionState) => {
+    await expect(inspect({ ...expired(), subscriptionState })).rejects.toMatchObject({
+      status: 400,
+    });
+  });
+  it.each([
+    undefined,
+    'not-a-date',
+    '2020-01-01',
+    '2026-02-31T00:00:00Z',
+    () => new Date(Date.now() + 86_400_000).toISOString(),
+  ])('rejects missing, malformed or future raw expiry: %s', async (expiry) => {
+    const expiryTime = typeof expiry === 'function' ? expiry() : expiry;
+    for (const testPurchase of [undefined, {}])
+      await expect(
+        inspect({
+          ...expired(),
+          testPurchase,
+          lineItems: [{ ...expired().lineItems[0], expiryTime }],
+        }),
+      ).rejects.toMatchObject({ status: 400 });
+  });
+  it.each(['replacement-token', '', null])(
+    'does not resolve a receipt with any linked purchase field (%s)',
+    async (linkedPurchaseToken) => {
+      for (const testPurchase of [undefined, {}])
+        await expect(
+          inspect({ ...expired(), testPurchase, linkedPurchaseToken }),
+        ).rejects.toMatchObject({
+          status: 400,
+        });
+    },
+  );
+  it('requires exact account UUID, single product, plan, auto-renewing type and absence of offers', async () => {
+    const line = expired().lineItems[0];
+    for (const patch of [
+      { externalAccountIdentifiers: undefined },
+      { externalAccountIdentifiers: { obfuscatedExternalAccountId: 'not-a-uuid' } },
+      {
+        externalAccountIdentifiers: {
+          obfuscatedExternalAccountId: '22222222-2222-4222-8222-222222222222',
+        },
+      },
+      { lineItems: [] },
+      { lineItems: [line, line] },
+      { lineItems: [{ ...line, productId: 'other' }] },
+      { lineItems: [{ ...line, offerDetails: { basePlanId: 'annual' } }] },
+      { lineItems: [{ ...line, autoRenewingPlan: undefined }] },
+      { lineItems: [{ ...line, offerDetails: { basePlanId: 'monthly', offerId: 'trial' } }] },
+      { lineItems: [{ ...line, offerDetails: { basePlanId: 'monthly', offerId: '' } }] },
+      { acknowledgementState: 'unknown' },
+    ])
+      await expect(inspect({ ...expired(), ...patch })).rejects.toThrow();
+  });
+  it('never permits the reverse sandbox-to-production environment exception', async () => {
+    mocks.googleEnvironment = 'production';
+    await expect(inspect({ ...expired(), testPurchase: {} })).rejects.toMatchObject({
+      status: 400,
+    });
+  });
+  it('keeps the RTDN verifier strict even for an expired production receipt', async () => {
+    mocks.googleRequest
+      .mockResolvedValueOnce(Response.json(catalog()))
+      .mockResolvedValueOnce(Response.json(expired()));
+    await expect(verifyGoogleSubscription('purchase-token', account)).rejects.toMatchObject({
+      status: 400,
+    });
+  });
+  it('preserves the normal same-environment active verification path', async () => {
+    expect(await inspect(googlePurchase())).toMatchObject({
+      inactive: false,
+      state: { environment: 'sandbox', status: 'active', acknowledged: false },
+    });
+    expect(mocks.googleRequest).toHaveBeenCalledTimes(2);
+  });
+  it('does not treat pending-purchase cancellation as an inactive resolution', async () => {
+    expect(
+      await inspect({
+        ...googlePurchase(),
+        subscriptionState: 'SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED',
+      }),
+    ).toMatchObject({ inactive: false });
+  });
+  it.each([401, 403, 404, 410, 503])(
+    'fails closed when the authoritative token request fails with %s',
+    async (status) => {
+      mocks.googleRequest
+        .mockResolvedValueOnce(Response.json(catalog()))
+        .mockResolvedValueOnce(new Response(null, { status }));
+      await expect(
+        inspectGooglePurchaseForRecovery('purchase-token', account),
+      ).rejects.toMatchObject({
+        status: 503,
+      });
+    },
+  );
+  it('fails closed on a network error or invalid catalog before resolving a token', async () => {
+    mocks.googleRequest.mockRejectedValueOnce(new Error('provider unavailable'));
+    await expect(inspectGooglePurchaseForRecovery('purchase-token', account)).rejects.toMatchObject(
+      {
+        status: 503,
+      },
+    );
+    mocks.googleRequest.mockResolvedValueOnce(
+      Response.json({ ...catalog(), packageName: 'other' }),
+    );
+    await expect(inspectGooglePurchaseForRecovery('purchase-token', account)).rejects.toMatchObject(
+      {
+        status: 503,
+      },
+    );
   });
 });
 

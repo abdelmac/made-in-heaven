@@ -4,13 +4,42 @@ Run commands from the repository root. The release scripts use the existing
 portable JDK/Android SDK discovered by `scripts/check-mobile.mjs`. They never
 install an app or upload a release to Google Play.
 
+## November 8 inactive-purchase recovery update
+
+The current signed candidate is **1.0.1/code3**, package
+**`com.solace.pomodoro`**. Its Android client recognizes the backend's
+authoritative inactive-receipt result without inventing an acknowledgement or
+granting Pro. Active, pending and uncertain receipts retain their purchase guards.
+The backend fix is deployed; upload and phone verification of this candidate
+remain pending.
+
+| Artifact                                                       |            Size | SHA-256                                                            |
+| -------------------------------------------------------------- | --------------: | ------------------------------------------------------------------ |
+| `.local/exports/solace-com.solace.pomodoro-1.0.1-3-signed.aab` | 4,944,471 bytes | `0b1eb54af057ce238edd7a6412bbe949c40066a64380abb1dabcf652ce65f21d` |
+| `.local/exports/solace-com.solace.pomodoro-1.0.1-3-signed.apk` | 5,202,205 bytes | `142767ad039403a839e599a81399fdfdb571246fa7d3c727c222071734fc71d0` |
+
+The matching `.aab.json` records the verified release manifest and signatures.
+The upload certificate remains
+`fb306c60c9b921d267eae19122a076168770226a51e7d7daf95b76c45e2b652e`;
+minimum/target APIs remain 26/36, Billing Library is `9.1.0`, debugging is disabled,
+and the callback remains `com.solace.pomodoro://auth/callback`. Inspection of the
+actual AAB also confirmed its bundled client contains the new recovery contract.
+The full suite passed **947 tests in 69 files**, with typecheck, scoped lint and
+format checks passing.
+
+Upload this AAB to the existing internal-testing release, update through Google
+Play, then use **Restaurer mes achats** once. No further purchase is requested
+before checking that recovery result. Native live purchases remain disabled.
+Historical exports are preserved; the rebuild examples below use code4 to avoid
+overwriting the already-exported code3 artifacts.
+
 ## November 3 Play package correction
 
 Play Console explicitly requires **`com.solace.pomodoro`** for the owner's Solace
 record. Android is realigned with that permanent ID and callback; iOS keeps
 the same existing identifier. The October 29 `com.solacepomodoro.myapp` AAB/APK
 and its preparation ZIP are superseded and must not be uploaded to this record.
-The verified fresh signed candidate is version **1.0.0/code2**, exported as
+That correction's signed candidate was version **1.0.0/code2**, exported as
 `solace-com.solace.pomodoro-1.0.0-2-signed.aab` and the matching `.apk` under
 `.local/exports/`. Its verification is recorded below. Preserve the existing
 upload key and all historical artifacts.
@@ -18,7 +47,7 @@ upload key and all historical artifacts.
 ## Unsigned bundle
 
 ```powershell
-node scripts/build-android-release.mjs --version-code 2 --version-name 1.0.0 --store-billing
+node scripts/build-android-release.mjs --version-code 4 --version-name 1.0.1 --store-billing
 ```
 
 The default rebuilds the mobile interface, syncs Android plugins/assets, runs
@@ -70,7 +99,7 @@ Inspect the existing certificate and build a signed release:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-release-signing.ps1 -Action Check
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-release-signing.ps1 -Action Build -VersionCode 2 -VersionName 1.0.0 -StoreBilling
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/android-release-signing.ps1 -Action Build -VersionCode 4 -VersionName 1.0.1 -StoreBilling
 ```
 
 The signing environment is local to that PowerShell process and its build
@@ -140,9 +169,10 @@ certificate SHA-256 is
 `fb306c60c9b921d267eae19122a076168770226a51e7d7daf95b76c45e2b652e`.
 The DPAPI-backed keystore was reopened successfully, restrictive file ACLs were
 verified, and a repeated Create command refused to replace the identity.
-No portable owner-password backup or store submission has occurred.
+No portable owner-password backup is recorded. The owner later reported the
+code2 Play upload and internal-test installation below.
 
-### Final signed candidate
+### Historical November 3 signed candidate
 
 The November 3 build completed with package **`com.solace.pomodoro`**, version
 **1.0.0/code2**. Its verification record is
@@ -163,9 +193,9 @@ The rebuilt assets' web-index SHA-256 is
 `e6735ed407069986d1288f89a682fa2b80011534ffa4aec4187b3d63d1a6f616`;
 iOS was synced and retains its original identifier.
 
-Neither artifact was installed or uploaded by this correction. Code 2 avoids
-reusing the earlier candidate's code 1; if Play has already used code 2, choose
-the next unused code and rebuild. The existing debug installation can have a
+The correction itself did not install or upload either artifact. The owner later
+confirmed code2 upload and internal-test installation. Code3 above is the current
+candidate and has not yet been submitted. The existing debug installation can have a
 different signer despite using the same package. Do not uninstall it or clear
 its local data to resolve an install conflict.
 

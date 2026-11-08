@@ -117,16 +117,72 @@ async function googleRequest(path: string, method = 'GET') {
   }
 }
 
-export async function verifyGoogleSubscription(
-  purchaseToken: string,
-  expectedAccountToken?: string,
-) {
+async function readGoogleSubscription(purchaseToken: string) {
   const config = googleConfig();
   await verifyGoogleProductConfiguration();
   const raw = await googleRequest(
     `purchases/subscriptionsv2/tokens/${encodeURIComponent(purchaseToken)}`,
   );
+  return { config, raw };
+}
+
+export async function verifyGoogleSubscription(
+  purchaseToken: string,
+  expectedAccountToken?: string,
+) {
+  const { config, raw } = await readGoogleSubscription(purchaseToken);
   return googleSubscriptionState(raw, purchaseToken, config, expectedAccountToken);
+}
+
+type GooglePurchaseInspection =
+  | { inactive: false; state: VerifiedNativeSubscription }
+  | {
+      inactive: true;
+      state: VerifiedNativeSubscription & { provider: 'google'; status: 'expired' };
+    };
+
+/** Owner recovery resolves only this authoritatively expired receipt without a linked replacement. */
+export async function inspectGooglePurchaseForRecovery(
+  purchaseToken: string,
+  expectedAccountToken: string,
+): Promise<GooglePurchaseInspection> {
+  const { config, raw } = await readGoogleSubscription(purchaseToken);
+  const parsed = purchaseSchema.safeParse(raw);
+  if (!parsed.success) throw new HttpError(400, 'Google Play returned an invalid subscription.');
+  const purchase = parsed.data;
+  // This exception cannot grant or persist a production subscription in the sandbox.
+  const productionExpiryInSandbox =
+    config.environment === 'sandbox' &&
+    purchase.testPurchase === undefined &&
+    purchase.subscriptionState === 'SUBSCRIPTION_STATE_EXPIRED';
+  const state = googleSubscriptionState(
+    raw,
+    purchaseToken,
+    productionExpiryInSandbox ? { ...config, environment: 'production' } : config,
+    expectedAccountToken,
+  );
+  if (purchase.subscriptionState !== 'SUBSCRIPTION_STATE_EXPIRED')
+    return { inactive: false, state };
+
+  const line = purchase.lineItems[0];
+  if (purchase.linkedPurchaseToken !== undefined)
+    throw new HttpError(400, 'Google Play subscription state is unsupported.');
+  if (line.offerDetails.offerId !== undefined)
+    throw new HttpError(400, 'This Google Play product or base plan is not configured.');
+  const expiry = z.iso.datetime({ offset: true }).safeParse(line.expiryTime);
+  const end = expiry.success ? Date.parse(expiry.data) : NaN;
+  if (!Number.isFinite(end) || end >= Date.now())
+    throw new HttpError(400, 'Google Play subscription expiry is invalid.');
+  return {
+    inactive: true,
+    state: {
+      ...state,
+      provider: 'google',
+      status: 'expired',
+      // Preserve Google's actual elapsed expiry, never the normalizer's clamped timestamp.
+      currentPeriodEnd: new Date(end).toISOString(),
+    },
+  };
 }
 
 export async function verifyGoogleProductConfiguration(): Promise<'P1M'> {

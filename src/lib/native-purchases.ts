@@ -94,6 +94,26 @@ const configurationSchema = z.object({
     .default(null),
   entitlements: z.object({ tier: z.enum(['free', 'pro', 'team']) }).passthrough(),
 });
+const inactivePurchaseSchema = z
+  .object({
+    verified: z.literal(false),
+    acknowledged: z.boolean(),
+    resolved: z.literal(true),
+    resolution: z.literal('inactive_purchase'),
+    entitlementGranted: z.literal(false),
+    subscription: z
+      .object({
+        provider: z.literal('google'),
+        status: z.literal('expired'),
+        currentPeriodEnd: z.iso.datetime({ offset: true }).refine((value) => {
+          const expiry = Date.parse(value);
+          return Number.isFinite(expiry) && expiry < Date.now();
+        }),
+      })
+      .strict(),
+    entitlements: configurationSchema.shape.entitlements,
+  })
+  .strict();
 
 export type NativeStoreConfiguration = z.infer<typeof configurationSchema>;
 export type NativeStoreOffer = {
@@ -105,7 +125,12 @@ export type NativeStoreOffer = {
   priceString: string;
   price: number;
 };
-export type NativePurchaseRecovery = { verified: number; pending: boolean; unfinished: boolean };
+export type NativePurchaseRecovery = {
+  verified: number;
+  pending: boolean;
+  unfinished: boolean;
+  resolved?: number;
+};
 export type NativePurchasePreparation = {
   configuration: NativeStoreConfiguration;
   offer: NativeStoreOffer | null;
@@ -315,6 +340,14 @@ export function createNativePurchaseAdapter(dependencies: Dependencies) {
       acknowledged?: boolean;
     } | null;
     if (
+      response.ok &&
+      configuration.platform === 'android' &&
+      inactivePurchaseSchema.safeParse(body).success
+    ) {
+      // A terminal receipt is resolved without acknowledgement or a new entitlement.
+      return { verified: 0, pending: false, unfinished: false, resolved: 1 };
+    }
+    if (
       !response.ok ||
       body?.verified !== true ||
       (configuration.platform === 'android' && body.acknowledged !== true)
@@ -365,6 +398,7 @@ export function createNativePurchaseAdapter(dependencies: Dependencies) {
         result.verified += delivery.verified;
         result.pending ||= delivery.pending;
         result.unfinished ||= delivery.unfinished;
+        if (delivery.resolved) result.resolved = (result.resolved ?? 0) + delivery.resolved;
       } catch (error) {
         if (error instanceof NativePurchaseError && error.issue === 'account-changed') throw error;
         result.unfinished = true;

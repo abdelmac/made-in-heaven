@@ -5,7 +5,11 @@ import { HttpError } from '@/lib/server/http';
 import { billingDatabase, getWorkspaceEntitlements, withBillingLock } from './server';
 import { nativeEnvironment, nativePurchaseLaunchReady } from './native-config';
 import { decodeApplePurchase, verifyAppleSubscription } from './native-apple';
-import { acknowledgeGoogleSubscription, verifyGoogleSubscription } from './native-google';
+import {
+  acknowledgeGoogleSubscription,
+  inspectGooglePurchaseForRecovery,
+  verifyGoogleSubscription,
+} from './native-google';
 import type {
   NativeProvider,
   NativePlatform,
@@ -136,16 +140,25 @@ async function verifyAndCommit(
       throw new HttpError(503, 'Apple refund reversal is awaiting current store confirmation.');
     state = { ...state, clearRevokedTransactionId: reversedTransactionId };
   }
-  state = await persistNativeState(userId, workspaceId, lock, state);
+  return persistAndAcknowledgeNativeState(userId, workspaceId, lock, state);
+}
+
+async function persistAndAcknowledgeNativeState(
+  userId: string,
+  workspaceId: string,
+  lock: string,
+  verified: VerifiedNativeSubscription,
+) {
+  let state = await persistNativeState(userId, workspaceId, lock, verified);
   if (
-    provider === 'google' &&
+    state.provider === 'google' &&
     !state.acknowledged &&
     ['active', 'grace', 'canceled'].includes(state.status) &&
     Date.parse(state.currentPeriodEnd) > Date.now()
   ) {
     // A failed acknowledgement leaves a durable pending-ack record. The same
     // request, RTDN and scheduled reconciliation all retry without double grants.
-    await acknowledgeGoogleSubscription(reference);
+    await acknowledgeGoogleSubscription(state.purchaseReference);
     state = { ...state, acknowledged: true };
     state = await persistNativeState(userId, workspaceId, lock, state);
   }
@@ -162,18 +175,58 @@ export async function verifyNativePurchase(
     input.platform === 'ios' ? await decodeApplePurchase(input.jwsRepresentation) : null;
   if (apple && apple.appAccountToken?.toLowerCase() !== accountToken.toLowerCase())
     throw new HttpError(409, 'This purchase belongs to another Solace account.');
-  const state = await withBillingLock(workspaceId, (lock) =>
-    verifyAndCommit(
-      userId,
-      workspaceId,
-      input.platform === 'ios' ? 'apple' : 'google',
-      apple
-        ? apple.originalTransactionId!
-        : (input as Extract<NativeVerificationInput, { platform: 'android' }>).purchaseToken,
-      accountToken,
-      lock,
-    ),
-  );
+  const result = await withBillingLock(workspaceId, async (lock) => {
+    if (input.platform === 'android') {
+      const inspection = await inspectGooglePurchaseForRecovery(input.purchaseToken, accountToken);
+      if (inspection.inactive) {
+        if (inspection.state.environment === nativeEnvironment()) {
+          // Terminal persistence removes an old grant without releasing any unresolved intent.
+          const saved = await persistNativeState(userId, workspaceId, lock, inspection.state);
+          if (
+            !['expired', 'revoked'].includes(saved.status) ||
+            Date.parse(saved.currentPeriodEnd) >= Date.now()
+          )
+            throw new HttpError(503, 'Saved native purchase state could not be confirmed.');
+        } else if (
+          nativeEnvironment() !== 'sandbox' ||
+          inspection.state.environment !== 'production'
+        ) {
+          throw new HttpError(400, 'This Google Play purchase belongs to another environment.');
+        }
+        return { inactive: true as const, state: inspection.state };
+      }
+      return {
+        inactive: false as const,
+        state: await persistAndAcknowledgeNativeState(userId, workspaceId, lock, inspection.state),
+      };
+    }
+    return {
+      inactive: false as const,
+      state: await verifyAndCommit(
+        userId,
+        workspaceId,
+        'apple',
+        apple!.originalTransactionId!,
+        accountToken,
+        lock,
+      ),
+    };
+  });
+  const state = result.state;
+  if (result.inactive)
+    return {
+      verified: false as const,
+      acknowledged: state.acknowledged,
+      resolved: true as const,
+      resolution: 'inactive_purchase' as const,
+      entitlementGranted: false as const,
+      subscription: {
+        provider: state.provider,
+        status: state.status,
+        currentPeriodEnd: state.currentPeriodEnd,
+      },
+      entitlements: await getWorkspaceEntitlements(workspaceId),
+    };
   return {
     verified: true as const,
     acknowledged: state.acknowledged,

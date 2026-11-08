@@ -5,6 +5,7 @@ import { assertSameOrigin, handleApiError, HttpError, readJson } from '@/lib/ser
 import { nativeApiOptions, withNativeApiCors } from '@/lib/server/native-route';
 import { nativeLegalEligible, verifyNativePurchase } from '@/lib/billing/native-server';
 import { nativePublicConfiguration } from '@/lib/billing/native-config';
+import { nativeVerificationDiagnostic } from '@/lib/billing/native-verification-diagnostic';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -47,7 +48,9 @@ async function handlePOST(request: Request) {
       headers: { 'Cache-Control': 'private, no-store' },
     });
   } catch (error) {
-    return handleApiError(error);
+    const response = handleApiError(error);
+    console.warn(JSON.stringify(nativeVerificationDiagnostic(error, response.status)));
+    return response;
   }
 }
 export const POST = withNativeApiCors(handlePOST);

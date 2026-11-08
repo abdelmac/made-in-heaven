@@ -26,9 +26,9 @@ function recoveryMessage(result: NativePurchaseRecovery): string {
     return 'La boutique attend la confirmation du paiement. Ne rachetez pas l’abonnement ; restaurez vos achats après sa confirmation.';
   if (result.unfinished)
     return 'Un achat reste à finaliser. Utilisez « Restaurer mes achats » pour réessayer sans payer de nouveau.';
-  return result.verified
-    ? 'Vos achats ont été vérifiés. Votre accès est actualisé.'
-    : 'Aucun achat correspondant à ce compte n’a été trouvé dans cette boutique.';
+  if (result.verified) return 'Vos achats ont été vérifiés. Votre accès est actualisé.';
+  if (result.resolved) return 'L’achat inactif a été vérifié. Aucun nouvel accès n’a été activé.';
+  return 'Aucun achat correspondant à ce compte n’a été trouvé dans cette boutique.';
 }
 
 /** Native catalog and receipts are never used to grant local Pro entitlements. */
@@ -95,7 +95,7 @@ export function NativeBillingPanel() {
       setStatus({
         scope: scopeKey,
         message:
-          value.recovery.pending || value.recovery.unfinished
+          value.recovery.pending || value.recovery.unfinished || value.recovery.resolved
             ? recoveryMessage(value.recovery)
             : '',
         requiresRestore:
